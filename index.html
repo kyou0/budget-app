@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>動的家計簿システム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .month-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+
+        .current-month {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            height: fit-content;
+        }
+
+        .main-schedule {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .section-title {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
+        }
+
+        .master-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .master-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .master-item.inactive {
+            opacity: 0.6;
+            background: #f1f3f4;
+        }
+
+        .item-info {
+            flex: 1;
+        }
+
+        .item-name {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .item-details {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        .item-amount {
+            font-weight: bold;
+            color: #28a745;
+        }
+
+        .item-amount.expense {
+            color: #dc3545;
+        }
+
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .schedule-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .schedule-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .schedule-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .due-today {
+            background: #fff5f5 !important;
+            border-left: 4px solid #dc3545;
+        }
+
+        .due-this-week {
+            background: #fffbf0 !important;
+            border-left: 4px solid #ffc107;
+        }
+
+        .overdue {
+            background: #ffe6e6 !important;
+            border-left: 4px solid #dc3545;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-ok { background: #28a745; }
+        .status-warning { background: #ffc107; }
+        .status-danger { background: #dc3545; }
+
+        .risk-alert {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .summary-card h3 {
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+
+        .summary-card .amount {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .schedule-table {
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💰 動的家計簿システム</h1>
+            <div class="controls">
+                <div class="month-selector">
+                    <button class="btn" onclick="changeMonth(-1)">◀ 前月</button>
+                    <div class="current-month" id="currentMonth">2025年7月</div>
+                    <button class="btn" onclick="changeMonth(1)">次月 ▶</button>
+                </div>
+                <button class="btn" onclick="generateNextMonth()">📅 翌月生成</button>
+                <button class="btn" onclick="openMasterModal()">⚙️ マスター管理</button>
+                <button class="btn btn-danger" onclick="checkOverdueRisk()">⚠️ 滞納チェック</button>
+            </div>
+        </div>
+
+        <div id="riskAlert" class="risk-alert" style="display: none;">
+            <h3>⚠️ 滞納リスクアラート</h3>
+            <div id="riskContent"></div>
+        </div>
+
+        <div class="summary-cards">
+            <div class="summary-card">
+                <h3>今月収入予定</h3>
+                <div class="amount" id="monthlyIncome">¥0</div>
+            </div>
+            <div class="summary-card">
+                <h3>今月支出予定</h3>
+                <div class="amount" id="monthlyExpense">¥0</div>
+            </div>
+            <div class="summary-card">
+                <h3>月末予想残高</h3>
+                <div class="amount" id="expectedBalance">¥0</div>
+            </div>
+            <div class="summary-card">
+                <h3>今週の支払い</h3>
+                <div class="amount" id="weeklyPayments">¥0</div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <h2 class="section-title">📋 マスターデータ</h2>
+                <div id="masterDataList"></div>
+                <button class="btn" onclick="openMasterModal()" style="width: 100%; margin-top: 15px;">
+                    ➕ 新規追加
+                </button>
+            </div>
+
+            <div class="main-schedule">
+                <h2 class="section-title">📅 今月の支払いスケジュール</h2>
+                <table class="schedule-table" id="scheduleTable">
+                    <thead>
+                        <tr>
+                            <th>状態</th>
+                            <th>項目名</th>
+                            <th>支払日</th>
+                            <th>金額</th>
+                            <th>支払先</th>
+                            <th>種別</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scheduleBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- マスター管理モーダル -->
+    <div id="masterModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeMasterModal()">&times;</span>
+            <h2>📝 マスターデータ管理</h2>
+            <form id="masterForm">
+                <div class="form-group">
+                    <label for="itemName">項目名</label>
+                    <input type="text" id="itemName" required>
+                </div>
+                <div class="form-group">
+                    <label for="itemType">種別</label>
+                    <select id="itemType" required>
+                        <option value="">選択してください</option>
+                        <option value="bank">銀行口座</option>
+                        <option value="card">クレジットカード</option>
+                        <option value="fixed">固定費</option>
+                        <option value="variable">変動費</option>
+                        <option value="tax">税金</option>
+                        <option value="income">収入</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="paymentDay">支払日（1-31）</label>
+                    <input type="number" id="paymentDay" min="1" max="31">
+                </div>
+                <div class="form-group">
+                    <label for="amount">金額（収入は正数、支出は負数）</label>
+                    <input type="number" id="amount" step="1000">
+                </div>
+                <div class="form-group">
+                    <label for="paymentMethod">支払先/振込先</label>
+                    <input type="text" id="paymentMethod">
+                </div>
+                <div class="form-group">
+                    <label for="isActive">状態</label>
+                    <select id="isActive">
+                        <option value="true">有効</option>
+                        <option value="false">無効</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn" style="width: 100%;">💾 保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // グローバル変数
+        let currentYear = 2025;
+        let currentMonth = 7;
+        let masterData = [];
+        let editingIndex = -1;
+
+        // 初期データの設定
+        function initializeData() {
+            // ローカルストレージからデータを読み込み
+            const savedData = localStorage.getItem('budgetMasterData');
+            if (savedData) {
+                masterData = JSON.parse(savedData);
+            } else {
+                // 初回起動時のサンプルデータ（個人情報なし）
+                masterData = [
+                    {name: "メイン銀行", type: "bank", paymentDay: 5, amount: -15000, paymentMethod: "メイン銀行", isActive: true},
+                    {name: "サブ銀行", type: "bank", paymentDay: 26, amount: -30000, paymentMethod: "サブ銀行", isActive: true},
+                    {name: "メインカード", type: "card", paymentDay: 4, amount: -50000, paymentMethod: "メイン銀行", isActive: true},
+                    {name: "サブカード", type: "card", paymentDay: 4, amount: -30000, paymentMethod: "サブ銀行", isActive: true},
+                    {name: "家賃", type: "fixed", paymentDay: 27, amount: -80000, paymentMethod: "銀行振込", isActive: true},
+                    {name: "奨学金", type: "fixed", paymentDay: 27, amount: -20000, paymentMethod: "銀行振込", isActive: true},
+                    {name: "クライアントA", type: "income", paymentDay: 10, amount: 200000, paymentMethod: "銀行振込", isActive: true},
+                    {name: "クライアントB", type: "income", paymentDay: 25, amount: 150000, paymentMethod: "銀行振込", isActive: true},
+                    {name: "借入先A", type: "loan", paymentDay: 15, amount: -15000, paymentMethod: "借入先A", isActive: true, currentBalance: 200000, interestRate: 18.0},
+                ];
+                saveMasterData();
+            }
+            
+            // 現在の年月もローカルストレージから読み込み
+            const savedDate = localStorage.getItem('budgetCurrentDate');
+            if (savedDate) {
+                const dateData = JSON.parse(savedDate);
+                currentYear = dateData.year;
+                currentMonth = dateData.month;
+            }
+            
+            updateDisplay();
+        }
+
+        // データをローカルストレージに保存
+        function saveMasterData() {
+            localStorage.setItem('budgetMasterData', JSON.stringify(masterData));
+            localStorage.setItem('budgetCurrentDate', JSON.stringify({year: currentYear, month: currentMonth}));
+        }
+
+        // 月変更
+        function changeMonth(delta) {
+            currentMonth += delta;
+            if (currentMonth > 12) {
+                currentMonth = 1;
+                currentYear++;
+            } else if (currentMonth < 1) {
+                currentMonth = 12;
+                currentYear--;
+            }
+            saveMasterData(); // 日付変更を保存
+            updateDisplay();
+        }
+
+        // 翌月生成
+        function generateNextMonth() {
+            const confirmMsg = `${currentYear}年${currentMonth + 1}月のデータを生成しますか？`;
+            if (confirm(confirmMsg)) {
+                changeMonth(1);
+                alert('翌月のデータを生成しました！');
+            }
+        }
+
+        // 表示更新
+        function updateDisplay() {
+            updateCurrentMonth();
+            updateMasterDataList();
+            updateScheduleTable();
+            updateSummaryCards();
+        }
+
+        // 現在月表示更新
+        function updateCurrentMonth() {
+            document.getElementById('currentMonth').textContent = `${currentYear}年${currentMonth}月`;
+        }
+
+        // マスターデータリスト更新
+        function updateMasterDataList() {
+            const container = document.getElementById('masterDataList');
+            container.innerHTML = '';
+
+            masterData.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = `master-item ${!item.isActive ? 'inactive' : ''}`;
+                div.onclick = () => editMasterItem(index);
+                
+                const typeNames = {
+                    bank: '🏦 銀行',
+                    card: '💳 カード',
+                    fixed: '🏠 固定費',
+                    variable: '🛒 変動費',
+                    tax: '🏛️ 税金',
+                    income: '💰 収入'
+                };
+
+                div.innerHTML = `
+                    <div class="item-info">
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-details">${typeNames[item.type]} | ${item.paymentDay}日 | ${item.paymentMethod}</div>
+                    </div>
+                    <div class="item-amount ${item.amount < 0 ? 'expense' : ''}">${item.amount.toLocaleString()}円</div>
+                `;
+                
+                container.appendChild(div);
+            });
+        }
+
+        // スケジュールテーブル更新
+        function updateScheduleTable() {
+            const tbody = document.getElementById('scheduleBody');
+            tbody.innerHTML = '';
+
+            const today = new Date();
+            const currentDate = new Date(currentYear, currentMonth - 1, today.getDate());
+            const oneWeekLater = new Date(currentDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+            const activeItems = masterData.filter(item => item.isActive);
+            
+            activeItems.forEach(item => {
+                const paymentDate = new Date(currentYear, currentMonth - 1, item.paymentDay);
+                const row = document.createElement('tr');
+                
+                // ステータス判定
+                let statusClass = 'status-ok';
+                let statusText = '正常';
+                let rowClass = '';
+
+                if (paymentDate < currentDate) {
+                    statusClass = 'status-danger';
+                    statusText = '延滞';
+                    rowClass = 'overdue';
+                } else if (paymentDate.toDateString() === currentDate.toDateString()) {
+                    statusClass = 'status-danger';
+                    statusText = '本日';
+                    rowClass = 'due-today';
+                } else if (paymentDate <= oneWeekLater) {
+                    statusClass = 'status-warning';
+                    statusText = '今週';
+                    rowClass = 'due-this-week';
+                }
+
+                row.className = rowClass;
+
+                const typeNames = {
+                    bank: '🏦 銀行',
+                    card: '💳 カード',
+                    fixed: '🏠 固定費',
+                    variable: '🛒 変動費',
+                    tax: '🏛️ 税金',
+                    income: '💰 収入'
+                };
+
+                row.innerHTML = `
+                    <td><span class="status-indicator ${statusClass}"></span>${statusText}</td>
+                    <td>${item.name}</td>
+                    <td>${item.paymentDay}日</td>
+                    <td class="${item.amount < 0 ? 'expense' : ''}">${item.amount.toLocaleString()}円</td>
+                    <td>${item.paymentMethod}</td>
+                    <td>${typeNames[item.type]}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // サマリーカード更新
+        function updateSummaryCards() {
+            const activeItems = masterData.filter(item => item.isActive);
+            
+            const monthlyIncome = activeItems
+                .filter(item => item.amount > 0)
+                .reduce((sum, item) => sum + item.amount, 0);
+            
+            const monthlyExpense = activeItems
+                .filter(item => item.amount < 0)
+                .reduce((sum, item) => sum + Math.abs(item.amount), 0);
+
+            const today = new Date();
+            const oneWeekLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+            
+            const weeklyPayments = activeItems
+                .filter(item => {
+                    const paymentDate = new Date(currentYear, currentMonth - 1, item.paymentDay);
+                    return item.amount < 0 && paymentDate <= oneWeekLater && paymentDate >= today;
+                })
+                .reduce((sum, item) => sum + Math.abs(item.amount), 0);
+
+            document.getElementById('monthlyIncome').textContent = `¥${monthlyIncome.toLocaleString()}`;
+            document.getElementById('monthlyExpense').textContent = `¥${monthlyExpense.toLocaleString()}`;
+            document.getElementById('expectedBalance').textContent = `¥${(monthlyIncome - monthlyExpense).toLocaleString()}`;
+            document.getElementById('weeklyPayments').textContent = `¥${weeklyPayments.toLocaleString()}`;
+        }
+
+        // 滞納リスクチェック
+        function checkOverdueRisk() {
+            const today = new Date();
+            const currentDate = new Date(currentYear, currentMonth - 1, today.getDate());
+            
+            const overdueItems = masterData.filter(item => {
+                if (!item.isActive || item.amount >= 0) return false;
+                const paymentDate = new Date(currentYear, currentMonth - 1, item.paymentDay);
+                return paymentDate < currentDate;
+            });
+
+            const riskAlert = document.getElementById('riskAlert');
+            const riskContent = document.getElementById('riskContent');
+
+            if (overdueItems.length > 0) {
+                let content = '<p>以下の項目が支払期日を過ぎています：</p><ul>';
+                overdueItems.forEach(item => {
+                    content += `<li>${item.name}: ${Math.abs(item.amount).toLocaleString()}円 (${item.paymentDay}日)</li>`;
+                });
+                content += '</ul>';
+                riskContent.innerHTML = content;
+                riskAlert.style.display = 'block';
+            } else {
+                riskAlert.style.display = 'none';
+                alert('✅ 現在、滞納リスクのある項目はありません。');
+            }
+        }
+
+        // マスター管理モーダル
+        function openMasterModal() {
+            document.getElementById('masterModal').style.display = 'block';
+            if (editingIndex === -1) {
+                document.getElementById('masterForm').reset();
+            }
+        }
+
+        function closeMasterModal() {
+            document.getElementById('masterModal').style.display = 'none';
+            editingIndex = -1;
+            document.getElementById('masterForm').reset();
+        }
+
+        function editMasterItem(index) {
+            editingIndex = index;
+            const item = masterData[index];
+            
+            document.getElementById('itemName').value = item.name;
+            document.getElementById('itemType').value = item.type;
+            document.getElementById('paymentDay').value = item.paymentDay;
+            document.getElementById('amount').value = item.amount;
+            document.getElementById('paymentMethod').value = item.paymentMethod;
+            document.getElementById('isActive').value = item.isActive.toString();
+            
+            openMasterModal();
+        }
+
+        // フォーム送信処理
+        document.getElementById('masterForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('itemName').value,
+                type: document.getElementById('itemType').value,
+                paymentDay: parseInt(document.getElementById('paymentDay').value),
+                amount: parseInt(document.getElementById('amount').value),
+                paymentMethod: document.getElementById('paymentMethod').value,
+                isActive: document.getElementById('isActive').value === 'true'
+            };
+
+            if (editingIndex === -1) {
+                masterData.push(formData);
+            } else {
+                masterData[editingIndex] = formData;
+            }
+
+            saveMasterData(); // データを保存
+            updateDisplay();
+            closeMasterModal();
+            
+            const action = editingIndex === -1 ? '追加' : '更新';
+            alert(`✅ マスターデータを${action}しました！`);
+        });
+
+        // モーダル外クリックで閉じる
+        window.onclick = function(event) {
+            const modal = document.getElementById('masterModal');
+            if (event.target === modal) {
+                closeMasterModal();
+            }
+        }
+
+        // 初期化
+        initializeData();
+    </script>
+</body>
+</html>

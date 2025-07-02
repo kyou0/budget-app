@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💰 マスター管理 - 家計簿アプリ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2em;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .navigation {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .nav-btn.active {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            height: fit-content;
+        }
+
+        .category-list {
+            list-style: none;
+        }
+
+        .category-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .category-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .category-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .category-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .category-count {
+            background: rgba(0, 0, 0, 0.1);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .content-area {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+            color: #000;
+        }
+
+        .items-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .item-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .item-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .item-card.inactive {
+            opacity: 0.6;
+            background: #f1f3f4;
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .item-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .item-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .item-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .detail-item {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+
+        .detail-label {
+            font-size: 0.8em;
+            color: #6c757d;
+            margin-bottom: 2px;
+        }
+
+        .detail-value {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .detail-value.amount {
+            font-size: 1.1em;
+        }
+
+        .detail-value.expense {
+            color: #dc3545;
+        }
+
+        .detail-value.income {
+            color: #28a745;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.9em;
+        }
+
+        /* 借金専用表示 */
+        .loan-card {
+            border-left: 4px solid #ffc107;
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+        }
+
+        .loan-progress {
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            background: #e9ecef;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+
+        .progress-fill {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 0.8em;
+            color: #6c757d;
+        }
+
+        /* フォーム */
+        .form-container {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        /* 統計表示 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-card.danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+
+        .stat-card.success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        /* レスポンシブ */
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .navigation {
+                flex-direction: column;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-top">
+                <h1>⚙️ マスター管理</h1>
+                <div class="user-info">
+                    <span>ユーザー</span>
+                </div>
+            </div>
+            
+            <div class="navigation">
+                <a href="index.html" class="nav-btn">📊 ダッシュボード</a>
+                <button class="nav-btn active">⚙️ マスター管理</button>
+                <button class="nav-btn" onclick="openSettings()">🔧 設定</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <h3 style="margin-bottom: 15px; color: #2c3e50;">📂 カテゴリ</h3>
+                <ul class="category-list">
+                    <li class="category-item active" onclick="showCategory('all')">
+                        <div class="category-info">
+                            <span>📋 すべて</span>
+                        </div>
+                        <span class="category-count" id="countAll">12</span>
+                    </li>
+                    <li class="category-item" onclick="showCategory('income')">
+                        <div class="category-info">
+                            <span>💰 収入</span>
+                        </div>
+                        <span class="category-count" id="countIncome">5</span>
+                    </li>
+                    <li class="category-item" onclick="showCategory('fixed')">
+                        <div class="category-info">
+                            <span>🏠 固定費</span>
+                        </div>
+                        <span class="category-count" id="countFixed">8</span>
+                    </li>
+                    <li class="category-item" onclick="showCategory('card')">
+                        <div class="category-info">
+                            <span>💳 クレジットカード</span>
+                        </div>
+                        <span class="category-count" id="countCard">10</span>
+                    </li>
+                    <li class="category-item" onclick="showCategory('bank')">
+                        <div class="category-info">
+                            <span>🏦 銀行</span>
+                        </div>
+                        <span class="category-count" id="countBank">8</span>
+                    </li>
+                    <li class="category-item" onclick="showCategory('loan')">
+                        <div class="category-info">
+                            <span>💸 借入先</span>
+                        </div>
+                        <span class="category-count" id="countLoan">4</span>
+                    </li>
+                    <li class="category-item" onclick="showCategory('tax')">
+                        <div class="category-info">
+                            <span>🏛️ 税金</span>
+                        </div>
+                        <span class="category-count" id="countTax">6</span>
+                    </li>
+                    <li class="category-item" onclick="showCategory('variable')">
+                        <div class="category-info">
+                            <span>🛒 変動費</span>
+                        </div>
+                        <span class="category-count" id="countVariable">2</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="content-area">
+                <div class="content-header">
+                    <h2 id="categoryTitle">📋 すべての項目</h2>
+                    <button class="btn btn-success" onclick="showAddForm()">➕ 新規追加</button>
+                </div>
+
+                <!-- 統計表示 -->
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card">
+                        <div class="stat-value">12</div>
+                        <div class="stat-label">総項目数</div>
+                    </div>
+                    <div class="stat-card success">
+                        <div class="stat-value">10</div>
+                        <div class="stat-label">有効項目</div>
+                    </div>
+                    <div class="stat-card danger">
+                        <div class="stat-value">¥1.2M</div>
+                        <div class="stat-label">総借入額</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">¥52K</div>
+                        <div class="stat-label">月間返済額</div>
+                    </div>
+                </div>
+
+                <!-- 新規追加フォーム -->
+                <div class="form-container" id="addForm" style="display: none;">
+                    <h3 style="margin-bottom: 20px; color: #2c3e50;">➕ 新規項目追加</h3>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="itemName">項目名 *</label>
+                            <input type="text" id="itemName" placeholder="例: 楽天カード" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="itemType">種別 *</label>
+                            <select id="itemType" required onchange="updateFormFields()">
+                                <option value="">選択してください</option>
+                                <option value="income">💰 収入</option>
+                                <option value="fixed">🏠 固定費</option>
+                                <option value="card">💳 クレジットカード</option>
+                                <option value="bank">🏦 銀行</option>
+                                <option value="loan">💸 借入先</option>
+                                <option value="tax">🏛️ 税金</option>
+                                <option value="variable">🛒 変動費</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="paymentDay">支払日/入金日</label>
+                            <input type="number" id="paymentDay" min="1" max="31" placeholder="例: 27">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="amount">金額 *</label>
+                            <input type="number" id="amount" step="1000" placeholder="収入は正数、支出は負数" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="paymentMethod">支払先/振込先</label>
+                            <input type="text" id="paymentMethod" placeholder="例: 楽天銀行">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="isActive">状態</label>
+                            <select id="isActive">
+                                <option value="true">有効</option>
+                                <option value="false">無効</option>
+                            </select>
+                        </div>
+                        
+                        <!-- 借入先専用フィールド -->
+                        <div class="form-group" id="interestRateGroup" style="display: none;">
+                            <label for="interestRate">年利率 (%)</label>
+                            <input type="number" id="interestRate" step="0.1" placeholder="例: 18.0">
+                        </div>
+                        
+                        <div class="form-group" id="maxLimitGroup" style="display: none;">
+                            <label for="maxLimit">限度額</label>
+                            <input type="number" id="maxLimit" step="10000" placeholder="例: 500000">
+                        </div>
+                        
+                        <div class="form-group" id="currentBalanceGroup" style="display: none;">
+                            <label for="currentBalance">現在残高</label>
+                            <input type="number" id="currentBalance" step="1000" placeholder="例: 234567">
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button class="btn" onclick="hideAddForm()">キャンセル</button>
+                        <button class="btn btn-success" onclick="saveItem()">💾 保存</button>
+                    </div>
+                </div>
+
+                <!-- 項目一覧 -->
+                <div class="items-grid" id="itemsGrid">
+                    <!-- JavaScriptで動的生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // グローバル変数
+        let currentCategory = 'all';
+        let editingIndex = -1;
+
+        // サンプルデータ（個人情報なし）
+        let masterData = [
+            // 収入
+            {name: "クライアントA", type: "income", paymentDay: 10, amount: 200000, paymentMethod: "銀行振込", isActive: true},
+            {name: "クライアントB", type: "income", paymentDay: 15, amount: 180000, paymentMethod: "銀行振込", isActive: true},
+            {name: "クライアントC", type: "income", paymentDay: 25, amount: 150000, paymentMethod: "銀行振込", isActive: true},
+            {name: "クライアントD", type: "income", paymentDay: 30, amount: 120000, paymentMethod: "銀行振込", isActive: true},
+            {name: "クライアントE", type: "income", paymentDay: 30, amount: 100000, paymentMethod: "銀行振込", isActive: false},
+            
+            // 固定費
+            {name: "家賃", type: "fixed", paymentDay: 27, amount: -80000, paymentMethod: "銀行振込", isActive: true},
+            {name: "奨学金", type: "fixed", paymentDay: 27, amount: -20000, paymentMethod: "銀行振込", isActive: true},
+            {name: "水道代", type: "fixed", paymentDay: 27, amount: -5000, paymentMethod: "銀行振込", isActive: true},
+            {name: "電気・ガス代", type: "fixed", paymentDay: 27, amount: -12000, paymentMethod: "銀行振込", isActive: true},
+            {name: "通信費", type: "fixed", paymentDay: 27, amount: -8000, paymentMethod: "銀行振込", isActive: true},
+            {name: "保険料", type: "fixed", paymentDay: 27, amount: -15000, paymentMethod: "銀行振込", isActive: true},
+            {name: "サブスク費用", type: "fixed", paymentDay: 27, amount: -5000, paymentMethod: "銀行振込", isActive: true},
+            {name: "その他固定費", type: "fixed", paymentDay: 27, amount: -10000, paymentMethod: "銀行振込", isActive: true},
+            
+            // クレジットカード
+            {name: "メインカードA", type: "card", paymentDay: 4, amount: -50000, paymentMethod: "メイン銀行", isActive: true},
+            {name: "メインカードB", type: "card", paymentDay: 4, amount: -30000, paymentMethod: "サブ銀行", isActive: true},
+            {name: "ビジネスカード", type: "card", paymentDay: 10, amount: -25000, paymentMethod: "メイン銀行", isActive: true},
+            {name: "サブカードA", type: "card", paymentDay: 10, amount: -15000, paymentMethod: "サブ銀行", isActive: true},
+            {name: "サブカードB", type: "card", paymentDay: 19, amount: -8000, paymentMethod: "サブ銀行", isActive: true},
+            {name: "サブカードC", type: "card", paymentDay: 21, amount: -20000, paymentMethod: "サブ銀行", isActive: true},
+            {name: "サブカードD", type: "card", paymentDay: 24, amount: -12000, paymentMethod: "その他銀行", isActive: true},
+            {name: "サブカードE", type: "card", paymentDay: 27, amount: -35000, paymentMethod: "メイン銀行", isActive: true},
+            {name: "サブカードF", type: "card", paymentDay: 27, amount: -18000, paymentMethod: "サブ銀行", isActive: true},
+            {name: "サブカードG", type: "card", paymentDay: 27, amount: -22000, paymentMethod: "メイン銀行", isActive: true},
+            
+            // 借入先
+            {name: "借入先A", type: "loan", paymentDay: 15, amount: -15000, paymentMethod: "借入先A", isActive: true, 
+             currentBalance: 200000, interestRate: 18.0, maxLimit: 500000},
+            {name: "借入先B", type: "loan", paymentDay: 27, amount: -12000, paymentMethod: "メイン銀行", isActive: true,
+             currentBalance: 300000, interestRate: 18.0, maxLimit: 500000},
+            {name: "借入先C", type: "loan", paymentDay: 25, amount: -5000, paymentMethod: "現金", isActive: true,
+             currentBalance: 100000, interestRate: 0.0, maxLimit: 200000},
+            {name: "借入先D", type: "loan", paymentDay: 0, amount: 0, paymentMethod: "借入先D", isActive: false,
+             currentBalance: 0, interestRate: 17.8, maxLimit: 300000},
+        ];
+
+        // ページ読み込み時の初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSavedData();
+            showCategory('all');
+            updateCategoryCounts();
+        });
+
+        // カテゴリ表示
+        function showCategory(category) {
+            currentCategory = category;
+            
+            // アクティブなカテゴリをハイライト
+            document.querySelectorAll('.category-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.category-item').classList.add('active');
+            
+            // タイトル更新
+            const titles = {
+                all: '📋 すべての項目',
+                income: '💰 収入項目',
+                fixed: '🏠 固定費項目', 
+                card: '💳 クレジットカード',
+                bank: '🏦 銀行項目',
+                loan: '💸 借入先',
+                tax: '🏛️ 税金項目',
+                variable: '🛒 変動費項目'
+            };
+            document.getElementById('categoryTitle').textContent = titles[category];
+            
+            // 項目表示
+            displayItems(category);
+            updateStats(category);
+        }
+
+        // 項目表示
+        function displayItems(category) {
+            const container = document.getElementById('itemsGrid');
+            container.innerHTML = '';
+            
+            let items = masterData;
+            if (category !== 'all') {
+                items = masterData.filter(item => item.type === category);
+            }
+            
+            items.forEach((item, index) => {
+                const card = createItemCard(item, index);
+                container.appendChild(card);
+            });
+        }
+
+        // 項目カード作成
+        function createItemCard(item, index) {
+            const card = document.createElement('div');
+            card.className = `item-card ${!item.isActive ? 'inactive' : ''} ${item.type === 'loan' ? 'loan-card' : ''}`;
+            
+            const icon = getItemIcon(item.type);
+            const amountClass = item.amount > 0 ? 'income' : 'expense';
+            
+            let extraFields = '';
+            if (item.type === 'loan') {
+                const payoffMonths = item.currentBalance > 0 && Math.abs(item.amount) > 0 
+                    ? Math.ceil(item.currentBalance / Math.abs(item.amount)) : 0;
+                const progressPercent = item.maxLimit > 0 
+                    ? Math.max(0, (item.maxLimit - item.currentBalance) / item.maxLimit * 100) : 0;
+                
+                extraFields = `
+                    <div class="detail-item">
+                        <div class="detail-label">現在残高</div>
+                        <div class="detail-value expense">¥${item.currentBalance?.toLocaleString() || '0'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">年利率</div>
+                        <div class="detail-value">${item.interestRate || 0}%</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">限度額</div>
+                        <div class="detail-value">¥${item.maxLimit?.toLocaleString() || '0'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">完済予定</div>
+                        <div class="detail-value">${payoffMonths > 0 ? payoffMonths + 'ヶ月' : '未設定'}</div>
+                    </div>
+                `;
+                
+                if (item.maxLimit > 0) {
+                    extraFields += `
+                        <div class="loan-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${progressPercent}%"></div>
+                            </div>
+                            <div class="progress-text">利用可能額: ¥${(item.maxLimit - (item.currentBalance || 0)).toLocaleString()}</div>
+                        </div>
+                    `;
+                }
+            }
+            
+            card.innerHTML = `
+                <div class="item-header">
+                    <div class="item-name">${icon} ${item.name}</div>
+                    <div class="item-status ${item.isActive ? 'status-active' : 'status-inactive'}">
+                        ${item.isActive ? '有効' : '無効'}
+                    </div>
+                </div>
+                
+                <div class="item-details">
+                    <div class="detail-item">
+                        <div class="detail-label">支払日</div>
+                        <div class="detail-value">${item.paymentDay || '-'}日</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">金額</div>
+                        <div class="detail-value amount ${amountClass}">¥${Math.abs(item.amount).toLocaleString()}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">支払先</div>
+                        <div class="detail-value">${item.paymentMethod || '-'}</div>
+                    </div>
+                    ${extraFields}
+                </div>
+                
+                <div class="item-actions">
+                    <button class="btn btn-small" onclick="editItem(${index})">✏️ 編集</button>
+                    <button class="btn btn-small btn-warning" onclick="toggleActive(${index})">
+                        ${item.isActive ? '無効化' : '有効化'}
+                    </button>
+                    <button class="btn btn-small btn-danger" onclick="deleteItem(${index})">🗑️ 削除</button>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        // アイコン取得
+        function getItemIcon(type) {
+            const icons = {
+                income: '💰',
+                fixed: '🏠',
+                card: '💳',
+                bank: '🏦',
+                loan: '💸',
+                tax: '🏛️',
+                variable: '🛒'
+            };
+            return icons[type] || '📋';
+        }
+
+        // 統計更新
+        function updateStats(category) {
+            let items = masterData;
+            if (category !== 'all') {
+                items = masterData.filter(item => item.type === category);
+            }
+            
+            const activeItems = items.filter(item => item.isActive);
+            const totalDebt = items
+                .filter(item => item.type === 'loan' && item.currentBalance)
+                .reduce((sum, item) => sum + item.currentBalance, 0);
+            const monthlyPayment = activeItems
+                .filter(item => item.amount < 0)
+                .reduce((sum, item) => sum + Math.abs(item.amount), 0);
+            
+            const statsHtml = `
+                <div class="stat-card">
+                    <div class="stat-value">${items.length}</div>
+                    <div class="stat-label">総項目数</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-value">${activeItems.length}</div>
+                    <div class="stat-label">有効項目</div>
+                </div>
+                <div class="stat-card danger">
+                    <div class="stat-value">¥${(totalDebt / 1000000).toFixed(1)}M</div>
+                    <div class="stat-label">総借入額</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">¥${(monthlyPayment / 1000).toFixed(0)}K</div>
+                    <div class="stat-label">月間返済額</div>
+                </div>
+            `;
+            
+            document.getElementById('statsGrid').innerHTML = statsHtml;
+        }
+
+        // カテゴリ件数更新
+        function updateCategoryCounts() {
+            const counts = {
+                all: masterData.length,
+                income: masterData.filter(item => item.type === 'income').length,
+                fixed: masterData.filter(item => item.type === 'fixed').length,
+                card: masterData.filter(item => item.type === 'card').length,
+                bank: masterData.filter(item => item.type === 'bank').length,
+                loan: masterData.filter(item => item.type === 'loan').length,
+                tax: masterData.filter(item => item.type === 'tax').length,
+                variable: masterData.filter(item => item.type === 'variable').length
+            };
+            
+            Object.keys(counts).forEach(key => {
+                const element = document.getElementById(`count${key.charAt(0).toUpperCase() + key.slice(1)}`);
+                if (element) element.textContent = counts[key];
+            });
+        }
+
+        // フォーム表示
+        function showAddForm() {
+            document.getElementById('addForm').style.display = 'block';
+            editingIndex = -1;
+            clearForm();
+        }
+
+        // フォーム非表示
+        function hideAddForm() {
+            document.getElementById('addForm').style.display = 'none';
+            clearForm();
+        }
+
+        // フォームクリア
+        function clearForm() {
+            document.getElementById('itemName').value = '';
+            document.getElementById('itemType').value = '';
+            document.getElementById('paymentDay').value = '';
+            document.getElementById('amount').value = '';
+            document.getElementById('paymentMethod').value = '';
+            document.getElementById('isActive').value = 'true';
+            document.getElementById('interestRate').value = '';
+            document.getElementById('maxLimit').value = '';
+            document.getElementById('currentBalance').value = '';
+            updateFormFields();
+        }
+
+        // フォームフィールド更新
+        function updateFormFields() {
+            const type = document.getElementById('itemType').value;
+            const isLoan = type === 'loan';
+            
+            document.getElementById('interestRateGroup').style.display = isLoan ? 'block' : 'none';
+            document.getElementById('maxLimitGroup').style.display = isLoan ? 'block' : 'none';
+            document.getElementById('currentBalanceGroup').style.display = isLoan ? 'block' : 'none';
+        }
+
+        // 項目保存
+        function saveItem() {
+            const formData = {
+                name: document.getElementById('itemName').value,
+                type: document.getElementById('itemType').value,
+                paymentDay: parseInt(document.getElementById('paymentDay').value) || 0,
+                amount: parseInt(document.getElementById('amount').value) || 0,
+                paymentMethod: document.getElementById('paymentMethod').value,
+                isActive: document.getElementById('isActive').value === 'true'
+            };
+            
+            // 借入先の場合は追加フィールド
+            if (formData.type === 'loan') {
+                formData.interestRate = parseFloat(document.getElementById('interestRate').value) || 0;
+                formData.maxLimit = parseInt(document.getElementById('maxLimit').value) || 0;
+                formData.currentBalance = parseInt(document.getElementById('currentBalance').value) || 0;
+            }
+            
+            // バリデーション
+            if (!formData.name || !formData.type) {
+                alert('項目名と種別は必須です。');
+                return;
+            }
+            
+            if (editingIndex === -1) {
+                masterData.push(formData);
+            } else {
+                masterData[editingIndex] = formData;
+            }
+            
+            saveData();
+            hideAddForm();
+            showCategory(currentCategory);
+            updateCategoryCounts();
+            
+            const action = editingIndex === -1 ? '追加' : '更新';
+            alert(`✅ 項目を${action}しました！`);
+        }
+
+        // 項目編集
+        function editItem(index) {
+            editingIndex = index;
+            const item = masterData[index];
+            
+            document.getElementById('itemName').value = item.name;
+            document.getElementById('itemType').value = item.type;
+            document.getElementById('paymentDay').value = item.paymentDay || '';
+            document.getElementById('amount').value = item.amount || '';
+            document.getElementById('paymentMethod').value = item.paymentMethod || '';
+            document.getElementById('isActive').value = item.isActive.toString();
+            
+            if (item.type === 'loan') {
+                document.getElementById('interestRate').value = item.interestRate || '';
+                document.getElementById('maxLimit').value = item.maxLimit || '';
+                document.getElementById('currentBalance').value = item.currentBalance || '';
+            }
+            
+            updateFormFields();
+            showAddForm();
+        }
+
+        // 有効/無効切り替え
+        function toggleActive(index) {
+            masterData[index].isActive = !masterData[index].isActive;
+            saveData();
+            showCategory(currentCategory);
+            updateCategoryCounts();
+            
+            const status = masterData[index].isActive ? '有効' : '無効';
+            alert(`✅ ${masterData[index].name}を${status}にしました！`);
+        }
+
+        // 項目削除
+        function deleteItem(index) {
+            const item = masterData[index];
+            if (confirm(`「${item.name}」を削除しますか？\nこの操作は取り消せません。`)) {
+                masterData.splice(index, 1);
+                saveData();
+                showCategory(currentCategory);
+                updateCategoryCounts();
+                alert(`✅ ${item.name}を削除しました！`);
+            }
+        }
+
+        // データ保存
+        function saveData() {
+            localStorage.setItem('budgetMasterData', JSON.stringify(masterData));
+            // 将来的にGoogle Drive APIで同期
+        }
+
+        // データ読み込み
+        function loadSavedData() {
+            const savedData = localStorage.getItem('budgetMasterData');
+            if (savedData) {
+                masterData = JSON.parse(savedData);
+            }
+        }
+
+        // 設定ページ
+        function openSettings() {
+            alert('🔧 設定ページは別ファイルで実装予定です。');
+        }
+    </script>
+</body>
+</html>
