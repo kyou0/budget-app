@@ -582,6 +582,92 @@
             generateCalendar();
             updateSummaryCards();
             updateDebtDashboard();
+            
+            // データ変更監視を開始
+            startDataSyncMonitoring();
+        }
+
+        // データ変更監視（他ページでの変更を検知）
+        function startDataSyncMonitoring() {
+            // localStorage変更を監視
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'budgetMasterData') {
+                    console.log('マスターデータが他ページで変更されました');
+                    loadSavedData();
+                    generateCalendar();
+                    updateSummaryCards();
+                    updateDebtDashboard();
+                    showSyncNotification('✅ データを同期しました');
+                }
+            });
+            
+            // 定期的なデータ同期チェック（5秒ごと）
+            setInterval(function() {
+                checkForDataChanges();
+            }, 5000);
+        }
+
+        // データ変更チェック
+        function checkForDataChanges() {
+            const currentData = localStorage.getItem('budgetMasterData');
+            const lastKnownData = localStorage.getItem('budgetLastKnownData');
+            
+            if (currentData !== lastKnownData) {
+                console.log('データ変更を検知しました');
+                localStorage.setItem('budgetLastKnownData', currentData);
+                loadSavedData();
+                generateCalendar();
+                updateSummaryCards();
+                updateDebtDashboard();
+                showSyncNotification('🔄 データを更新しました');
+            }
+        }
+
+        // 同期通知表示
+        function showSyncNotification(message) {
+            // 既存の通知を削除
+            const existingNotification = document.getElementById('syncNotification');
+            if (existingNotification) {
+                existingNotification.remove();
+            }
+            
+            // 新しい通知を作成
+            const notification = document.createElement('div');
+            notification.id = 'syncNotification';
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 10px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                z-index: 1000;
+                font-weight: 600;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            
+            // スタイルを追加
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            document.body.appendChild(notification);
+            
+            // 3秒後に自動削除
+            setTimeout(() => {
+                if (notification) {
+                    notification.style.animation = 'slideIn 0.3s ease reverse';
+                    setTimeout(() => notification.remove(), 300);
+                }
+            }, 3000);
         }
 
         // データ読み込み
@@ -808,6 +894,28 @@
         function markPaymentComplete() {
             alert('✅ 支払い完了機能は開発中です。\n今後、支払い状況の管理機能を追加予定です。');
         }
+
+        // ページ可視性変更時の同期
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                // ページがアクティブになった時にデータを同期
+                checkForDataChanges();
+            }
+        });
+
+        // 他ページからの変更通知を受信
+        window.addEventListener('budgetDataChanged', function(e) {
+            const { masterData: newMasterData, currentYear: newYear, currentMonth: newMonth } = e.detail;
+            masterData = newMasterData;
+            currentYear = newYear;
+            currentMonth = newMonth;
+            
+            updateCurrentMonth();
+            generateCalendar();
+            updateSummaryCards();
+            updateDebtDashboard();
+            showSyncNotification('🔄 他のページからデータが同期されました');
+        });
 
         // 初期化（開発用自動ログイン）
         document.addEventListener('DOMContentLoaded', function() {

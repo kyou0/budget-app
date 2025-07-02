@@ -425,7 +425,7 @@
             <div class="navigation">
                 <a href="index.html" class="nav-btn">📊 ダッシュボード</a>
                 <button class="nav-btn active">⚙️ マスター管理</button>
-                <a href="settings.html" class="nav-btn">🔧 設定</a>
+                <button class="nav-btn" onclick="openSettings()">🔧 設定</button>
             </div>
         </div>
 
@@ -640,7 +640,91 @@
             loadSavedData();
             showCategory('all');
             updateCategoryCounts();
+            
+            // データ変更監視を開始
+            startDataSyncMonitoring();
         });
+
+        // データ変更監視（他ページでの変更を検知）
+        function startDataSyncMonitoring() {
+            // localStorage変更を監視
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'budgetMasterData') {
+                    console.log('マスターデータが他ページで変更されました');
+                    loadSavedData();
+                    showCategory(currentCategory);
+                    updateCategoryCounts();
+                    showSyncNotification('✅ データを同期しました');
+                }
+            });
+            
+            // 定期的なデータ同期チェック（5秒ごと）
+            setInterval(function() {
+                checkForDataChanges();
+            }, 5000);
+        }
+
+        // データ変更チェック
+        function checkForDataChanges() {
+            const currentData = localStorage.getItem('budgetMasterData');
+            const lastKnownData = localStorage.getItem('budgetLastKnownData');
+            
+            if (currentData !== lastKnownData) {
+                console.log('データ変更を検知しました');
+                localStorage.setItem('budgetLastKnownData', currentData);
+                loadSavedData();
+                showCategory(currentCategory);
+                updateCategoryCounts();
+                showSyncNotification('🔄 データを更新しました');
+            }
+        }
+
+        // 同期通知表示
+        function showSyncNotification(message) {
+            // 既存の通知を削除
+            const existingNotification = document.getElementById('syncNotification');
+            if (existingNotification) {
+                existingNotification.remove();
+            }
+            
+            // 新しい通知を作成
+            const notification = document.createElement('div');
+            notification.id = 'syncNotification';
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 10px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                z-index: 1000;
+                font-weight: 600;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            
+            // スタイルを追加
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            document.body.appendChild(notification);
+            
+            // 3秒後に自動削除
+            setTimeout(() => {
+                if (notification) {
+                    notification.style.animation = 'slideIn 0.3s ease reverse';
+                    setTimeout(() => notification.remove(), 300);
+                }
+            }, 3000);
+        }
 
         // カテゴリ表示
         function showCategory(category) {
@@ -959,18 +1043,85 @@
             }
         }
 
-        // データ保存
+        // データ保存（改良版）
         function saveData() {
             localStorage.setItem('budgetMasterData', JSON.stringify(masterData));
-            // 将来的にGoogle Drive APIで同期
+            localStorage.setItem('budgetLastKnownData', JSON.stringify(masterData));
+            localStorage.setItem('budgetLastSync', new Date().toISOString());
+            
+            // 他のタブ/ページに変更を通知
+            window.dispatchEvent(new CustomEvent('budgetDataChanged', {
+                detail: { masterData }
+            }));
+            
+            // 保存成功通知
+            showSyncNotification('💾 データを保存しました');
         }
 
-        // データ読み込み
+        // データ読み込み（改良版）
         function loadSavedData() {
             const savedData = localStorage.getItem('budgetMasterData');
             if (savedData) {
-                masterData = JSON.parse(savedData);
+                try {
+                    const parsedData = JSON.parse(savedData);
+                    if (Array.isArray(parsedData)) {
+                        masterData = parsedData;
+                    } else {
+                        console.warn('無効なデータ形式です。初期データを使用します。');
+                        initializeDefaultData();
+                    }
+                } catch (error) {
+                    console.error('データ読み込みエラー:', error);
+                    initializeDefaultData();
+                }
+            } else {
+                initializeDefaultData();
             }
+        }
+
+        // 初期データセットアップ
+        function initializeDefaultData() {
+            masterData = [
+                // 収入
+                {name: "クライアントA", type: "income", paymentDay: 10, amount: 200000, paymentMethod: "銀行振込", isActive: true},
+                {name: "クライアントB", type: "income", paymentDay: 15, amount: 180000, paymentMethod: "銀行振込", isActive: true},
+                {name: "クライアントC", type: "income", paymentDay: 25, amount: 150000, paymentMethod: "銀行振込", isActive: true},
+                {name: "クライアントD", type: "income", paymentDay: 30, amount: 120000, paymentMethod: "銀行振込", isActive: true},
+                {name: "クライアントE", type: "income", paymentDay: 30, amount: 100000, paymentMethod: "銀行振込", isActive: false},
+                
+                // 固定費
+                {name: "家賃", type: "fixed", paymentDay: 27, amount: -80000, paymentMethod: "銀行振込", isActive: true},
+                {name: "奨学金", type: "fixed", paymentDay: 27, amount: -20000, paymentMethod: "銀行振込", isActive: true},
+                {name: "水道代", type: "fixed", paymentDay: 27, amount: -5000, paymentMethod: "銀行振込", isActive: true},
+                {name: "電気・ガス代", type: "fixed", paymentDay: 27, amount: -12000, paymentMethod: "銀行振込", isActive: true},
+                {name: "通信費", type: "fixed", paymentDay: 27, amount: -8000, paymentMethod: "銀行振込", isActive: true},
+                {name: "保険料", type: "fixed", paymentDay: 27, amount: -15000, paymentMethod: "銀行振込", isActive: true},
+                {name: "サブスク費用", type: "fixed", paymentDay: 27, amount: -5000, paymentMethod: "銀行振込", isActive: true},
+                {name: "その他固定費", type: "fixed", paymentDay: 27, amount: -10000, paymentMethod: "銀行振込", isActive: true},
+                
+                // クレジットカード
+                {name: "メインカードA", type: "card", paymentDay: 4, amount: -50000, paymentMethod: "メイン銀行", isActive: true},
+                {name: "メインカードB", type: "card", paymentDay: 4, amount: -30000, paymentMethod: "サブ銀行", isActive: true},
+                {name: "ビジネスカード", type: "card", paymentDay: 10, amount: -25000, paymentMethod: "メイン銀行", isActive: true},
+                {name: "サブカードA", type: "card", paymentDay: 10, amount: -15000, paymentMethod: "サブ銀行", isActive: true},
+                {name: "サブカードB", type: "card", paymentDay: 19, amount: -8000, paymentMethod: "サブ銀行", isActive: true},
+                {name: "サブカードC", type: "card", paymentDay: 21, amount: -20000, paymentMethod: "サブ銀行", isActive: true},
+                {name: "サブカードD", type: "card", paymentDay: 24, amount: -12000, paymentMethod: "その他銀行", isActive: true},
+                {name: "サブカードE", type: "card", paymentDay: 27, amount: -35000, paymentMethod: "メイン銀行", isActive: true},
+                {name: "サブカードF", type: "card", paymentDay: 27, amount: -18000, paymentMethod: "サブ銀行", isActive: true},
+                {name: "サブカードG", type: "card", paymentDay: 27, amount: -22000, paymentMethod: "メイン銀行", isActive: true},
+                
+                // 借入先
+                {name: "借入先A", type: "loan", paymentDay: 15, amount: -15000, paymentMethod: "借入先A", isActive: true, 
+                 currentBalance: 200000, interestRate: 18.0, maxLimit: 500000},
+                {name: "借入先B", type: "loan", paymentDay: 27, amount: -12000, paymentMethod: "メイン銀行", isActive: true,
+                 currentBalance: 300000, interestRate: 18.0, maxLimit: 500000},
+                {name: "借入先C", type: "loan", paymentDay: 25, amount: -5000, paymentMethod: "現金", isActive: true,
+                 currentBalance: 100000, interestRate: 0.0, maxLimit: 200000},
+                {name: "借入先D", type: "loan", paymentDay: 0, amount: 0, paymentMethod: "借入先D", isActive: false,
+                 currentBalance: 0, interestRate: 17.8, maxLimit: 300000},
+            ];
+            saveData();
         }
 
         // 設定ページ
