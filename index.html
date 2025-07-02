@@ -582,11 +582,25 @@
 
         // Google Identity Services初期化
         function initializeGoogleIdentity() {
-            if (typeof google !== 'undefined') {
+            if (typeof google !== 'undefined' && google.accounts) {
                 google.accounts.id.initialize({
                     client_id: GOOGLE_CLIENT_ID,
-                    callback: handleCredentialResponse
+                    callback: handleCredentialResponse,
+                    auto_select: false,
+                    cancel_on_tap_outside: false
                 });
+                
+                // ログインボタンにイベントリスナーを追加
+                const loginBtn = document.querySelector('.google-login-btn');
+                if (loginBtn) {
+                    loginBtn.onclick = function() {
+                        google.accounts.id.prompt();
+                    };
+                }
+                
+                console.log('Google Identity Services初期化完了');
+            } else {
+                console.error('Google Identity Services が読み込まれていません');
             }
         }
 
@@ -645,22 +659,44 @@
 
         // ログイン処理（改良版）
         function login() {
-            if (typeof google !== 'undefined') {
-                // Google Identity Services使用
-                google.accounts.id.prompt();
-            } else if (typeof gapi !== 'undefined') {
-                // 従来のgapi使用
+            console.log('ログイン開始');
+            
+            if (typeof google !== 'undefined' && google.accounts) {
+                console.log('Google Identity Services使用');
+                google.accounts.id.prompt((notification) => {
+                    console.log('Google認証結果:', notification);
+                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                        // プロンプトが表示されない場合はフォールバック
+                        console.log('Googleプロンプト失敗、ローカルモードに切り替え');
+                        fallbackLogin();
+                    }
+                });
+            } else if (typeof gapi !== 'undefined' && gapi.auth2) {
+                console.log('従来のgapi使用');
                 const authInstance = gapi.auth2.getAuthInstance();
-                authInstance.signIn().then(handleGoogleSignIn);
+                if (authInstance) {
+                    authInstance.signIn().then(handleGoogleSignIn).catch(error => {
+                        console.error('gapi認証エラー:', error);
+                        fallbackLogin();
+                    });
+                } else {
+                    fallbackLogin();
+                }
             } else {
-                // フォールバック：ローカルモード
-                isLoggedIn = true;
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('appContainer').style.display = 'block';
-                document.getElementById('userName').textContent = 'ユーザー（ローカル）';
-                initializeApp();
-                showSyncNotification('⚠️ ローカルモードで動作しています');
+                console.log('Google APIが利用できません、ローカルモードで起動');
+                fallbackLogin();
             }
+        }
+
+        // フォールバックログイン
+        function fallbackLogin() {
+            isLoggedIn = true;
+            googleUser = { name: 'ユーザー（ローカル）', email: 'local@example.com' };
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'block';
+            document.getElementById('userName').textContent = googleUser.name;
+            initializeApp();
+            showSyncNotification('⚠️ ローカルモードで動作しています（Google同期なし）');
         }
 
         // ログアウト処理（改良版）
