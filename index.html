@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>動的家計簿システム</title>
+    <title>💰 家計簿アプリ v2.0</title>
     <style>
         * {
             margin: 0;
@@ -18,7 +18,61 @@
             color: #333;
         }
 
-        .container {
+        /* ログイン画面 */
+        .login-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .login-card h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .login-card p {
+            color: #6c757d;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .google-login-btn {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
+        }
+
+        .google-login-btn:hover {
+            background: #3367d6;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4);
+        }
+
+        /* メインアプリ */
+        .app-container {
+            display: none;
             max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
@@ -33,10 +87,59 @@
             backdrop-filter: blur(10px);
         }
 
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
         .header h1 {
             color: #2c3e50;
-            margin-bottom: 10px;
             font-size: 2em;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .navigation {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .nav-btn.active {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
         }
 
         .controls {
@@ -44,6 +147,7 @@
             gap: 15px;
             align-items: center;
             flex-wrap: wrap;
+            margin-top: 15px;
         }
 
         .month-selector {
@@ -73,6 +177,14 @@
             background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
         }
 
+        .btn-warning {
+            background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
         .current-month {
             font-size: 1.2em;
             font-weight: bold;
@@ -81,151 +193,77 @@
             text-align: center;
         }
 
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 20px;
-        }
-
-        .sidebar {
+        /* 借金ダッシュボード */
+        .debt-dashboard {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-            height: fit-content;
-        }
-
-        .main-schedule {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(10px);
         }
 
-        .section-title {
+        .debt-header {
             color: #2c3e50;
-            margin-bottom: 15px;
-            font-size: 1.3em;
+            margin-bottom: 20px;
+            font-size: 1.5em;
             border-bottom: 2px solid #667eea;
-            padding-bottom: 5px;
+            padding-bottom: 10px;
         }
 
-        .master-item {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: all 0.3s ease;
+        .debt-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
-        .master-item:hover {
-            background: #e9ecef;
-            transform: translateX(5px);
-        }
-
-        .master-item.inactive {
-            opacity: 0.6;
-            background: #f1f3f4;
-        }
-
-        .item-info {
-            flex: 1;
-        }
-
-        .item-name {
-            font-weight: 600;
-            color: #2c3e50;
-        }
-
-        .item-details {
-            font-size: 0.9em;
-            color: #6c757d;
-        }
-
-        .item-amount {
-            font-weight: bold;
-            color: #28a745;
-        }
-
-        .item-amount.expense {
-            color: #dc3545;
-        }
-
-        .schedule-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
+        .debt-card {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
 
-        .schedule-table th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
+        .debt-card.positive {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
         }
 
-        .schedule-table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #e9ecef;
+        .debt-card h3 {
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            opacity: 0.9;
         }
 
-        .schedule-table tr:hover {
+        .debt-card .amount {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .progress-section {
             background: #f8f9fa;
-        }
-
-        .due-today {
-            background: #fff5f5 !important;
-            border-left: 4px solid #dc3545;
-        }
-
-        .due-this-week {
-            background: #fffbf0 !important;
-            border-left: 4px solid #ffc107;
-        }
-
-        .overdue {
-            background: #ffe6e6 !important;
-            border-left: 4px solid #dc3545;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.8; }
-            100% { opacity: 1; }
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-
-        .status-ok { background: #28a745; }
-        .status-warning { background: #ffc107; }
-        .status-danger { background: #dc3545; }
-
-        .risk-alert {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-            color: white;
-            padding: 15px;
+            padding: 20px;
             border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            margin-bottom: 15px;
         }
 
+        .progress-bar {
+            background: #e9ecef;
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        /* サマリーカード */
         .summary-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -253,89 +291,169 @@
             font-weight: bold;
         }
 
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(5px);
-        }
-
-        .modal-content {
-            background: white;
-            margin: 5% auto;
-            padding: 30px;
+        /* カレンダー */
+        .calendar-container {
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
-            width: 90%;
-            max-width: 600px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
         }
 
-        .form-group {
+        .calendar-header {
+            color: #2c3e50;
             margin-bottom: 20px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
         }
 
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .calendar-day-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px;
+            text-align: center;
             font-weight: 600;
+        }
+
+        .calendar-day {
+            background: white;
+            min-height: 120px;
+            padding: 8px;
+            position: relative;
+            border: 1px solid #e9ecef;
+        }
+
+        .calendar-day.other-month {
+            background: #f8f9fa;
+            opacity: 0.5;
+        }
+
+        .calendar-day.today {
+            background: #fff5f5;
+            border: 2px solid #dc3545;
+        }
+
+        .day-number {
+            font-weight: bold;
+            margin-bottom: 5px;
             color: #2c3e50;
         }
 
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s ease;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
+        .calendar-item {
+            background: #667eea;
+            color: white;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.7em;
+            margin-bottom: 2px;
             cursor: pointer;
-            line-height: 1;
+            transition: transform 0.2s ease;
         }
 
-        .close:hover {
+        .calendar-item:hover {
+            transform: scale(1.05);
+        }
+
+        .calendar-item.income {
+            background: #28a745;
+        }
+
+        .calendar-item.expense {
+            background: #dc3545;
+        }
+
+        .calendar-item.loan {
+            background: #ffc107;
             color: #000;
         }
 
+        .calendar-item.delayed {
+            background: #fd7e14;
+        }
+
+        /* アラート */
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .alert.danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+        }
+
+        .alert.warning {
+            background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
+            color: white;
+        }
+
+        .alert.success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        /* レスポンシブ */
         @media (max-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-            
             .controls {
                 flex-direction: column;
                 align-items: stretch;
             }
             
-            .schedule-table {
-                font-size: 0.9em;
+            .navigation {
+                flex-direction: column;
+            }
+            
+            .calendar {
+                font-size: 0.8em;
+            }
+            
+            .calendar-day {
+                min-height: 80px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- ログイン画面 -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-card">
+            <h1>💰 家計簿アプリ</h1>
+            <p>滞納防止・借金管理に特化した<br>あなた専用の家計簿システム</p>
+            <button class="google-login-btn" onclick="login()">
+                🔐 Googleでログイン
+            </button>
+        </div>
+    </div>
+
+    <!-- メインアプリ -->
+    <div id="appContainer" class="app-container">
         <div class="header">
-            <h1>💰 動的家計簿システム</h1>
+            <div class="header-top">
+                <h1>💰 家計簿ダッシュボード</h1>
+                <div class="user-info">
+                    <span id="userName">ユーザー</span>
+                    <button class="logout-btn" onclick="logout()">ログアウト</button>
+                </div>
+            </div>
+            
+            <div class="navigation">
+                <button class="nav-btn active">📊 ダッシュボード</button>
+                <a href="master.html" class="nav-btn">⚙️ マスター管理</a>
+                <a href="settings.html" class="nav-btn">🔧 設定</a>
+            </div>
+
             <div class="controls">
                 <div class="month-selector">
                     <button class="btn" onclick="changeMonth(-1)">◀ 前月</button>
@@ -343,16 +461,52 @@
                     <button class="btn" onclick="changeMonth(1)">次月 ▶</button>
                 </div>
                 <button class="btn" onclick="generateNextMonth()">📅 翌月生成</button>
-                <button class="btn" onclick="openMasterModal()">⚙️ マスター管理</button>
                 <button class="btn btn-danger" onclick="checkOverdueRisk()">⚠️ 滞納チェック</button>
+                <button class="btn btn-warning" onclick="openEmergencyLoan()">💸 緊急借入</button>
+                <button class="btn btn-success" onclick="markPaymentComplete()">✅ 支払い完了</button>
             </div>
         </div>
 
-        <div id="riskAlert" class="risk-alert" style="display: none;">
-            <h3>⚠️ 滞納リスクアラート</h3>
-            <div id="riskContent"></div>
+        <!-- 借金管理ダッシュボード -->
+        <div class="debt-dashboard">
+            <h2 class="debt-header">💸 借金管理ダッシュボード</h2>
+            
+            <div class="debt-summary">
+                <div class="debt-card">
+                    <h3>総借入残高</h3>
+                    <div class="amount" id="totalDebt">¥600,000</div>
+                </div>
+                <div class="debt-card">
+                    <h3>月間返済額</h3>
+                    <div class="amount" id="monthlyPayment">¥32,000</div>
+                </div>
+                <div class="debt-card positive">
+                    <h3>完済予定</h3>
+                    <div class="amount" id="payoffDate">2027年3月</div>
+                </div>
+                <div class="debt-card positive">
+                    <h3>今月の進捗</h3>
+                    <div class="amount" id="monthlyProgress">-¥32,000</div>
+                </div>
+            </div>
+
+            <div class="progress-section">
+                <h4>🎯 年間返済目標進捗</h4>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 67%"></div>
+                </div>
+                <p>目標達成率: 67% (順調なペース！)</p>
+            </div>
+
+            <div id="motivationAlert" class="alert success">
+                <h4>🎉 今月の成果</h4>
+                <p>✅ 借金が32,000円減りました！<br>
+                ✅ 完済まで1ヶ月短縮！<br>
+                ✅ 利息を2,100円節約！</p>
+            </div>
         </div>
 
+        <!-- サマリーカード -->
         <div class="summary-cards">
             <div class="summary-card">
                 <h3>今月収入予定</h3>
@@ -372,80 +526,12 @@
             </div>
         </div>
 
-        <div class="main-content">
-            <div class="sidebar">
-                <h2 class="section-title">📋 マスターデータ</h2>
-                <div id="masterDataList"></div>
-                <button class="btn" onclick="openMasterModal()" style="width: 100%; margin-top: 15px;">
-                    ➕ 新規追加
-                </button>
+        <!-- カレンダー -->
+        <div class="calendar-container">
+            <h2 class="calendar-header">📅 今月の支払いカレンダー</h2>
+            <div class="calendar" id="calendar">
+                <!-- カレンダーがJavaScriptで生成される -->
             </div>
-
-            <div class="main-schedule">
-                <h2 class="section-title">📅 今月の支払いスケジュール</h2>
-                <table class="schedule-table" id="scheduleTable">
-                    <thead>
-                        <tr>
-                            <th>状態</th>
-                            <th>項目名</th>
-                            <th>支払日</th>
-                            <th>金額</th>
-                            <th>支払先</th>
-                            <th>種別</th>
-                        </tr>
-                    </thead>
-                    <tbody id="scheduleBody">
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- マスター管理モーダル -->
-    <div id="masterModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeMasterModal()">&times;</span>
-            <h2>📝 マスターデータ管理</h2>
-            <form id="masterForm">
-                <div class="form-group">
-                    <label for="itemName">項目名</label>
-                    <input type="text" id="itemName" required>
-                </div>
-                <div class="form-group">
-                    <label for="itemType">種別</label>
-                    <select id="itemType" required>
-                        <option value="">選択してください</option>
-                        <option value="bank">銀行口座</option>
-                        <option value="card">クレジットカード</option>
-                        <option value="fixed">固定費</option>
-                        <option value="variable">変動費</option>
-                        <option value="tax">税金</option>
-                        <option value="income">収入</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="paymentDay">支払日（1-31）</label>
-                    <input type="number" id="paymentDay" min="1" max="31">
-                </div>
-                <div class="form-group">
-                    <label for="amount">金額（収入は正数、支出は負数）</label>
-                    <input type="number" id="amount" step="1000">
-                </div>
-                <div class="form-group">
-                    <label for="paymentMethod">支払先/振込先</label>
-                    <input type="text" id="paymentMethod">
-                </div>
-                <div class="form-group">
-                    <label for="isActive">状態</label>
-                    <select id="isActive">
-                        <option value="true">有効</option>
-                        <option value="false">無効</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <button type="submit" class="btn" style="width: 100%;">💾 保存</button>
-                </div>
-            </form>
         </div>
     </div>
 
@@ -453,44 +539,68 @@
         // グローバル変数
         let currentYear = 2025;
         let currentMonth = 7;
-        let masterData = [];
-        let editingIndex = -1;
+        let isLoggedIn = false;
+        let userData = {
+            name: "ユーザー",
+            email: "user@example.com"
+        };
 
-        // 初期データの設定
-        function initializeData() {
-            // ローカルストレージからデータを読み込み
+        // サンプルデータ（個人情報なし）
+        let masterData = [
+            {name: "メイン銀行", type: "bank", paymentDay: 5, amount: -15000, paymentMethod: "メイン銀行", isActive: true},
+            {name: "サブ銀行", type: "bank", paymentDay: 26, amount: -30000, paymentMethod: "サブ銀行", isActive: true},
+            {name: "メインカード", type: "card", paymentDay: 4, amount: -50000, paymentMethod: "メイン銀行", isActive: true},
+            {name: "サブカード", type: "card", paymentDay: 4, amount: -30000, paymentMethod: "サブ銀行", isActive: true},
+            {name: "家賃", type: "fixed", paymentDay: 27, amount: -80000, paymentMethod: "銀行振込", isActive: true},
+            {name: "奨学金", type: "fixed", paymentDay: 27, amount: -20000, paymentMethod: "銀行振込", isActive: true},
+            {name: "クライアントA", type: "income", paymentDay: 10, amount: 200000, paymentMethod: "銀行振込", isActive: true},
+            {name: "クライアントB", type: "income", paymentDay: 25, amount: 150000, paymentMethod: "銀行振込", isActive: true},
+            {name: "借入先A", type: "loan", paymentDay: 15, amount: -15000, paymentMethod: "借入先A", isActive: true, currentBalance: 200000, interestRate: 18.0},
+            {name: "借入先B", type: "loan", paymentDay: 25, amount: -17000, paymentMethod: "借入先B", isActive: true, currentBalance: 400000, interestRate: 17.8},
+        ];
+
+        // ログイン処理
+        function login() {
+            isLoggedIn = true;
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'block';
+            document.getElementById('userName').textContent = userData.name;
+            initializeApp();
+        }
+
+        // ログアウト処理
+        function logout() {
+            isLoggedIn = false;
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('appContainer').style.display = 'none';
+        }
+
+        // アプリ初期化
+        function initializeApp() {
+            loadSavedData();
+            updateCurrentMonth();
+            generateCalendar();
+            updateSummaryCards();
+            updateDebtDashboard();
+        }
+
+        // データ読み込み
+        function loadSavedData() {
             const savedData = localStorage.getItem('budgetMasterData');
             if (savedData) {
                 masterData = JSON.parse(savedData);
-            } else {
-                // 初回起動時のサンプルデータ（個人情報なし）
-                masterData = [
-                    {name: "メイン銀行", type: "bank", paymentDay: 5, amount: -15000, paymentMethod: "メイン銀行", isActive: true},
-                    {name: "サブ銀行", type: "bank", paymentDay: 26, amount: -30000, paymentMethod: "サブ銀行", isActive: true},
-                    {name: "メインカード", type: "card", paymentDay: 4, amount: -50000, paymentMethod: "メイン銀行", isActive: true},
-                    {name: "サブカード", type: "card", paymentDay: 4, amount: -30000, paymentMethod: "サブ銀行", isActive: true},
-                    {name: "家賃", type: "fixed", paymentDay: 27, amount: -80000, paymentMethod: "銀行振込", isActive: true},
-                    {name: "奨学金", type: "fixed", paymentDay: 27, amount: -20000, paymentMethod: "銀行振込", isActive: true},
-                    {name: "クライアントA", type: "income", paymentDay: 10, amount: 200000, paymentMethod: "銀行振込", isActive: true},
-                    {name: "クライアントB", type: "income", paymentDay: 25, amount: 150000, paymentMethod: "銀行振込", isActive: true},
-                    {name: "借入先A", type: "loan", paymentDay: 15, amount: -15000, paymentMethod: "借入先A", isActive: true, currentBalance: 200000, interestRate: 18.0},
-                ];
-                saveMasterData();
             }
             
-            // 現在の年月もローカルストレージから読み込み
             const savedDate = localStorage.getItem('budgetCurrentDate');
             if (savedDate) {
                 const dateData = JSON.parse(savedDate);
                 currentYear = dateData.year;
                 currentMonth = dateData.month;
             }
-            
-            updateDisplay();
         }
 
-        // データをローカルストレージに保存
-        function saveMasterData() {
+        // データ保存
+        function saveData() {
             localStorage.setItem('budgetMasterData', JSON.stringify(masterData));
             localStorage.setItem('budgetCurrentDate', JSON.stringify({year: currentYear, month: currentMonth}));
         }
@@ -505,24 +615,9 @@
                 currentMonth = 12;
                 currentYear--;
             }
-            saveMasterData(); // 日付変更を保存
-            updateDisplay();
-        }
-
-        // 翌月生成
-        function generateNextMonth() {
-            const confirmMsg = `${currentYear}年${currentMonth + 1}月のデータを生成しますか？`;
-            if (confirm(confirmMsg)) {
-                changeMonth(1);
-                alert('翌月のデータを生成しました！');
-            }
-        }
-
-        // 表示更新
-        function updateDisplay() {
+            saveData();
             updateCurrentMonth();
-            updateMasterDataList();
-            updateScheduleTable();
+            generateCalendar();
             updateSummaryCards();
         }
 
@@ -531,93 +626,90 @@
             document.getElementById('currentMonth').textContent = `${currentYear}年${currentMonth}月`;
         }
 
-        // マスターデータリスト更新
-        function updateMasterDataList() {
-            const container = document.getElementById('masterDataList');
-            container.innerHTML = '';
+        // カレンダー生成
+        function generateCalendar() {
+            const calendar = document.getElementById('calendar');
+            calendar.innerHTML = '';
 
-            masterData.forEach((item, index) => {
-                const div = document.createElement('div');
-                div.className = `master-item ${!item.isActive ? 'inactive' : ''}`;
-                div.onclick = () => editMasterItem(index);
-                
-                const typeNames = {
-                    bank: '🏦 銀行',
-                    card: '💳 カード',
-                    fixed: '🏠 固定費',
-                    variable: '🛒 変動費',
-                    tax: '🏛️ 税金',
-                    income: '💰 収入'
-                };
-
-                div.innerHTML = `
-                    <div class="item-info">
-                        <div class="item-name">${item.name}</div>
-                        <div class="item-details">${typeNames[item.type]} | ${item.paymentDay}日 | ${item.paymentMethod}</div>
-                    </div>
-                    <div class="item-amount ${item.amount < 0 ? 'expense' : ''}">${item.amount.toLocaleString()}円</div>
-                `;
-                
-                container.appendChild(div);
+            // 曜日ヘッダー
+            const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+            weekdays.forEach(day => {
+                const header = document.createElement('div');
+                header.className = 'calendar-day-header';
+                header.textContent = day;
+                calendar.appendChild(header);
             });
-        }
 
-        // スケジュールテーブル更新
-        function updateScheduleTable() {
-            const tbody = document.getElementById('scheduleBody');
-            tbody.innerHTML = '';
+            // 月の日数計算
+            const firstDay = new Date(currentYear, currentMonth - 1, 1);
+            const lastDay = new Date(currentYear, currentMonth, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
 
-            const today = new Date();
-            const currentDate = new Date(currentYear, currentMonth - 1, today.getDate());
-            const oneWeekLater = new Date(currentDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-            const activeItems = masterData.filter(item => item.isActive);
-            
-            activeItems.forEach(item => {
-                const paymentDate = new Date(currentYear, currentMonth - 1, item.paymentDay);
-                const row = document.createElement('tr');
+            // カレンダーの日付を生成（6週間分）
+            for (let i = 0; i < 42; i++) {
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
                 
-                // ステータス判定
-                let statusClass = 'status-ok';
-                let statusText = '正常';
-                let rowClass = '';
-
-                if (paymentDate < currentDate) {
-                    statusClass = 'status-danger';
-                    statusText = '延滞';
-                    rowClass = 'overdue';
-                } else if (paymentDate.toDateString() === currentDate.toDateString()) {
-                    statusClass = 'status-danger';
-                    statusText = '本日';
-                    rowClass = 'due-today';
-                } else if (paymentDate <= oneWeekLater) {
-                    statusClass = 'status-warning';
-                    statusText = '今週';
-                    rowClass = 'due-this-week';
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day';
+                
+                if (date.getMonth() !== currentMonth - 1) {
+                    dayElement.classList.add('other-month');
+                }
+                
+                // 今日の日付をハイライト
+                const today = new Date();
+                if (date.toDateString() === today.toDateString()) {
+                    dayElement.classList.add('today');
                 }
 
-                row.className = rowClass;
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'day-number';
+                dayNumber.textContent = date.getDate();
+                dayElement.appendChild(dayNumber);
 
-                const typeNames = {
-                    bank: '🏦 銀行',
-                    card: '💳 カード',
-                    fixed: '🏠 固定費',
-                    variable: '🛒 変動費',
-                    tax: '🏛️ 税金',
-                    income: '💰 収入'
-                };
+                // その日の支払い項目を追加
+                const dayItems = masterData.filter(item => 
+                    item.isActive && item.paymentDay === date.getDate() && 
+                    date.getMonth() === currentMonth - 1
+                );
 
-                row.innerHTML = `
-                    <td><span class="status-indicator ${statusClass}"></span>${statusText}</td>
-                    <td>${item.name}</td>
-                    <td>${item.paymentDay}日</td>
-                    <td class="${item.amount < 0 ? 'expense' : ''}">${item.amount.toLocaleString()}円</td>
-                    <td>${item.paymentMethod}</td>
-                    <td>${typeNames[item.type]}</td>
-                `;
-                
-                tbody.appendChild(row);
-            });
+                dayItems.forEach(item => {
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'calendar-item';
+                    
+                    if (item.amount > 0) {
+                        itemElement.classList.add('income');
+                    } else if (item.type === 'loan') {
+                        itemElement.classList.add('loan');
+                    } else {
+                        itemElement.classList.add('expense');
+                    }
+                    
+                    const icon = getItemIcon(item.type);
+                    itemElement.textContent = `${icon} ${item.name}`;
+                    itemElement.title = `${item.name}: ${item.amount.toLocaleString()}円`;
+                    
+                    dayElement.appendChild(itemElement);
+                });
+
+                calendar.appendChild(dayElement);
+            }
+        }
+
+        // アイコン取得
+        function getItemIcon(type) {
+            const icons = {
+                bank: '🏦',
+                card: '💳',
+                fixed: '🏠',
+                variable: '🛒',
+                tax: '🏛️',
+                income: '💰',
+                loan: '💸'
+            };
+            return icons[type] || '📋';
         }
 
         // サマリーカード更新
@@ -648,7 +740,44 @@
             document.getElementById('weeklyPayments').textContent = `¥${weeklyPayments.toLocaleString()}`;
         }
 
-        // 滞納リスクチェック
+        // 借金ダッシュボード更新
+        function updateDebtDashboard() {
+            const loanItems = masterData.filter(item => item.type === 'loan' && item.isActive);
+            
+            const totalDebt = loanItems.reduce((sum, item) => sum + (item.currentBalance || 0), 0);
+            const monthlyPayment = loanItems.reduce((sum, item) => sum + Math.abs(item.amount), 0);
+            
+            // 完済予定計算（簡易版）
+            const avgMonthsToPayoff = totalDebt > 0 && monthlyPayment > 0 
+                ? Math.ceil(totalDebt / monthlyPayment) : 0;
+            
+            const payoffDate = avgMonthsToPayoff > 0 
+                ? new Date(currentYear, currentMonth - 1 + avgMonthsToPayoff)
+                : null;
+
+            document.getElementById('totalDebt').textContent = `¥${totalDebt.toLocaleString()}`;
+            document.getElementById('monthlyPayment').textContent = `¥${monthlyPayment.toLocaleString()}`;
+            
+            if (payoffDate) {
+                document.getElementById('payoffDate').textContent = 
+                    `${payoffDate.getFullYear()}年${payoffDate.getMonth() + 1}月`;
+            } else {
+                document.getElementById('payoffDate').textContent = '設定なし';
+            }
+            
+            document.getElementById('monthlyProgress').textContent = `-¥${monthlyPayment.toLocaleString()}`;
+        }
+
+        // 翌月生成
+        function generateNextMonth() {
+            const confirmMsg = `${currentYear}年${currentMonth + 1}月のデータを生成しますか？`;
+            if (confirm(confirmMsg)) {
+                changeMonth(1);
+                alert('翌月のデータを生成しました！');
+            }
+        }
+
+        // 滞納チェック
         function checkOverdueRisk() {
             const today = new Date();
             const currentDate = new Date(currentYear, currentMonth - 1, today.getDate());
@@ -659,88 +788,34 @@
                 return paymentDate < currentDate;
             });
 
-            const riskAlert = document.getElementById('riskAlert');
-            const riskContent = document.getElementById('riskContent');
-
             if (overdueItems.length > 0) {
-                let content = '<p>以下の項目が支払期日を過ぎています：</p><ul>';
+                let message = '⚠️ 以下の項目が支払期日を過ぎています：\n\n';
                 overdueItems.forEach(item => {
-                    content += `<li>${item.name}: ${Math.abs(item.amount).toLocaleString()}円 (${item.paymentDay}日)</li>`;
+                    message += `• ${item.name}: ${Math.abs(item.amount).toLocaleString()}円 (${item.paymentDay}日)\n`;
                 });
-                content += '</ul>';
-                riskContent.innerHTML = content;
-                riskAlert.style.display = 'block';
+                alert(message);
             } else {
-                riskAlert.style.display = 'none';
                 alert('✅ 現在、滞納リスクのある項目はありません。');
             }
         }
 
-        // マスター管理モーダル
-        function openMasterModal() {
-            document.getElementById('masterModal').style.display = 'block';
-            if (editingIndex === -1) {
-                document.getElementById('masterForm').reset();
-            }
+        // 緊急借入
+        function openEmergencyLoan() {
+            alert('💸 緊急借入機能は開発中です。\nマスター管理ページで借入先を設定後、利用可能になります。');
         }
 
-        function closeMasterModal() {
-            document.getElementById('masterModal').style.display = 'none';
-            editingIndex = -1;
-            document.getElementById('masterForm').reset();
+        // 支払い完了
+        function markPaymentComplete() {
+            alert('✅ 支払い完了機能は開発中です。\n今後、支払い状況の管理機能を追加予定です。');
         }
 
-        function editMasterItem(index) {
-            editingIndex = index;
-            const item = masterData[index];
-            
-            document.getElementById('itemName').value = item.name;
-            document.getElementById('itemType').value = item.type;
-            document.getElementById('paymentDay').value = item.paymentDay;
-            document.getElementById('amount').value = item.amount;
-            document.getElementById('paymentMethod').value = item.paymentMethod;
-            document.getElementById('isActive').value = item.isActive.toString();
-            
-            openMasterModal();
-        }
-
-        // フォーム送信処理
-        document.getElementById('masterForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = {
-                name: document.getElementById('itemName').value,
-                type: document.getElementById('itemType').value,
-                paymentDay: parseInt(document.getElementById('paymentDay').value),
-                amount: parseInt(document.getElementById('amount').value),
-                paymentMethod: document.getElementById('paymentMethod').value,
-                isActive: document.getElementById('isActive').value === 'true'
-            };
-
-            if (editingIndex === -1) {
-                masterData.push(formData);
-            } else {
-                masterData[editingIndex] = formData;
-            }
-
-            saveMasterData(); // データを保存
-            updateDisplay();
-            closeMasterModal();
-            
-            const action = editingIndex === -1 ? '追加' : '更新';
-            alert(`✅ マスターデータを${action}しました！`);
+        // 初期化（開発用自動ログイン）
+        document.addEventListener('DOMContentLoaded', function() {
+            // 開発用：1秒後に自動ログイン
+            setTimeout(() => {
+                login();
+            }, 1000);
         });
-
-        // モーダル外クリックで閉じる
-        window.onclick = function(event) {
-            const modal = document.getElementById('masterModal');
-            if (event.target === modal) {
-                closeMasterModal();
-            }
-        }
-
-        // 初期化
-        initializeData();
     </script>
 </body>
 </html>
