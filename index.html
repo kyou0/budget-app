@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>💰 家計簿アプリ v2.0</title>
     
+    <!-- PWA対応 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="家計簿アプリ">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
     <!-- Google Identity Services -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     
@@ -435,9 +443,17 @@
         <div class="login-card">
             <h1>💰 家計簿アプリ</h1>
             <p>滞納防止・借金管理に特化した<br>あなた専用の家計簿システム</p>
-            <button class="google-login-btn" onclick="login()">
+            <button class="google-login-btn" onclick="googleLogin()">
                 🔐 Googleでログイン
             </button>
+            <div style="margin-top: 15px; text-align: center;">
+                <a href="#" onclick="localLogin()" style="color: #6c757d; font-size: 0.9em; text-decoration: underline; cursor: pointer;">
+                    ローカルモードで見る（同期なし）
+                </a>
+            </div>
+            <div id="loginStatus" style="margin-top: 10px; font-size: 0.9em; color: #6c757d; text-align: center;">
+                <!-- ログイン状況を表示 -->
+            </div>
         </div>
     </div>
 
@@ -590,17 +606,11 @@
                     cancel_on_tap_outside: false
                 });
                 
-                // ログインボタンにイベントリスナーを追加
-                const loginBtn = document.querySelector('.google-login-btn');
-                if (loginBtn) {
-                    loginBtn.onclick = function() {
-                        google.accounts.id.prompt();
-                    };
-                }
-                
                 console.log('Google Identity Services初期化完了');
+                updateLoginStatus('Googleログイン準備完了');
             } else {
                 console.error('Google Identity Services が読み込まれていません');
+                updateLoginStatus('⚠️ Google APIの読み込みに失敗しました');
             }
         }
 
@@ -657,47 +667,83 @@
             {name: "借入先B", type: "loan", paymentDay: 25, amount: -17000, paymentMethod: "借入先B", isActive: true, currentBalance: 400000, interestRate: 17.8},
         ];
 
-        // ログイン処理（改良版）
-        function login() {
-            console.log('ログイン開始');
+        // Googleログイン処理（改良版）
+        function googleLogin() {
+            updateLoginStatus('Googleログインを開始しています...');
+            console.log('Googleログイン開始');
             
             if (typeof google !== 'undefined' && google.accounts) {
                 console.log('Google Identity Services使用');
                 google.accounts.id.prompt((notification) => {
                     console.log('Google認証結果:', notification);
-                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                        // プロンプトが表示されない場合はフォールバック
-                        console.log('Googleプロンプト失敗、ローカルモードに切り替え');
-                        fallbackLogin();
+                    if (notification.isNotDisplayed()) {
+                        updateLoginStatus('⚠️ Googleログインポップアップがブロックされました');
+                        setTimeout(() => {
+                            updateLoginStatus('ポップアップを許可するか、ローカルモードをお試しください');
+                        }, 2000);
+                    } else if (notification.isSkippedMoment()) {
+                        updateLoginStatus('⚠️ Googleログインがキャンセルされました');
+                        setTimeout(() => {
+                            updateLoginStatus('再度お試しいただくか、ローカルモードをお使いください');
+                        }, 2000);
+                    } else if (notification.isDismissedMoment()) {
+                        updateLoginStatus('⚠️ Googleログインが閉じられました');
+                        setTimeout(() => {
+                            updateLoginStatus('');
+                        }, 2000);
                     }
                 });
             } else if (typeof gapi !== 'undefined' && gapi.auth2) {
                 console.log('従来のgapi使用');
                 const authInstance = gapi.auth2.getAuthInstance();
                 if (authInstance) {
+                    updateLoginStatus('Google認証中...');
                     authInstance.signIn().then(handleGoogleSignIn).catch(error => {
                         console.error('gapi認証エラー:', error);
-                        fallbackLogin();
+                        updateLoginStatus('❌ Googleログインに失敗しました');
+                        setTimeout(() => {
+                            updateLoginStatus('ローカルモードをお試しください');
+                        }, 2000);
                     });
                 } else {
-                    fallbackLogin();
+                    updateLoginStatus('❌ Google認証が初期化されていません');
+                    setTimeout(() => {
+                        updateLoginStatus('ローカルモードをお試しください');
+                    }, 2000);
                 }
             } else {
-                console.log('Google APIが利用できません、ローカルモードで起動');
-                fallbackLogin();
+                updateLoginStatus('❌ Google APIが読み込まれていません');
+                setTimeout(() => {
+                    updateLoginStatus('ローカルモードをお試しください');
+                }, 2000);
             }
         }
 
-        // フォールバックログイン
-        function fallbackLogin() {
-            isLoggedIn = true;
-            googleUser = { name: 'ユーザー（ローカル）', email: 'local@example.com' };
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('appContainer').style.display = 'block';
-            document.getElementById('userName').textContent = googleUser.name;
-            initializeApp();
-            showSyncNotification('⚠️ ローカルモードで動作しています（Google同期なし）');
+        // ローカルログイン（明示的選択）
+        function localLogin() {
+            console.log('ローカルモード選択');
+            updateLoginStatus('ローカルモードで起動中...');
+            
+            setTimeout(() => {
+                isLoggedIn = true;
+                googleUser = { name: 'ユーザー（ローカル）', email: 'local@example.com' };
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('appContainer').style.display = 'block';
+                document.getElementById('userName').textContent = googleUser.name;
+                initializeApp();
+                showSyncNotification('📱 ローカルモードで動作中（Google同期なし）');
+            }, 1000);
         }
+
+        // ログイン状況表示
+        function updateLoginStatus(message) {
+            const statusElement = document.getElementById('loginStatus');
+            if (statusElement) {
+                statusElement.textContent = message;
+            }
+        }
+
+        // 旧login関数は削除（混乱を避けるため）
 
         // ログアウト処理（改良版）
         function logout() {
