@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>💰 家計簿アプリ v2.0</title>
     
+    <!-- CSP設定 - Google Identity Services許可 -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/client https://apis.google.com;
+        connect-src 'self' https://accounts.google.com/gsi/ https://www.googleapis.com;
+        frame-src 'self' https://accounts.google.com/gsi/;
+        style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style;
+        img-src 'self' data: https:;
+    ">
+    
     <!-- PWA対応 -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#667eea">
@@ -13,8 +23,38 @@
     <meta name="apple-mobile-web-app-title" content="家計簿アプリ">
     <link rel="apple-touch-icon" href="icon-192.png">
     
-    <!-- Google Identity Services -->
+    <!-- Google Identity Services - 直接HTMLタグで読み込み -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        // Google APIスクリプト読み込み確認（シンプル版）
+        function waitForGoogleAPI() {
+            return new Promise((resolve, reject) => {
+                // 最大30秒待機
+                let attempts = 0;
+                const maxAttempts = 60; // 30秒 (500ms × 60回)
+                
+                const checkGoogleAPI = () => {
+                    attempts++;
+                    console.log(`Google API確認中... (${attempts}/${maxAttempts})`);
+                    
+                    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+                        console.log('✅ Google API利用可能');
+                        resolve(true);
+                        return;
+                    }
+                    
+                    if (attempts < maxAttempts) {
+                        setTimeout(checkGoogleAPI, 500);
+                    } else {
+                        console.warn('❌ Google API読み込みタイムアウト');
+                        reject(new Error('Google API読み込みタイムアウト'));
+                    }
+                };
+                
+                checkGoogleAPI();
+            });
+        }
+    </script>
     
     <style>
         * {
@@ -596,9 +636,18 @@
             }
         }
 
-        // Google Identity Services初期化
-        function initializeGoogleIdentity() {
-            if (typeof google !== 'undefined' && google.accounts) {
+        // Google APIスクリプト読み込み状況
+        let googleApiReady = false;
+
+        // Google API初期化（シンプル版）
+        async function initializeGoogleAPI() {
+            updateLoginStatus('🔄 Google認証を初期化中...');
+            
+            try {
+                // Google APIの読み込み待機
+                await waitForGoogleAPI();
+                
+                // Google Identity Services初期化
                 google.accounts.id.initialize({
                     client_id: GOOGLE_CLIENT_ID,
                     callback: handleCredentialResponse,
@@ -606,11 +655,63 @@
                     cancel_on_tap_outside: false
                 });
                 
-                console.log('Google Identity Services初期化完了');
-                updateLoginStatus('Googleログイン準備完了');
-            } else {
-                console.error('Google Identity Services が読み込まれていません');
-                updateLoginStatus('⚠️ Google APIの読み込みに失敗しました');
+                console.log('✅ Google Identity Services初期化完了');
+                updateLoginStatus('✅ Googleログイン準備完了');
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Google API初期化失敗:', error);
+                updateLoginStatus('❌ Google認証が利用できません\n\n🔧 以下をお試しください:\n• ページを再読み込み\n• 広告ブロッカーを無効化\n• 他のブラウザを試す');
+                return false;
+            }
+        }
+
+        // Googleログイン処理（改良版）
+        async function googleLogin() {
+            updateLoginStatus('🔐 Googleログインを開始中...');
+            
+            // Google API初期化確認
+            const isGoogleReady = await initializeGoogleAPI();
+            if (!isGoogleReady) {
+                alert('❌ Google認証が初期化できませんでした。\n\n可能な対処法:\n• ページを再読み込み\n• 広告ブロッカーを無効化\n• 異なるブラウザを試す\n• VPN接続を確認');
+                return;
+            }
+            
+            console.log('Googleログイン開始（リダイレクト方式）');
+            
+            try {
+                // 現在のURLを動的に取得
+                const currentUrl = window.location.href.split('?')[0]; // クエリパラメータを除去
+                const redirectUri = encodeURIComponent(currentUrl);
+                const scope = encodeURIComponent([
+                    'https://www.googleapis.com/auth/userinfo.profile',
+                    'https://www.googleapis.com/auth/userinfo.email',
+                    'https://www.googleapis.com/auth/drive.file'
+                ].join(' '));
+                
+                const googleAuthUrl = 
+                    `https://accounts.google.com/o/oauth2/v2/auth?` +
+                    `client_id=${GOOGLE_CLIENT_ID}&` +
+                    `redirect_uri=${redirectUri}&` +
+                    `scope=${scope}&` +
+                    `response_type=code&` +
+                    `access_type=offline&` +
+                    `prompt=consent`;
+                
+                // 認証状態を保存
+                localStorage.setItem('authInProgress', 'true');
+                localStorage.setItem('authStartTime', Date.now().toString());
+                
+                updateLoginStatus('🚀 Googleに移動中...');
+                
+                // Googleの認証ページにリダイレクト
+                window.location.href = googleAuthUrl;
+                
+            } catch (error) {
+                console.error('Googleログインエラー:', error);
+                updateLoginStatus('❌ Googleログインでエラーが発生しました');
+                localStorage.removeItem('authInProgress');
+                alert('❌ Googleログインでエラーが発生しました。\n\n' + error.message);
             }
         }
 
@@ -675,56 +776,94 @@
 
         // Googleログイン処理（リダイレクト方式）
         function googleLogin() {
-            updateLoginStatus('Googleログインページに移動しています...');
+            if (!googleApiReady) {
+                alert('❌ Google認証が利用できません。\n\n代わりにローカルモードをお試しください。');
+                return;
+            }
+            
+            updateLoginStatus('🔐 Googleログインページに移動中...');
             console.log('Googleログイン開始（リダイレクト方式）');
             
-            // Google OAuth URLを構築
-            const redirectUri = encodeURIComponent('https://kyou0.github.io/budget-app/');
-            const scope = encodeURIComponent('https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email');
-            const responseType = 'code';
-            const accessType = 'offline';
-            
-            const googleAuthUrl = `https://accounts.google.com/oauth/authorize?` +
-                `client_id=${GOOGLE_CLIENT_ID}&` +
-                `redirect_uri=${redirectUri}&` +
-                `scope=${scope}&` +
-                `response_type=${responseType}&` +
-                `access_type=${accessType}`;
-            
-            // 現在の状態を保存
-            localStorage.setItem('authInProgress', 'true');
-            
-            // Googleの認証ページにリダイレクト
-            window.location.href = googleAuthUrl;
+            try {
+                // Google OAuth URLを構築
+                const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+                const scope = encodeURIComponent('https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email');
+                const responseType = 'code';
+                const accessType = 'offline';
+                
+                const googleAuthUrl = `https://accounts.google.com/oauth/authorize?` +
+                    `client_id=${GOOGLE_CLIENT_ID}&` +
+                    `redirect_uri=${redirectUri}&` +
+                    `scope=${scope}&` +
+                    `response_type=${responseType}&` +
+                    `access_type=${accessType}`;
+                
+                // 現在の状態を保存
+                localStorage.setItem('authInProgress', 'true');
+                
+                // Googleの認証ページにリダイレクト
+                window.location.href = googleAuthUrl;
+                
+            } catch (error) {
+                console.error('Googleログインエラー:', error);
+                updateLoginStatus('❌ Googleログインに失敗しました');
+                alert('❌ Googleログインでエラーが発生しました。\n\nローカルモードをお試しください。');
+            }
         }
 
-        // ページ読み込み時に認証コードをチェック
+        // ページ読み込み時に認証コードをチェック（改良版）
         function checkAuthCode() {
             const urlParams = new URLSearchParams(window.location.search);
             const authCode = urlParams.get('code');
             const error = urlParams.get('error');
             const authInProgress = localStorage.getItem('authInProgress');
+            const authStartTime = localStorage.getItem('authStartTime');
             
+            // エラーチェック
             if (error) {
                 console.error('Google認証エラー:', error);
                 updateLoginStatus('❌ Googleログインがキャンセルされました');
                 localStorage.removeItem('authInProgress');
+                localStorage.removeItem('authStartTime');
+                
+                // URLをクリア
+                const cleanUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
                 return;
             }
             
+            // 認証コードの処理
             if (authCode && authInProgress) {
-                console.log('Google認証コードを取得:', authCode);
+                console.log('✅ Google認証コードを取得:', authCode.substring(0, 20) + '...');
+                
+                // 認証にかかった時間をログ
+                if (authStartTime) {
+                    const authDuration = Date.now() - parseInt(authStartTime);
+                    console.log(`認証時間: ${authDuration}ms`);
+                }
+                
                 localStorage.removeItem('authInProgress');
+                localStorage.removeItem('authStartTime');
                 
                 // URLからパラメータをクリア
                 const cleanUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, cleanUrl);
                 
-                // 認証コードを使ってアクセストークンを取得
+                // 認証成功として処理
                 exchangeCodeForToken(authCode);
             } else if (authInProgress) {
                 // 認証途中でページが読み込まれた場合
-                updateLoginStatus('認証処理を継続中...');
+                const startTime = authStartTime ? parseInt(authStartTime) : Date.now();
+                const elapsed = Date.now() - startTime;
+                
+                if (elapsed > 300000) { // 5分以上経過
+                    console.warn('認証プロセスがタイムアウトしました');
+                    localStorage.removeItem('authInProgress');
+                    localStorage.removeItem('authStartTime');
+                    updateLoginStatus('⏰ 認証がタイムアウトしました。再度お試しください。');
+                } else {
+                    updateLoginStatus('🔄 認証処理を継続中...');
+                }
             }
         }
 
@@ -1137,20 +1276,34 @@
             showSyncNotification('🔄 他のページからデータが同期されました');
         });
 
-        // ページ読み込み時の初期化（修正版）
+        // ページ読み込み時の初期化（最終安定版）
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('ページ読み込み完了');
+            console.log('🚀 ページ読み込み完了 - 家計簿アプリ v2.0');
             
-            // 認証コードをチェック
+            // 認証コードを最初にチェック
             checkAuthCode();
             
-            // Google Identity Services初期化を遅延実行
-            setTimeout(() => {
-                initializeGoogleIdentity();
-            }, 1000);
+            // 初期状態表示
+            updateLoginStatus('⚡ アプリケーション起動中...');
             
-            // ログイン状況の初期表示
-            updateLoginStatus('Google APIを初期化中...');
+            // ブラウザ情報をログ
+            console.log('ブラウザ:', navigator.userAgent);
+            console.log('URL:', window.location.href);
+            
+            // Google API初期化は非同期で実行（失敗してもアプリは動作）
+            setTimeout(async () => {
+                try {
+                    const success = await initializeGoogleAPI();
+                    if (success) {
+                        console.log('✅ Google認証システム準備完了');
+                    } else {
+                        console.log('⚠️ Google認証は利用できませんが、アプリは正常動作します');
+                    }
+                } catch (error) {
+                    console.warn('Google API初期化で予期しないエラー:', error);
+                    updateLoginStatus('⚠️ Google認証は現在利用できません\n\n📱 ローカルモードは正常に動作します');
+                }
+            }, 1000);
         });
     </script>
 </body>
