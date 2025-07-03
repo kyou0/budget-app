@@ -850,7 +850,7 @@
             }
         }
 
-        // アプリ初期化（チュートリアル強制実行版）
+        // アプリ初期化（エラー修正版）
         function initializeApp() {
             loadSavedData();
             updateCurrentMonth();
@@ -859,9 +859,6 @@
             
             // データ変更監視を開始
             startDataSyncMonitoring();
-            
-            // Google Driveユーザーの場合は手動同期ボタンを追加
-            addManualSyncButton();
             
             showNotification(`🚀 ${currentUser.name}でログイン完了`);
             
@@ -882,7 +879,7 @@
                 showSampleDataBadge();
             }, 1000);
             
-            // 5秒後にチュートリアル強制表示（テスト用）
+            // 2秒後にチュートリアル強制表示（テスト用）
             setTimeout(() => {
                 console.log('🧪 強制的にチュートリアルを表示');
                 showWelcomeTutorial();
