@@ -1,4 +1,12 @@
-<!DOCTYPE html>
+        // デバッグ用: コンソールで実行可能
+        function forceShowTutorial() {
+            console.log('🧪 強制チュートリアル表示');
+            showWelcomeTutorial();
+            showSampleDataBadge();
+        }
+
+        window.forceShowTutorial = forceShowTutorial;
+        window.resetApp = resetFirstLoginState;<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -1084,19 +1092,77 @@
         // マスター設定ページへ移動（修正版）
         function goToMasterPage() {
             closeTutorial();
-            openMasterManagement();
+            
+            // 実際にマスター管理機能を表示
+            showMasterManagement();
         }
 
-        // マスター管理を開く
+        // マスター管理画面を表示
+        function showMasterManagement() {
+            const overlay = document.createElement('div');
+            overlay.className = 'tutorial-overlay';
+            overlay.id = 'masterManagement';
+            
+            overlay.innerHTML = `
+                <div class="tutorial-modal" style="max-width: 600px;">
+                    <h2>⚙️ マスター管理</h2>
+                    <p style="text-align: left; margin-bottom: 20px;">
+                        <strong>📝 収入・支出項目の管理</strong><br>
+                        以下の項目を追加・編集できます：
+                    </p>
+                    <div style="text-align: left; margin-bottom: 20px;">
+                        <strong>💰 収入項目:</strong><br>
+                        • 給与、副業収入<br>
+                        • クライアント収入<br>
+                        • その他の収入<br><br>
+                        
+                        <strong>💸 支出項目:</strong><br>
+                        • 家賃、光熱費<br>
+                        • クレジットカード<br>
+                        • ローン・借入<br>
+                        • その他固定費
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn-primary" onclick="closeMasterManagement()">
+                            📱 今はサンプルで試す
+                        </button>
+                        <button class="btn-secondary" onclick="showComingSoon()">
+                            🚧 詳細機能（開発中）
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(overlay);
+        }
+
+        // マスター管理を閉じる
+        function closeMasterManagement() {
+            const management = document.getElementById('masterManagement');
+            if (management) {
+                management.style.animation = 'tutorialSlideIn 0.3s ease reverse';
+                setTimeout(() => management.remove(), 300);
+            }
+            
+            // サンプルデータバッジを表示
+            setTimeout(() => {
+                showSampleDataBadge();
+            }, 500);
+        }
+
+        // 開発中機能の説明
+        function showComingSoon() {
+            closeMasterManagement();
+            
+            setTimeout(() => {
+                alert('🚧 開発中の機能\n\n• 項目の追加・削除\n• 支払日の設定\n• カテゴリ分類\n• CSV インポート/エクスポート\n• 自動計算機能\n\nサンプルデータで基本機能をお試しください！');
+                showSampleDataBadge();
+            }, 300);
+        }
+
+        // マスター管理を開く（ナビゲーションボタン用）
         function openMasterManagement() {
-            showNotification('⚙️ マスター管理機能を開発中です', 'info');
-            alert('⚙️ マスター管理ページ\n\n以下の機能を開発予定です：\n• 収入項目の追加・編集\n• 支出項目の追加・編集\n• 支払日の設定\n• カテゴリ管理\n\n現在はサンプルデータで動作確認ができます。');
-        }
-
-        // 設定を開く
-        function openSettings() {
-            showNotification('🔧 設定機能を開発中です', 'info');
-            alert('🔧 設定ページ\n\n以下の機能を開発予定です：\n• 通知設定\n• データエクスポート\n• テーマ変更\n• アカウント管理');
+            showMasterManagement();
         }
 
         // 実データ移行ダイアログ
@@ -1129,8 +1195,10 @@
             document.body.appendChild(overlay);
         }
 
-        // 実データ移行実行
+        // 実データ移行実行（修正版）
         function migrateToRealData() {
+            console.log('🚀 実データ移行開始');
+            
             // サンプルデータをクリア
             masterData = [];
             isSampleData = false;
@@ -1144,7 +1212,10 @@
             
             // バッジを削除
             const badge = document.getElementById('sampleDataBadge');
-            if (badge) badge.remove();
+            if (badge) {
+                badge.remove();
+                console.log('✅ サンプルデータバッジを削除');
+            }
             
             // ダイアログを閉じる
             closeMigrationDialog();
@@ -1152,12 +1223,19 @@
             // 完了通知
             showNotification('🎉 実データに移行完了！マスター管理で項目を設定してください。');
             
+            // 少し待ってからマスター管理を表示
+            setTimeout(() => {
+                showMasterManagement();
+            }, 1000);
+            
             // Google Driveユーザーの場合は同期
             if (currentUser && currentUser.mode === 'google') {
                 setTimeout(() => {
                     syncWithGoogleDrive();
-                }, 1000);
+                }, 2000);
             }
+            
+            console.log('✅ 実データ移行完了');
         }
 
         // 初期化時の処理をリセットする関数を追加
@@ -1168,16 +1246,62 @@
             showNotification('🔄 初回ログイン状態をリセットしました。ページを再読み込みしてください。', 'info');
         }
 
-        // 強制リセット機能（テスト用）
-        function forceShowTutorial() {
-            console.log('🧪 強制チュートリアル表示');
-            showWelcomeTutorial();
-            showSampleDataBadge();
+        // 設定を開く
+        function openSettings() {
+            const overlay = document.createElement('div');
+            overlay.className = 'tutorial-overlay';
+            overlay.id = 'settingsPage';
+            
+            overlay.innerHTML = `
+                <div class="tutorial-modal" style="max-width: 500px;">
+                    <h2>🔧 設定</h2>
+                    <p style="text-align: left; margin-bottom: 20px;">
+                        <strong>📱 アプリケーション設定</strong>
+                    </p>
+                    <div style="text-align: left; margin-bottom: 20px;">
+                        <strong>🔔 通知設定:</strong><br>
+                        • 支払期日の通知<br>
+                        • 滞納リスクの警告<br><br>
+                        
+                        <strong>💾 データ管理:</strong><br>
+                        • データのエクスポート<br>
+                        • バックアップ作成<br><br>
+                        
+                        <strong>🎨 表示設定:</strong><br>
+                        • テーマの変更<br>
+                        • カレンダー表示オプション
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn-primary" onclick="closeSettings()">
+                            ✅ 閉じる
+                        </button>
+                        <button class="btn-secondary" onclick="showSettingsComingSoon()">
+                            🚧 詳細設定（開発中）
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(overlay);
         }
 
-        // デバッグ用: コンソールで実行可能
-        window.forceShowTutorial = forceShowTutorial;
-        window.resetApp = resetFirstLoginState;
+        // 設定を閉じる
+        function closeSettings() {
+            const settings = document.getElementById('settingsPage');
+            if (settings) {
+                settings.style.animation = 'tutorialSlideIn 0.3s ease reverse';
+                setTimeout(() => settings.remove(), 300);
+            }
+        }
+
+        // 設定開発中機能
+        function showSettingsComingSoon() {
+            closeSettings();
+            
+            setTimeout(() => {
+                alert('🚧 設定機能（開発中）\n\n• プッシュ通知\n• データ同期設定\n• テーマカスタマイズ\n• 言語設定\n• プライバシー設定\n\n基本機能は現在利用可能です！');
+            }, 300);
+        }
 
         // データ読み込み
         function loadSavedData() {
@@ -1402,9 +1526,21 @@
             }
         });
 
-        // ページ離脱時にユーザー情報保存
+        // ページ離脱時にユーザー情報保存（改良版）
         window.addEventListener('beforeunload', function() {
-            if (currentUser) {
+            if (currentUser && isLoggedIn) {
+                console.log('💾 ユーザー情報を保存:', currentUser.name);
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            }
+        });
+
+        // ページ可視性変更時の処理
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden && currentUser && isLoggedIn) {
+                // ページがアクティブになった時にデータを同期
+                checkForDataChanges();
+                
+                // ユーザー情報を再保存
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
             }
         });
