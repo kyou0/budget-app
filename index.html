@@ -653,6 +653,12 @@
             showSyncNotification(`✅ ${googleUser.name}としてログインしました`);
         }
 
+        // Google Drive読み込み（プレースホルダー）
+        function loadFromGoogleDrive() {
+            // 実装予定：Google Driveからデータ読み込み
+            console.log('Google Driveからのデータ読み込み機能は開発中');
+        }
+
         // サンプルデータ（個人情報なし）
         let masterData = [
             {name: "メイン銀行", type: "bank", paymentDay: 5, amount: -15000, paymentMethod: "メイン銀行", isActive: true},
@@ -772,8 +778,6 @@
                 statusElement.textContent = message;
             }
         }
-
-        // 旧login関数は削除（混乱を避けるため）
 
         // ログアウト処理（改良版）
         function logout() {
@@ -1133,12 +1137,20 @@
             showSyncNotification('🔄 他のページからデータが同期されました');
         });
 
-        // 初期化（開発用自動ログイン）
+        // ページ読み込み時の初期化（修正版）
         document.addEventListener('DOMContentLoaded', function() {
-            // 開発用：1秒後に自動ログイン
+            console.log('ページ読み込み完了');
+            
+            // 認証コードをチェック
+            checkAuthCode();
+            
+            // Google Identity Services初期化を遅延実行
             setTimeout(() => {
-                login();
+                initializeGoogleIdentity();
             }, 1000);
+            
+            // ログイン状況の初期表示
+            updateLoginStatus('Google APIを初期化中...');
         });
     </script>
 </body>
