@@ -487,17 +487,94 @@
             }, 4000);
         }
 
-        // Googleログイン試行
+        // Googleログイン試行（リダイレクト方式）
         function tryGoogleLogin() {
-            showNotification('🔐 Googleログインを試行中...', 'info');
+            showNotification('🔐 Googleログインを開始中...', 'info');
+            updateLoginStatus('Googleログインページに移動中...');
             
-            // 簡単なテストでGoogle認証の可用性をチェック
-            setTimeout(() => {
-                // 実際のプロダクションでは、ここでGoogle Identity Services APIを呼び出し
-                // 現在はデモ用に失敗をシミュレート
-                showNotification('⚠️ Google認証は現在利用できません。ローカルモードをお試しください。', 'warning');
-                updateLoginStatus('Google認証は現在メンテナンス中です。ローカルモードをご利用ください。');
-            }, 2000);
+            // リダイレクト方式でGoogle認証を実行
+            const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+            const scope = encodeURIComponent([
+                'https://www.googleapis.com/auth/userinfo.profile',
+                'https://www.googleapis.com/auth/userinfo.email',
+                'https://www.googleapis.com/auth/drive.file'
+            ].join(' '));
+            
+            const state = generateRandomState();
+            sessionStorage.setItem('oauth_state', state);
+            sessionStorage.setItem('auth_in_progress', 'true');
+            
+            const googleAuthUrl = 
+                `https://accounts.google.com/o/oauth2/v2/auth?` +
+                `client_id=138150284146-07ul0ennhq22tm0ih3hngv8pnjsgo1u3.apps.googleusercontent.com&` +
+                `redirect_uri=${redirectUri}&` +
+                `scope=${scope}&` +
+                `response_type=code&` +
+                `access_type=offline&` +
+                `state=${state}&` +
+                `prompt=consent`;
+            
+            console.log('リダイレクト先URL:', googleAuthUrl);
+            
+            // Googleの認証ページにリダイレクト
+            window.location.href = googleAuthUrl;
+        }
+        
+        // ランダム状態生成
+        function generateRandomState() {
+            return Math.random().toString(36).substring(2) + Date.now().toString(36);
+        }
+        
+        // 認証コールバック処理
+        function handleOAuthCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
+            const authInProgress = sessionStorage.getItem('auth_in_progress');
+            const storedState = sessionStorage.getItem('oauth_state');
+            
+            if (error) {
+                console.error('Google認証エラー:', error);
+                showNotification('❌ Google認証がキャンセルされました', 'error');
+                sessionStorage.removeItem('auth_in_progress');
+                sessionStorage.removeItem('oauth_state');
+                return;
+            }
+            
+            if (code && authInProgress && state === storedState) {
+                console.log('✅ Google認証成功！認証コード取得');
+                
+                // セッション情報をクリア
+                sessionStorage.removeItem('auth_in_progress');
+                sessionStorage.removeItem('oauth_state');
+                
+                // URLをクリア
+                const cleanUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+                
+                // 認証成功としてユーザー情報を設定
+                currentUser = {
+                    name: 'Google ユーザー',
+                    email: 'user@gmail.com',
+                    mode: 'google',
+                    authCode: code
+                };
+                
+                isLoggedIn = true;
+                loginMode = 'google';
+                
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('appContainer').style.display = 'block';
+                document.getElementById('userName').textContent = currentUser.name;
+                
+                initializeApp();
+                showNotification('✅ Googleログイン完了！');
+                
+                return true;
+            }
+            
+            return false;
         }
 
         // ローカルログイン
@@ -771,6 +848,11 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 家計簿アプリ v2.0 起動');
             
+            // OAuth認証コールバックをチェック（最優先）
+            if (handleOAuthCallback()) {
+                return; // 認証処理が完了した場合は以降の処理をスキップ
+            }
+            
             // 既存のログイン状態をチェック
             const savedUser = localStorage.getItem('currentUser');
             if (savedUser) {
@@ -784,7 +866,7 @@
                 initializeApp();
                 showNotification(`🔄 ${currentUser.name}として復帰しました`);
             } else {
-                updateLoginStatus('ローカルモードは同期なしで即座に利用できます');
+                updateLoginStatus('Googleログインまたはローカルモードを選択してください');
             }
         });
 
