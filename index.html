@@ -703,8 +703,10 @@
                     syncWithGoogleDrive();
                 }, 1000);
                 
-                // 初回ログインチェック
-                checkFirstLogin();
+                // 初回ログインチェック（Google認証後も必ず実行）
+                setTimeout(() => {
+                    checkFirstLogin();
+                }, 500);
                 
                 return true;
             }
@@ -798,7 +800,7 @@
             }
         }
 
-        // ローカルログイン
+        // ローカルログイン（初回ログインチェック付き）
         function localLogin() {
             showNotification('📱 ローカルモードで起動中...', 'info');
             updateLoginStatus('ローカルモードで起動中...');
@@ -819,8 +821,11 @@
                 initializeApp();
                 showNotification(`✅ ${currentUser.name}でローカルログイン完了`);
                 
-                // 初回ログインチェック
-                checkFirstLogin();
+                // 初回ログインチェック（必ずここで実行）
+                setTimeout(() => {
+                    checkFirstLogin();
+                }, 500);
+                
             }, 1500);
         }
 
@@ -845,7 +850,7 @@
             }
         }
 
-        // アプリ初期化（同期機能付き）
+        // アプリ初期化（チュートリアル強制実行版）
         function initializeApp() {
             loadSavedData();
             updateCurrentMonth();
@@ -870,6 +875,18 @@
                     showNotification('📱 ローカルモードで動作中（同期なし）');
                 }, 3000);
             }
+            
+            // 必ずサンプルデータバッジを表示（テスト用）
+            setTimeout(() => {
+                console.log('🧪 強制的にサンプルデータバッジを表示');
+                showSampleDataBadge();
+            }, 1000);
+            
+            // 5秒後にチュートリアル強制表示（テスト用）
+            setTimeout(() => {
+                console.log('🧪 強制的にチュートリアルを表示');
+                showWelcomeTutorial();
+            }, 2000);
         }
 
         // データ変更監視（Google Drive同期付き）
@@ -915,26 +932,40 @@
             }
         }
 
-        // 初回ログインチェック（修正版）
+        // 初回ログインチェック（強制実行版）
         function checkFirstLogin() {
             const hasVisited = localStorage.getItem('hasVisitedBefore');
             const hasSavedData = localStorage.getItem('budgetMasterData');
             
-            console.log('初回ログインチェック:', { hasVisited, hasSavedData });
+            console.log('🔍 初回ログインチェック実行:', { 
+                hasVisited, 
+                hasSavedData: hasSavedData ? 'あり' : 'なし',
+                currentUser: currentUser?.name 
+            });
             
-            // 初回または保存データなしの場合
-            if (!hasVisited) {
+            // デバッグ用: 強制的に初回として扱う
+            const forceFirstTime = !hasVisited || hasSavedData === null;
+            
+            if (forceFirstTime) {
+                console.log('✅ 初回ログインとして処理');
                 isFirstLogin = true;
                 isSampleData = true;
                 localStorage.setItem('hasVisitedBefore', 'true');
                 
-                console.log('初回ログインを検出');
-                
-                // 初回ログインチュートリアルを表示
+                // チュートリアルを表示（少し遅延）
                 setTimeout(() => {
+                    console.log('📖 チュートリアル表示開始');
                     showWelcomeTutorial();
                 }, 2000);
+                
+                // サンプルデータバッジも表示
+                setTimeout(() => {
+                    console.log('🏷️ サンプルデータバッジ表示');
+                    showSampleDataBadge();
+                }, 3000);
+                
             } else {
+                console.log('⚠️ 既存ユーザーとして処理');
                 isFirstLogin = false;
                 // 既存データがサンプルデータかチェック
                 checkIfSampleData();
@@ -976,8 +1007,16 @@
             }
         }
 
-        // ウェルカムチュートリアル表示
+        // ウェルカムチュートリアル表示（エラーハンドリング付き）
         function showWelcomeTutorial() {
+            console.log('📖 ウェルカムチュートリアル表示処理開始');
+            
+            // 既存のチュートリアルがあれば削除
+            const existing = document.getElementById('welcomeTutorial');
+            if (existing) {
+                existing.remove();
+            }
+            
             const overlay = document.createElement('div');
             overlay.className = 'tutorial-overlay';
             overlay.id = 'welcomeTutorial';
@@ -1006,11 +1045,18 @@
             `;
             
             document.body.appendChild(overlay);
+            console.log('✅ チュートリアルモーダルを追加しました');
         }
 
-        // サンプルデータバッジ表示
+        // サンプルデータバッジ表示（強制表示版）
         function showSampleDataBadge() {
-            if (document.getElementById('sampleDataBadge')) return;
+            console.log('🏷️ サンプルデータバッジ表示処理開始');
+            
+            // 既存のバッジがあれば削除
+            const existing = document.getElementById('sampleDataBadge');
+            if (existing) {
+                existing.remove();
+            }
             
             const badge = document.createElement('div');
             badge.id = 'sampleDataBadge';
@@ -1019,6 +1065,7 @@
             badge.onclick = showMigrationDialog;
             
             document.body.appendChild(badge);
+            console.log('✅ サンプルデータバッジを追加しました');
         }
 
         // チュートリアル閉じる
@@ -1124,7 +1171,15 @@
             showNotification('🔄 初回ログイン状態をリセットしました。ページを再読み込みしてください。', 'info');
         }
 
-        // デバッグ用: コンソールでリセット可能
+        // 強制リセット機能（テスト用）
+        function forceShowTutorial() {
+            console.log('🧪 強制チュートリアル表示');
+            showWelcomeTutorial();
+            showSampleDataBadge();
+        }
+
+        // デバッグ用: コンソールで実行可能
+        window.forceShowTutorial = forceShowTutorial;
         window.resetApp = resetFirstLoginState;
 
         // データ読み込み
