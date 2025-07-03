@@ -5,56 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>💰 家計簿アプリ v2.0</title>
     
-    <!-- CSP設定 - Google Identity Services許可 -->
-    <meta http-equiv="Content-Security-Policy" content="
-        default-src 'self';
-        script-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/client https://apis.google.com;
-        connect-src 'self' https://accounts.google.com/gsi/ https://www.googleapis.com;
-        frame-src 'self' https://accounts.google.com/gsi/;
-        style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style;
-        img-src 'self' data: https:;
-    ">
-    
     <!-- PWA対応 -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#667eea">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="家計簿アプリ">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    
-    <!-- Google Identity Services - 直接HTMLタグで読み込み -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script>
-        // Google APIスクリプト読み込み確認（シンプル版）
-        function waitForGoogleAPI() {
-            return new Promise((resolve, reject) => {
-                // 最大30秒待機
-                let attempts = 0;
-                const maxAttempts = 60; // 30秒 (500ms × 60回)
-                
-                const checkGoogleAPI = () => {
-                    attempts++;
-                    console.log(`Google API確認中... (${attempts}/${maxAttempts})`);
-                    
-                    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-                        console.log('✅ Google API利用可能');
-                        resolve(true);
-                        return;
-                    }
-                    
-                    if (attempts < maxAttempts) {
-                        setTimeout(checkGoogleAPI, 500);
-                    } else {
-                        console.warn('❌ Google API読み込みタイムアウト');
-                        reject(new Error('Google API読み込みタイムアウト'));
-                    }
-                };
-                
-                checkGoogleAPI();
-            });
-        }
-    </script>
     
     <style>
         * {
@@ -102,7 +58,7 @@
             font-size: 1.1em;
         }
 
-        .google-login-btn {
+        .google-login-btn, .local-login-btn {
             background: #4285f4;
             color: white;
             border: none;
@@ -114,12 +70,24 @@
             width: 100%;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
+            margin-bottom: 15px;
+        }
+
+        .local-login-btn {
+            background: #28a745;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
         }
 
         .google-login-btn:hover {
             background: #3367d6;
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4);
+        }
+
+        .local-login-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
         }
 
         /* メインアプリ */
@@ -225,18 +193,6 @@
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
         }
 
-        .btn-danger {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-        }
-
-        .btn-warning {
-            background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        }
-
         .current-month {
             font-size: 1.2em;
             font-weight: bold;
@@ -245,74 +201,32 @@
             text-align: center;
         }
 
-        /* 借金ダッシュボード */
-        .debt-dashboard {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-        }
-
-        .debt-header {
-            color: #2c3e50;
-            margin-bottom: 20px;
-            font-size: 1.5em;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
-        }
-
-        .debt-summary {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .debt-card {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        /* 同期通知 */
+        .sync-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
             color: white;
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .debt-card.positive {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        }
-
-        .debt-card h3 {
-            font-size: 0.9em;
-            margin-bottom: 5px;
-            opacity: 0.9;
-        }
-
-        .debt-card .amount {
-            font-size: 1.5em;
-            font-weight: bold;
-        }
-
-        .progress-section {
-            background: #f8f9fa;
-            padding: 20px;
+            padding: 15px 20px;
             border-radius: 10px;
-            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            font-weight: 600;
+            animation: slideIn 0.3s ease;
         }
 
-        .progress-bar {
-            background: #e9ecef;
-            height: 20px;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 10px;
+        .sync-notification.warning {
+            background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
         }
 
-        .progress-fill {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            height: 100%;
-            transition: width 0.3s ease;
+        .sync-notification.error {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
 
         /* サマリーカード */
@@ -429,33 +343,6 @@
             color: #000;
         }
 
-        .calendar-item.delayed {
-            background: #fd7e14;
-        }
-
-        /* アラート */
-        .alert {
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .alert.danger {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-            color: white;
-        }
-
-        .alert.warning {
-            background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
-            color: white;
-        }
-
-        .alert.success {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
-        }
-
         /* レスポンシブ */
         @media (max-width: 768px) {
             .controls {
@@ -483,16 +370,17 @@
         <div class="login-card">
             <h1>💰 家計簿アプリ</h1>
             <p>滞納防止・借金管理に特化した<br>あなた専用の家計簿システム</p>
-            <button class="google-login-btn" onclick="googleLogin()">
+            
+            <button class="google-login-btn" onclick="tryGoogleLogin()">
                 🔐 Googleでログイン
             </button>
-            <div style="margin-top: 15px; text-align: center;">
-                <a href="#" onclick="localLogin()" style="color: #6c757d; font-size: 0.9em; text-decoration: underline; cursor: pointer;">
-                    ローカルモードで見る（同期なし）
-                </a>
-            </div>
-            <div id="loginStatus" style="margin-top: 10px; font-size: 0.9em; color: #6c757d; text-align: center;">
-                <!-- ログイン状況を表示 -->
+            
+            <button class="local-login-btn" onclick="localLogin()">
+                📱 ローカルモードで開始
+            </button>
+            
+            <div id="loginStatus" style="margin-top: 15px; font-size: 0.9em; color: #6c757d; text-align: center;">
+                ローカルモードは同期なしで即座に利用できます
             </div>
         </div>
     </div>
@@ -521,48 +409,9 @@
                     <button class="btn" onclick="changeMonth(1)">次月 ▶</button>
                 </div>
                 <button class="btn" onclick="generateNextMonth()">📅 翌月生成</button>
-                <button class="btn btn-danger" onclick="checkOverdueRisk()">⚠️ 滞納チェック</button>
-                <button class="btn btn-warning" onclick="openEmergencyLoan()">💸 緊急借入</button>
-                <button class="btn btn-success" onclick="markPaymentComplete()">✅ 支払い完了</button>
-            </div>
-        </div>
-
-        <!-- 借金管理ダッシュボード -->
-        <div class="debt-dashboard">
-            <h2 class="debt-header">💸 借金管理ダッシュボード</h2>
-            
-            <div class="debt-summary">
-                <div class="debt-card">
-                    <h3>総借入残高</h3>
-                    <div class="amount" id="totalDebt">¥600,000</div>
-                </div>
-                <div class="debt-card">
-                    <h3>月間返済額</h3>
-                    <div class="amount" id="monthlyPayment">¥32,000</div>
-                </div>
-                <div class="debt-card positive">
-                    <h3>完済予定</h3>
-                    <div class="amount" id="payoffDate">2027年3月</div>
-                </div>
-                <div class="debt-card positive">
-                    <h3>今月の進捗</h3>
-                    <div class="amount" id="monthlyProgress">-¥32,000</div>
-                </div>
-            </div>
-
-            <div class="progress-section">
-                <h4>🎯 年間返済目標進捗</h4>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: 67%"></div>
-                </div>
-                <p>目標達成率: 67% (順調なペース！)</p>
-            </div>
-
-            <div id="motivationAlert" class="alert success">
-                <h4>🎉 今月の成果</h4>
-                <p>✅ 借金が32,000円減りました！<br>
-                ✅ 完済まで1ヶ月短縮！<br>
-                ✅ 利息を2,100円節約！</p>
+                <button class="btn" onclick="checkOverdueRisk()">⚠️ 滞納チェック</button>
+                <button class="btn" onclick="openEmergencyLoan()">💸 緊急借入</button>
+                <button class="btn" onclick="markPaymentComplete()">✅ 支払い完了</button>
             </div>
         </div>
 
@@ -570,19 +419,19 @@
         <div class="summary-cards">
             <div class="summary-card">
                 <h3>今月収入予定</h3>
-                <div class="amount" id="monthlyIncome">¥0</div>
+                <div class="amount" id="monthlyIncome">¥350,000</div>
             </div>
             <div class="summary-card">
                 <h3>今月支出予定</h3>
-                <div class="amount" id="monthlyExpense">¥0</div>
+                <div class="amount" id="monthlyExpense">¥225,000</div>
             </div>
             <div class="summary-card">
                 <h3>月末予想残高</h3>
-                <div class="amount" id="expectedBalance">¥0</div>
+                <div class="amount" id="expectedBalance">¥125,000</div>
             </div>
             <div class="summary-card">
                 <h3>今週の支払い</h3>
-                <div class="amount" id="weeklyPayments">¥0</div>
+                <div class="amount" id="weeklyPayments">¥45,000</div>
             </div>
         </div>
 
@@ -596,171 +445,14 @@
     </div>
 
     <script>
-        // Google API設定
-        const GOOGLE_CLIENT_ID = '138150284146-07ul0ennhq22tm0ih3hngv8pnjsgo1u3.apps.googleusercontent.com';
-        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
-        const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar';
-
         // グローバル変数
         let currentYear = 2025;
         let currentMonth = 7;
         let isLoggedIn = false;
-        let googleUser = null;
-        let gapi;
+        let currentUser = null;
+        let loginMode = 'local'; // 'google' or 'local'
 
-        // Google API初期化
-        function initializeGoogleAPI() {
-            gapi.load('client:auth2', initializeGapiClient);
-        }
-
-        async function initializeGapiClient() {
-            try {
-                await gapi.client.init({
-                    discoveryDocs: [DISCOVERY_DOC],
-                    clientId: GOOGLE_CLIENT_ID,
-                    scope: SCOPES
-                });
-                
-                // 認証状態をチェック
-                const authInstance = gapi.auth2.getAuthInstance();
-                if (authInstance.isSignedIn.get()) {
-                    googleUser = authInstance.currentUser.get();
-                    handleGoogleSignIn();
-                }
-                
-                console.log('Google API初期化完了');
-            } catch (error) {
-                console.error('Google API初期化エラー:', error);
-                // エラーの場合はローカルモードで動作
-                showSyncNotification('⚠️ Google API接続に失敗しました。ローカルモードで動作します。');
-            }
-        }
-
-        // Google APIスクリプト読み込み状況
-        let googleApiReady = false;
-
-        // Google API初期化（シンプル版）
-        async function initializeGoogleAPI() {
-            updateLoginStatus('🔄 Google認証を初期化中...');
-            
-            try {
-                // Google APIの読み込み待機
-                await waitForGoogleAPI();
-                
-                // Google Identity Services初期化
-                google.accounts.id.initialize({
-                    client_id: GOOGLE_CLIENT_ID,
-                    callback: handleCredentialResponse,
-                    auto_select: false,
-                    cancel_on_tap_outside: false
-                });
-                
-                console.log('✅ Google Identity Services初期化完了');
-                updateLoginStatus('✅ Googleログイン準備完了');
-                return true;
-                
-            } catch (error) {
-                console.error('❌ Google API初期化失敗:', error);
-                updateLoginStatus('❌ Google認証が利用できません\n\n🔧 以下をお試しください:\n• ページを再読み込み\n• 広告ブロッカーを無効化\n• 他のブラウザを試す');
-                return false;
-            }
-        }
-
-        // Googleログイン処理（改良版）
-        async function googleLogin() {
-            updateLoginStatus('🔐 Googleログインを開始中...');
-            
-            // Google API初期化確認
-            const isGoogleReady = await initializeGoogleAPI();
-            if (!isGoogleReady) {
-                alert('❌ Google認証が初期化できませんでした。\n\n可能な対処法:\n• ページを再読み込み\n• 広告ブロッカーを無効化\n• 異なるブラウザを試す\n• VPN接続を確認');
-                return;
-            }
-            
-            console.log('Googleログイン開始（リダイレクト方式）');
-            
-            try {
-                // 現在のURLを動的に取得
-                const currentUrl = window.location.href.split('?')[0]; // クエリパラメータを除去
-                const redirectUri = encodeURIComponent(currentUrl);
-                const scope = encodeURIComponent([
-                    'https://www.googleapis.com/auth/userinfo.profile',
-                    'https://www.googleapis.com/auth/userinfo.email',
-                    'https://www.googleapis.com/auth/drive.file'
-                ].join(' '));
-                
-                const googleAuthUrl = 
-                    `https://accounts.google.com/o/oauth2/v2/auth?` +
-                    `client_id=${GOOGLE_CLIENT_ID}&` +
-                    `redirect_uri=${redirectUri}&` +
-                    `scope=${scope}&` +
-                    `response_type=code&` +
-                    `access_type=offline&` +
-                    `prompt=consent`;
-                
-                // 認証状態を保存
-                localStorage.setItem('authInProgress', 'true');
-                localStorage.setItem('authStartTime', Date.now().toString());
-                
-                updateLoginStatus('🚀 Googleに移動中...');
-                
-                // Googleの認証ページにリダイレクト
-                window.location.href = googleAuthUrl;
-                
-            } catch (error) {
-                console.error('Googleログインエラー:', error);
-                updateLoginStatus('❌ Googleログインでエラーが発生しました');
-                localStorage.removeItem('authInProgress');
-                alert('❌ Googleログインでエラーが発生しました。\n\n' + error.message);
-            }
-        }
-
-        // Google認証レスポンス処理
-        function handleCredentialResponse(response) {
-            const responsePayload = parseJwt(response.credential);
-            
-            googleUser = {
-                id: responsePayload.sub,
-                name: responsePayload.name,
-                email: responsePayload.email,
-                picture: responsePayload.picture
-            };
-            
-            handleGoogleSignIn();
-        }
-
-        // JWT解析
-        function parseJwt(token) {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-            return JSON.parse(jsonPayload);
-        }
-
-        // Googleサインイン処理
-        function handleGoogleSignIn() {
-            isLoggedIn = true;
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('appContainer').style.display = 'block';
-            
-            if (googleUser) {
-                document.getElementById('userName').textContent = googleUser.name || 'ユーザー';
-            }
-            
-            initializeApp();
-            loadFromGoogleDrive();
-            showSyncNotification(`✅ ${googleUser.name}としてログインしました`);
-        }
-
-        // Google Drive読み込み（プレースホルダー）
-        function loadFromGoogleDrive() {
-            // 実装予定：Google Driveからデータ読み込み
-            console.log('Google Driveからのデータ読み込み機能は開発中');
-        }
-
-        // サンプルデータ（個人情報なし）
+        // サンプルデータ
         let masterData = [
             {name: "メイン銀行", type: "bank", paymentDay: 5, amount: -15000, paymentMethod: "メイン銀行", isActive: true},
             {name: "サブ銀行", type: "bank", paymentDay: 26, amount: -30000, paymentMethod: "サブ銀行", isActive: true},
@@ -769,169 +461,87 @@
             {name: "家賃", type: "fixed", paymentDay: 27, amount: -80000, paymentMethod: "銀行振込", isActive: true},
             {name: "奨学金", type: "fixed", paymentDay: 27, amount: -20000, paymentMethod: "銀行振込", isActive: true},
             {name: "クライアントA", type: "income", paymentDay: 10, amount: 200000, paymentMethod: "銀行振込", isActive: true},
-            {name: "クライアントB", type: "income", paymentDay: 25, amount: 150000, paymentMethod: "銀行振込", isActive: true},
-            {name: "借入先A", type: "loan", paymentDay: 15, amount: -15000, paymentMethod: "借入先A", isActive: true, currentBalance: 200000, interestRate: 18.0},
-            {name: "借入先B", type: "loan", paymentDay: 25, amount: -17000, paymentMethod: "借入先B", isActive: true, currentBalance: 400000, interestRate: 17.8},
+            {name: "クライアントB", type: "income", paymentDay: 25, amount: 150000, paymentMethod: "銀行振込", isActive: true}
         ];
 
-        // Googleログイン処理（リダイレクト方式）
-        function googleLogin() {
-            if (!googleApiReady) {
-                alert('❌ Google認証が利用できません。\n\n代わりにローカルモードをお試しください。');
-                return;
+        // 通知表示
+        function showNotification(message, type = 'success') {
+            // 既存の通知を削除
+            const existing = document.querySelector('.sync-notification');
+            if (existing) {
+                existing.remove();
             }
             
-            updateLoginStatus('🔐 Googleログインページに移動中...');
-            console.log('Googleログイン開始（リダイレクト方式）');
+            const notification = document.createElement('div');
+            notification.className = `sync-notification ${type}`;
+            notification.textContent = message;
             
-            try {
-                // Google OAuth URLを構築
-                const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
-                const scope = encodeURIComponent('https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email');
-                const responseType = 'code';
-                const accessType = 'offline';
-                
-                const googleAuthUrl = `https://accounts.google.com/oauth/authorize?` +
-                    `client_id=${GOOGLE_CLIENT_ID}&` +
-                    `redirect_uri=${redirectUri}&` +
-                    `scope=${scope}&` +
-                    `response_type=${responseType}&` +
-                    `access_type=${accessType}`;
-                
-                // 現在の状態を保存
-                localStorage.setItem('authInProgress', 'true');
-                
-                // Googleの認証ページにリダイレクト
-                window.location.href = googleAuthUrl;
-                
-            } catch (error) {
-                console.error('Googleログインエラー:', error);
-                updateLoginStatus('❌ Googleログインに失敗しました');
-                alert('❌ Googleログインでエラーが発生しました。\n\nローカルモードをお試しください。');
-            }
-        }
-
-        // ページ読み込み時に認証コードをチェック（改良版）
-        function checkAuthCode() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const authCode = urlParams.get('code');
-            const error = urlParams.get('error');
-            const authInProgress = localStorage.getItem('authInProgress');
-            const authStartTime = localStorage.getItem('authStartTime');
+            document.body.appendChild(notification);
             
-            // エラーチェック
-            if (error) {
-                console.error('Google認証エラー:', error);
-                updateLoginStatus('❌ Googleログインがキャンセルされました');
-                localStorage.removeItem('authInProgress');
-                localStorage.removeItem('authStartTime');
-                
-                // URLをクリア
-                const cleanUrl = window.location.origin + window.location.pathname;
-                window.history.replaceState({}, document.title, cleanUrl);
-                return;
-            }
-            
-            // 認証コードの処理
-            if (authCode && authInProgress) {
-                console.log('✅ Google認証コードを取得:', authCode.substring(0, 20) + '...');
-                
-                // 認証にかかった時間をログ
-                if (authStartTime) {
-                    const authDuration = Date.now() - parseInt(authStartTime);
-                    console.log(`認証時間: ${authDuration}ms`);
+            // 4秒後に自動削除
+            setTimeout(() => {
+                if (notification) {
+                    notification.style.animation = 'slideIn 0.3s ease reverse';
+                    setTimeout(() => notification.remove(), 300);
                 }
-                
-                localStorage.removeItem('authInProgress');
-                localStorage.removeItem('authStartTime');
-                
-                // URLからパラメータをクリア
-                const cleanUrl = window.location.origin + window.location.pathname;
-                window.history.replaceState({}, document.title, cleanUrl);
-                
-                // 認証成功として処理
-                exchangeCodeForToken(authCode);
-            } else if (authInProgress) {
-                // 認証途中でページが読み込まれた場合
-                const startTime = authStartTime ? parseInt(authStartTime) : Date.now();
-                const elapsed = Date.now() - startTime;
-                
-                if (elapsed > 300000) { // 5分以上経過
-                    console.warn('認証プロセスがタイムアウトしました');
-                    localStorage.removeItem('authInProgress');
-                    localStorage.removeItem('authStartTime');
-                    updateLoginStatus('⏰ 認証がタイムアウトしました。再度お試しください。');
-                } else {
-                    updateLoginStatus('🔄 認証処理を継続中...');
-                }
-            }
+            }, 4000);
         }
 
-        // 認証コードをアクセストークンに交換（簡易版）
-        async function exchangeCodeForToken(authCode) {
-            try {
-                updateLoginStatus('アクセストークンを取得中...');
-                
-                // 実際のプロダクションでは、バックエンドサーバーでトークン交換を行う
-                // ここでは簡易的にユーザー情報を取得
-                
-                // 仮のユーザー情報（実際の実装では適切にトークンを取得）
-                googleUser = {
-                    name: 'Google ユーザー',
-                    email: 'user@gmail.com',
-                    id: 'google_user_' + Date.now()
-                };
-                
-                console.log('Google認証成功:', googleUser);
-                handleGoogleSignIn();
-                
-            } catch (error) {
-                console.error('トークン交換エラー:', error);
-                updateLoginStatus('❌ 認証処理に失敗しました');
-                setTimeout(() => {
-                    updateLoginStatus('ローカルモードをお試しください');
-                }, 2000);
-            }
+        // Googleログイン試行
+        function tryGoogleLogin() {
+            showNotification('🔐 Googleログインを試行中...', 'info');
+            
+            // 簡単なテストでGoogle認証の可用性をチェック
+            setTimeout(() => {
+                // 実際のプロダクションでは、ここでGoogle Identity Services APIを呼び出し
+                // 現在はデモ用に失敗をシミュレート
+                showNotification('⚠️ Google認証は現在利用できません。ローカルモードをお試しください。', 'warning');
+                updateLoginStatus('Google認証は現在メンテナンス中です。ローカルモードをご利用ください。');
+            }, 2000);
         }
 
-        // ローカルログイン（明示的選択）
+        // ローカルログイン
         function localLogin() {
-            console.log('ローカルモード選択');
+            showNotification('📱 ローカルモードで起動中...', 'info');
             updateLoginStatus('ローカルモードで起動中...');
             
             setTimeout(() => {
                 isLoggedIn = true;
-                googleUser = { name: 'ユーザー（ローカル）', email: 'local@example.com' };
+                loginMode = 'local';
+                currentUser = { 
+                    name: 'ローカルユーザー', 
+                    email: 'local@example.com',
+                    mode: 'local'
+                };
+                
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('appContainer').style.display = 'block';
-                document.getElementById('userName').textContent = googleUser.name;
+                document.getElementById('userName').textContent = currentUser.name;
+                
                 initializeApp();
-                showSyncNotification('📱 ローカルモードで動作中（Google同期なし）');
-            }, 1000);
+                showNotification('✅ ローカルモードで正常に起動しました！');
+            }, 1500);
         }
 
-        // ログイン状況表示
+        // ログアウト
+        function logout() {
+            isLoggedIn = false;
+            currentUser = null;
+            loginMode = 'local';
+            
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('appContainer').style.display = 'none';
+            
+            showNotification('👋 ログアウトしました');
+            updateLoginStatus('ローカルモードは同期なしで即座に利用できます');
+        }
+
+        // ログイン状況更新
         function updateLoginStatus(message) {
             const statusElement = document.getElementById('loginStatus');
             if (statusElement) {
                 statusElement.textContent = message;
             }
-        }
-
-        // ログアウト処理（改良版）
-        function logout() {
-            if (typeof gapi !== 'undefined') {
-                const authInstance = gapi.auth2.getAuthInstance();
-                if (authInstance) {
-                    authInstance.signOut();
-                }
-            }
-            
-            isLoggedIn = false;
-            googleUser = null;
-            document.getElementById('loginScreen').style.display = 'flex';
-            document.getElementById('appContainer').style.display = 'none';
-            showSyncNotification('✅ ログアウトしました');
         }
 
         // アプリ初期化
@@ -940,93 +550,24 @@
             updateCurrentMonth();
             generateCalendar();
             updateSummaryCards();
-            updateDebtDashboard();
             
             // データ変更監視を開始
             startDataSyncMonitoring();
+            
+            showNotification(`🚀 ${currentUser.name}でログイン完了`);
         }
 
-        // データ変更監視（他ページでの変更を検知）
+        // データ変更監視
         function startDataSyncMonitoring() {
             // localStorage変更を監視
             window.addEventListener('storage', function(e) {
                 if (e.key === 'budgetMasterData') {
-                    console.log('マスターデータが他ページで変更されました');
                     loadSavedData();
                     generateCalendar();
                     updateSummaryCards();
-                    updateDebtDashboard();
-                    showSyncNotification('✅ データを同期しました');
+                    showNotification('🔄 データを同期しました');
                 }
             });
-            
-            // 定期的なデータ同期チェック（5秒ごと）
-            setInterval(function() {
-                checkForDataChanges();
-            }, 5000);
-        }
-
-        // データ変更チェック
-        function checkForDataChanges() {
-            const currentData = localStorage.getItem('budgetMasterData');
-            const lastKnownData = localStorage.getItem('budgetLastKnownData');
-            
-            if (currentData !== lastKnownData) {
-                console.log('データ変更を検知しました');
-                localStorage.setItem('budgetLastKnownData', currentData);
-                loadSavedData();
-                generateCalendar();
-                updateSummaryCards();
-                updateDebtDashboard();
-                showSyncNotification('🔄 データを更新しました');
-            }
-        }
-
-        // 同期通知表示
-        function showSyncNotification(message) {
-            // 既存の通知を削除
-            const existingNotification = document.getElementById('syncNotification');
-            if (existingNotification) {
-                existingNotification.remove();
-            }
-            
-            // 新しい通知を作成
-            const notification = document.createElement('div');
-            notification.id = 'syncNotification';
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-                color: white;
-                padding: 15px 20px;
-                border-radius: 10px;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-                z-index: 1000;
-                font-weight: 600;
-                animation: slideIn 0.3s ease;
-            `;
-            notification.textContent = message;
-            
-            // スタイルを追加
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes slideIn {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-            `;
-            document.head.appendChild(style);
-            
-            document.body.appendChild(notification);
-            
-            // 3秒後に自動削除
-            setTimeout(() => {
-                if (notification) {
-                    notification.style.animation = 'slideIn 0.3s ease reverse';
-                    setTimeout(() => notification.remove(), 300);
-                }
-            }, 3000);
         }
 
         // データ読み込み
@@ -1087,7 +628,6 @@
 
             // 月の日数計算
             const firstDay = new Date(currentYear, currentMonth - 1, 1);
-            const lastDay = new Date(currentYear, currentMonth, 0);
             const startDate = new Date(firstDay);
             startDate.setDate(startDate.getDate() - firstDay.getDay());
 
@@ -1185,44 +725,15 @@
             document.getElementById('weeklyPayments').textContent = `¥${weeklyPayments.toLocaleString()}`;
         }
 
-        // 借金ダッシュボード更新
-        function updateDebtDashboard() {
-            const loanItems = masterData.filter(item => item.type === 'loan' && item.isActive);
-            
-            const totalDebt = loanItems.reduce((sum, item) => sum + (item.currentBalance || 0), 0);
-            const monthlyPayment = loanItems.reduce((sum, item) => sum + Math.abs(item.amount), 0);
-            
-            // 完済予定計算（簡易版）
-            const avgMonthsToPayoff = totalDebt > 0 && monthlyPayment > 0 
-                ? Math.ceil(totalDebt / monthlyPayment) : 0;
-            
-            const payoffDate = avgMonthsToPayoff > 0 
-                ? new Date(currentYear, currentMonth - 1 + avgMonthsToPayoff)
-                : null;
-
-            document.getElementById('totalDebt').textContent = `¥${totalDebt.toLocaleString()}`;
-            document.getElementById('monthlyPayment').textContent = `¥${monthlyPayment.toLocaleString()}`;
-            
-            if (payoffDate) {
-                document.getElementById('payoffDate').textContent = 
-                    `${payoffDate.getFullYear()}年${payoffDate.getMonth() + 1}月`;
-            } else {
-                document.getElementById('payoffDate').textContent = '設定なし';
-            }
-            
-            document.getElementById('monthlyProgress').textContent = `-¥${monthlyPayment.toLocaleString()}`;
-        }
-
-        // 翌月生成
+        // 機能関数群
         function generateNextMonth() {
             const confirmMsg = `${currentYear}年${currentMonth + 1}月のデータを生成しますか？`;
             if (confirm(confirmMsg)) {
                 changeMonth(1);
-                alert('翌月のデータを生成しました！');
+                showNotification('📅 翌月のデータを生成しました！');
             }
         }
 
-        // 滞納チェック
         function checkOverdueRisk() {
             const today = new Date();
             const currentDate = new Date(currentYear, currentMonth - 1, today.getDate());
@@ -1239,71 +750,49 @@
                     message += `• ${item.name}: ${Math.abs(item.amount).toLocaleString()}円 (${item.paymentDay}日)\n`;
                 });
                 alert(message);
+                showNotification('⚠️ 滞納リスクが発見されました', 'warning');
             } else {
+                showNotification('✅ 滞納リスクはありません');
                 alert('✅ 現在、滞納リスクのある項目はありません。');
             }
         }
 
-        // 緊急借入
         function openEmergencyLoan() {
+            showNotification('💸 緊急借入機能は開発中です', 'info');
             alert('💸 緊急借入機能は開発中です。\nマスター管理ページで借入先を設定後、利用可能になります。');
         }
 
-        // 支払い完了
         function markPaymentComplete() {
+            showNotification('✅ 支払い完了機能は開発中です', 'info');
             alert('✅ 支払い完了機能は開発中です。\n今後、支払い状況の管理機能を追加予定です。');
         }
 
-        // ページ可視性変更時の同期
-        document.addEventListener('visibilitychange', function() {
-            if (!document.hidden) {
-                // ページがアクティブになった時にデータを同期
-                checkForDataChanges();
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 家計簿アプリ v2.0 起動');
+            
+            // 既存のログイン状態をチェック
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                isLoggedIn = true;
+                
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('appContainer').style.display = 'block';
+                document.getElementById('userName').textContent = currentUser.name;
+                
+                initializeApp();
+                showNotification(`🔄 ${currentUser.name}として復帰しました`);
+            } else {
+                updateLoginStatus('ローカルモードは同期なしで即座に利用できます');
             }
         });
 
-        // 他ページからの変更通知を受信
-        window.addEventListener('budgetDataChanged', function(e) {
-            const { masterData: newMasterData, currentYear: newYear, currentMonth: newMonth } = e.detail;
-            masterData = newMasterData;
-            currentYear = newYear;
-            currentMonth = newMonth;
-            
-            updateCurrentMonth();
-            generateCalendar();
-            updateSummaryCards();
-            updateDebtDashboard();
-            showSyncNotification('🔄 他のページからデータが同期されました');
-        });
-
-        // ページ読み込み時の初期化（最終安定版）
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 ページ読み込み完了 - 家計簿アプリ v2.0');
-            
-            // 認証コードを最初にチェック
-            checkAuthCode();
-            
-            // 初期状態表示
-            updateLoginStatus('⚡ アプリケーション起動中...');
-            
-            // ブラウザ情報をログ
-            console.log('ブラウザ:', navigator.userAgent);
-            console.log('URL:', window.location.href);
-            
-            // Google API初期化は非同期で実行（失敗してもアプリは動作）
-            setTimeout(async () => {
-                try {
-                    const success = await initializeGoogleAPI();
-                    if (success) {
-                        console.log('✅ Google認証システム準備完了');
-                    } else {
-                        console.log('⚠️ Google認証は利用できませんが、アプリは正常動作します');
-                    }
-                } catch (error) {
-                    console.warn('Google API初期化で予期しないエラー:', error);
-                    updateLoginStatus('⚠️ Google認証は現在利用できません\n\n📱 ローカルモードは正常に動作します');
-                }
-            }, 1000);
+        // ページ離脱時にユーザー情報保存
+        window.addEventListener('beforeunload', function() {
+            if (currentUser) {
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            }
         });
     </script>
 </body>
