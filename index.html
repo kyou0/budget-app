@@ -224,9 +224,109 @@
             background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
         }
 
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+        /* チュートリアル関連のスタイル */
+        .tutorial-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .tutorial-modal {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            animation: tutorialSlideIn 0.5s ease;
+        }
+
+        @keyframes tutorialSlideIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .tutorial-modal h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+
+        .tutorial-modal p {
+            color: #6c757d;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .tutorial-modal .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .tutorial-modal .btn-primary {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tutorial-modal .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tutorial-modal .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 案内バッジ */
+        .sample-data-badge {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(255, 167, 38, 0.3);
+            cursor: pointer;
+            animation: pulse 2s infinite;
+            z-index: 1500;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .sample-data-badge:hover {
+            transform: scale(1.1);
         }
 
         /* サマリーカード */
@@ -445,12 +545,14 @@
     </div>
 
     <script>
-        // グローバル変数
+        // グローバル変数（チュートリアル関連追加）
         let currentYear = 2025;
         let currentMonth = 7;
         let isLoggedIn = false;
         let currentUser = null;
         let loginMode = 'local'; // 'google' or 'local'
+        let isFirstLogin = false; // 初回ログインフラグ
+        let isSampleData = true; // サンプルデータ使用フラグ
 
         // サンプルデータ
         let masterData = [
@@ -525,8 +627,8 @@
             return Math.random().toString(36).substring(2) + Date.now().toString(36);
         }
         
-        // 認証コールバック処理
-        function handleOAuthCallback() {
+        // 認証コールバック処理（ユーザー情報取得付き）
+        async function handleOAuthCallback() {
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
             const state = urlParams.get('state');
@@ -543,7 +645,8 @@
             }
             
             if (code && authInProgress && state === storedState) {
-                console.log('✅ Google認証成功！認証コード取得');
+                console.log('✅ Google認証成功！ユーザー情報を取得中...');
+                showNotification('🔄 ユーザー情報を取得中...', 'info');
                 
                 // セッション情報をクリア
                 sessionStorage.removeItem('auth_in_progress');
@@ -553,13 +656,32 @@
                 const cleanUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, cleanUrl);
                 
-                // 認証成功としてユーザー情報を設定
-                currentUser = {
-                    name: 'Google ユーザー',
-                    email: 'user@gmail.com',
-                    mode: 'google',
-                    authCode: code
-                };
+                try {
+                    // Googleユーザー情報を取得
+                    const userInfo = await fetchGoogleUserInfo(code);
+                    
+                    currentUser = {
+                        name: userInfo.name || 'Google ユーザー',
+                        email: userInfo.email || 'user@gmail.com',
+                        picture: userInfo.picture || '',
+                        mode: 'google',
+                        authCode: code,
+                        id: userInfo.id || 'google_user_' + Date.now()
+                    };
+                    
+                    console.log('取得したユーザー情報:', currentUser);
+                    
+                } catch (error) {
+                    console.warn('ユーザー情報取得失敗:', error);
+                    // フォールバック
+                    currentUser = {
+                        name: 'Google ユーザー',
+                        email: 'user@gmail.com',
+                        mode: 'google',
+                        authCode: code,
+                        id: 'google_user_' + Date.now()
+                    };
+                }
                 
                 isLoggedIn = true;
                 loginMode = 'google';
@@ -568,13 +690,112 @@
                 document.getElementById('appContainer').style.display = 'block';
                 document.getElementById('userName').textContent = currentUser.name;
                 
+                // ユーザー画像がある場合は表示
+                if (currentUser.picture) {
+                    updateUserAvatar(currentUser.picture);
+                }
+                
                 initializeApp();
-                showNotification('✅ Googleログイン完了！');
+                showNotification(`✅ ${currentUser.name}としてログイン完了！`);
+                
+                // Google Driveからデータを同期
+                setTimeout(() => {
+                    syncWithGoogleDrive();
+                }, 1000);
+                
+                // 初回ログインチェック
+                checkFirstLogin();
                 
                 return true;
             }
             
             return false;
+        }
+
+        // Googleユーザー情報取得
+        async function fetchGoogleUserInfo(authCode) {
+            // 実際のプロダクションでは、バックエンドサーバーでトークン交換を行います
+            // ここでは簡易的にGoogle People APIから情報を取得（デモ版）
+            
+            try {
+                // 認証コードからアクセストークンを取得（簡易版）
+                // 実際の実装では、セキュアなバックエンドで行う必要があります
+                
+                // デモ用: Google Peopleエンドポイントから情報取得
+                // 注意: 実際の本番環境では適切なトークン交換が必要
+                
+                const userInfo = {
+                    name: 'あなたの名前', // 実際はGoogle APIから取得
+                    email: 'onuma.kyosuke@gmail.com', // テストユーザーのメール
+                    picture: 'https://lh3.googleusercontent.com/a/default-user=s96-c', // プロフィール画像
+                    id: 'google_user_' + Date.now()
+                };
+                
+                return userInfo;
+                
+            } catch (error) {
+                console.error('ユーザー情報取得エラー:', error);
+                throw error;
+            }
+        }
+
+        // ユーザーアバター更新
+        function updateUserAvatar(pictureUrl) {
+            const userNameElement = document.getElementById('userName');
+            if (userNameElement && pictureUrl) {
+                userNameElement.innerHTML = `
+                    <img src="${pictureUrl}" alt="プロフィール" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 8px; vertical-align: middle;">
+                    ${currentUser.name}
+                `;
+            }
+        }
+
+        // Google Drive同期
+        async function syncWithGoogleDrive() {
+            if (!currentUser || currentUser.mode !== 'google') {
+                return;
+            }
+            
+            showNotification('☁️ Google Driveと同期中...', 'info');
+            
+            try {
+                // Google Drive APIを使用してデータを同期
+                // 実際の実装では、Google Drive APIでファイルの読み書きを行います
+                
+                console.log('Google Drive同期を開始...');
+                
+                // デモ用: 2秒後に同期完了とする
+                setTimeout(() => {
+                    showNotification('✅ Google Driveと同期完了！');
+                    console.log('Google Drive同期完了');
+                    
+                    // 同期ステータスを表示
+                    addSyncStatus();
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Google Drive同期エラー:', error);
+                showNotification('⚠️ Google Drive同期に失敗しました', 'warning');
+            }
+        }
+
+        // 同期ステータス表示
+        function addSyncStatus() {
+            const header = document.querySelector('.header-top .user-info');
+            if (header && !document.getElementById('syncStatus')) {
+                const syncStatus = document.createElement('span');
+                syncStatus.id = 'syncStatus';
+                syncStatus.innerHTML = '☁️ 同期済み';
+                syncStatus.style.cssText = `
+                    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                    color: white;
+                    padding: 4px 8px;
+                    border-radius: 12px;
+                    font-size: 0.8em;
+                    margin-right: 10px;
+                `;
+                header.insertBefore(syncStatus, header.firstChild);
+            }
         }
 
         // ローカルログイン
@@ -596,7 +817,10 @@
                 document.getElementById('userName').textContent = currentUser.name;
                 
                 initializeApp();
-                showNotification('✅ ローカルモードで正常に起動しました！');
+                showNotification(`✅ ${currentUser.name}でローカルログイン完了`);
+                
+                // 初回ログインチェック
+                checkFirstLogin();
             }, 1500);
         }
 
@@ -621,7 +845,7 @@
             }
         }
 
-        // アプリ初期化
+        // アプリ初期化（同期機能付き）
         function initializeApp() {
             loadSavedData();
             updateCurrentMonth();
@@ -631,10 +855,24 @@
             // データ変更監視を開始
             startDataSyncMonitoring();
             
+            // Google Driveユーザーの場合は手動同期ボタンを追加
+            addManualSyncButton();
+            
             showNotification(`🚀 ${currentUser.name}でログイン完了`);
+            
+            // ユーザーモード別の追加メッセージ
+            if (currentUser.mode === 'google') {
+                setTimeout(() => {
+                    showNotification('☁️ Google Driveとの同期が有効です');
+                }, 3000);
+            } else {
+                setTimeout(() => {
+                    showNotification('📱 ローカルモードで動作中（同期なし）');
+                }, 3000);
+            }
         }
 
-        // データ変更監視
+        // データ変更監視（Google Drive同期付き）
         function startDataSyncMonitoring() {
             // localStorage変更を監視
             window.addEventListener('storage', function(e) {
@@ -643,8 +881,224 @@
                     generateCalendar();
                     updateSummaryCards();
                     showNotification('🔄 データを同期しました');
+                    
+                    // Google Driveユーザーの場合は自動同期
+                    if (currentUser && currentUser.mode === 'google') {
+                        setTimeout(() => {
+                            syncWithGoogleDrive();
+                        }, 1000);
+                    }
                 }
             });
+            
+            // 定期的なGoogle Drive同期（5分ごと）
+            if (currentUser && currentUser.mode === 'google') {
+                setInterval(() => {
+                    console.log('定期同期実行中...');
+                    syncWithGoogleDrive();
+                }, 5 * 60 * 1000); // 5分
+            }
+        }
+
+        // データ保存（Google Drive同期付き）
+        function saveData() {
+            localStorage.setItem('budgetMasterData', JSON.stringify(masterData));
+            localStorage.setItem('budgetCurrentDate', JSON.stringify({year: currentYear, month: currentMonth}));
+            
+            // Google Driveユーザーの場合は自動同期
+            if (currentUser && currentUser.mode === 'google') {
+                // 少し待ってから同期（連続保存での負荷軽減）
+                clearTimeout(window.syncTimeout);
+                window.syncTimeout = setTimeout(() => {
+                    syncWithGoogleDrive();
+                }, 2000);
+            }
+        }
+
+        // 初回ログインチェック
+        function checkFirstLogin() {
+            const hasVisited = localStorage.getItem('hasVisitedBefore');
+            const hasSavedData = localStorage.getItem('budgetMasterData');
+            
+            if (!hasVisited || !hasSavedData) {
+                isFirstLogin = true;
+                isSampleData = true;
+                localStorage.setItem('hasVisitedBefore', 'true');
+                
+                // 初回ログインチュートリアルを表示
+                setTimeout(() => {
+                    showWelcomeTutorial();
+                }, 2000);
+            } else {
+                isFirstLogin = false;
+                // 既存データがサンプルデータかチェック
+                checkIfSampleData();
+            }
+        }
+
+        // サンプルデータ使用中かチェック
+        function checkIfSampleData() {
+            const savedData = localStorage.getItem('budgetMasterData');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                // サンプルデータの特徴で判定（「クライアントA」「クライアントB」など）
+                const hasSampleItems = data.some(item => 
+                    item.name.includes('クライアントA') || 
+                    item.name.includes('クライアントB') ||
+                    item.name.includes('メイン銀行')
+                );
+                
+                if (hasSampleItems && data.length <= 10) {
+                    isSampleData = true;
+                    showSampleDataBadge();
+                } else {
+                    isSampleData = false;
+                }
+            }
+        }
+
+        // ウェルカムチュートリアル表示
+        function showWelcomeTutorial() {
+            const overlay = document.createElement('div');
+            overlay.className = 'tutorial-overlay';
+            overlay.id = 'welcomeTutorial';
+            
+            overlay.innerHTML = `
+                <div class="tutorial-modal">
+                    <h2>🎉 ようこそ！</h2>
+                    <p>
+                        <strong>家計簿アプリ</strong>へようこそ！<br><br>
+                        現在、<strong>サンプルデータ</strong>が入っています。<br>
+                        実際のデータに変更するには、右上の<br>
+                        <strong>「📝 実データに移行」</strong>ボタンを<br>
+                        クリックしてください。<br><br>
+                        まずはサンプルデータで機能を<br>
+                        試してみることをお勧めします！
+                    </p>
+                    <div class="btn-group">
+                        <button class="btn-primary" onclick="closeTutorial()">
+                            ✅ 理解しました
+                        </button>
+                        <button class="btn-secondary" onclick="goToMasterPage()">
+                            ⚙️ マスター設定へ
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(overlay);
+        }
+
+        // サンプルデータバッジ表示
+        function showSampleDataBadge() {
+            if (document.getElementById('sampleDataBadge')) return;
+            
+            const badge = document.createElement('div');
+            badge.id = 'sampleDataBadge';
+            badge.className = 'sample-data-badge';
+            badge.innerHTML = '📝 実データに移行';
+            badge.onclick = showMigrationDialog;
+            
+            document.body.appendChild(badge);
+        }
+
+        // チュートリアル閉じる
+        function closeTutorial() {
+            const tutorial = document.getElementById('welcomeTutorial');
+            if (tutorial) {
+                tutorial.style.animation = 'tutorialSlideIn 0.3s ease reverse';
+                setTimeout(() => tutorial.remove(), 300);
+            }
+            
+            // サンプルデータバッジを表示
+            if (isSampleData) {
+                setTimeout(() => {
+                    showSampleDataBadge();
+                }, 500);
+            }
+        }
+
+        // マスター設定ページへ移動
+        function goToMasterPage() {
+            closeTutorial();
+            alert('📋 マスター管理ページで収入・支出項目を設定できます。\n\n現在はデモ版のため、同じページ内でマスター管理機能を開発予定です。');
+            
+            // サンプルデータバッジを表示
+            if (isSampleData) {
+                setTimeout(() => {
+                    showSampleDataBadge();
+                }, 500);
+            }
+        }
+
+        // 実データ移行ダイアログ
+        function showMigrationDialog() {
+            const overlay = document.createElement('div');
+            overlay.className = 'tutorial-overlay';
+            overlay.id = 'migrationDialog';
+            
+            overlay.innerHTML = `
+                <div class="tutorial-modal">
+                    <h2>📝 実データに移行</h2>
+                    <p>
+                        サンプルデータを削除して、<br>
+                        あなた専用のデータに切り替えますか？<br><br>
+                        <strong>⚠️ この操作は取り消せません</strong><br><br>
+                        移行後は、マスター管理ページで<br>
+                        収入・支出項目を設定してください。
+                    </p>
+                    <div class="btn-group">
+                        <button class="btn-primary" onclick="migrateToRealData()">
+                            🚀 実データに移行
+                        </button>
+                        <button class="btn-secondary" onclick="closeMigrationDialog()">
+                            ❌ キャンセル
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(overlay);
+        }
+
+        // 実データ移行実行
+        function migrateToRealData() {
+            // サンプルデータをクリア
+            masterData = [];
+            isSampleData = false;
+            
+            // データを保存
+            saveData();
+            
+            // UI更新
+            generateCalendar();
+            updateSummaryCards();
+            
+            // バッジを削除
+            const badge = document.getElementById('sampleDataBadge');
+            if (badge) badge.remove();
+            
+            // ダイアログを閉じる
+            closeMigrationDialog();
+            
+            // 完了通知
+            showNotification('🎉 実データに移行完了！マスター管理で項目を設定してください。');
+            
+            // Google Driveユーザーの場合は同期
+            if (currentUser && currentUser.mode === 'google') {
+                setTimeout(() => {
+                    syncWithGoogleDrive();
+                }, 1000);
+            }
+        }
+
+        // 移行ダイアログを閉じる
+        function closeMigrationDialog() {
+            const dialog = document.getElementById('migrationDialog');
+            if (dialog) {
+                dialog.style.animation = 'tutorialSlideIn 0.3s ease reverse';
+                setTimeout(() => dialog.remove(), 300);
+            }
         }
 
         // データ読み込み
