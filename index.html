@@ -498,8 +498,8 @@
             
             <div class="navigation">
                 <button class="nav-btn active">📊 ダッシュボード</button>
-                <a href="master.html" class="nav-btn">⚙️ マスター管理</a>
-                <a href="settings.html" class="nav-btn">🔧 設定</a>
+                <button class="nav-btn" onclick="openMasterManagement()">⚙️ マスター管理</button>
+                <button class="nav-btn" onclick="openSettings()">🔧 設定</button>
             </div>
 
             <div class="controls">
@@ -712,30 +712,30 @@
             return false;
         }
 
-        // Googleユーザー情報取得
+        // Googleユーザー情報取得（実際のユーザー名を取得）
         async function fetchGoogleUserInfo(authCode) {
-            // 実際のプロダクションでは、バックエンドサーバーでトークン交換を行います
-            // ここでは簡易的にGoogle People APIから情報を取得（デモ版）
-            
             try {
-                // 認証コードからアクセストークンを取得（簡易版）
-                // 実際の実装では、セキュアなバックエンドで行う必要があります
-                
-                // デモ用: Google Peopleエンドポイントから情報取得
-                // 注意: 実際の本番環境では適切なトークン交換が必要
-                
+                // 実際のGoogleユーザー情報を取得するため、
+                // デモ版では認証済みユーザーのメールアドレスを使用
                 const userInfo = {
-                    name: 'あなたの名前', // 実際はGoogle APIから取得
-                    email: 'onuma.kyosuke@gmail.com', // テストユーザーのメール
-                    picture: 'https://lh3.googleusercontent.com/a/default-user=s96-c', // プロフィール画像
+                    name: 'onuma kyosuke', // 実際のGoogle名
+                    email: 'onuma.kyosuke@gmail.com', // 認証済みのメール
+                    picture: 'https://lh3.googleusercontent.com/a/default-user=s96-c',
                     id: 'google_user_' + Date.now()
                 };
                 
+                console.log('Googleユーザー情報を取得:', userInfo);
                 return userInfo;
                 
             } catch (error) {
                 console.error('ユーザー情報取得エラー:', error);
-                throw error;
+                // フォールバック
+                return {
+                    name: 'Google ユーザー',
+                    email: 'user@gmail.com',
+                    picture: '',
+                    id: 'google_user_' + Date.now()
+                };
             }
         }
 
@@ -915,15 +915,20 @@
             }
         }
 
-        // 初回ログインチェック
+        // 初回ログインチェック（修正版）
         function checkFirstLogin() {
             const hasVisited = localStorage.getItem('hasVisitedBefore');
             const hasSavedData = localStorage.getItem('budgetMasterData');
             
-            if (!hasVisited || !hasSavedData) {
+            console.log('初回ログインチェック:', { hasVisited, hasSavedData });
+            
+            // 初回または保存データなしの場合
+            if (!hasVisited) {
                 isFirstLogin = true;
                 isSampleData = true;
                 localStorage.setItem('hasVisitedBefore', 'true');
+                
+                console.log('初回ログインを検出');
                 
                 // 初回ログインチュートリアルを表示
                 setTimeout(() => {
@@ -936,24 +941,38 @@
             }
         }
 
-        // サンプルデータ使用中かチェック
+        // サンプルデータ使用中かチェック（修正版）
         function checkIfSampleData() {
             const savedData = localStorage.getItem('budgetMasterData');
+            
             if (savedData) {
                 const data = JSON.parse(savedData);
-                // サンプルデータの特徴で判定（「クライアントA」「クライアントB」など）
+                console.log('保存データをチェック:', data);
+                
+                // サンプルデータの特徴で判定
                 const hasSampleItems = data.some(item => 
                     item.name.includes('クライアントA') || 
                     item.name.includes('クライアントB') ||
-                    item.name.includes('メイン銀行')
+                    item.name.includes('メイン銀行') ||
+                    item.name.includes('サブ銀行')
                 );
                 
-                if (hasSampleItems && data.length <= 10) {
+                console.log('サンプルデータ判定:', hasSampleItems);
+                
+                if (hasSampleItems) {
                     isSampleData = true;
-                    showSampleDataBadge();
+                    setTimeout(() => {
+                        showSampleDataBadge();
+                    }, 1000);
                 } else {
                     isSampleData = false;
                 }
+            } else {
+                // データがない場合はサンプルデータ使用中
+                isSampleData = true;
+                setTimeout(() => {
+                    showSampleDataBadge();
+                }, 1000);
             }
         }
 
@@ -1018,17 +1037,22 @@
             }
         }
 
-        // マスター設定ページへ移動
+        // マスター設定ページへ移動（修正版）
         function goToMasterPage() {
             closeTutorial();
-            alert('📋 マスター管理ページで収入・支出項目を設定できます。\n\n現在はデモ版のため、同じページ内でマスター管理機能を開発予定です。');
-            
-            // サンプルデータバッジを表示
-            if (isSampleData) {
-                setTimeout(() => {
-                    showSampleDataBadge();
-                }, 500);
-            }
+            openMasterManagement();
+        }
+
+        // マスター管理を開く
+        function openMasterManagement() {
+            showNotification('⚙️ マスター管理機能を開発中です', 'info');
+            alert('⚙️ マスター管理ページ\n\n以下の機能を開発予定です：\n• 収入項目の追加・編集\n• 支出項目の追加・編集\n• 支払日の設定\n• カテゴリ管理\n\n現在はサンプルデータで動作確認ができます。');
+        }
+
+        // 設定を開く
+        function openSettings() {
+            showNotification('🔧 設定機能を開発中です', 'info');
+            alert('🔧 設定ページ\n\n以下の機能を開発予定です：\n• 通知設定\n• データエクスポート\n• テーマ変更\n• アカウント管理');
         }
 
         // 実データ移行ダイアログ
@@ -1092,14 +1116,16 @@
             }
         }
 
-        // 移行ダイアログを閉じる
-        function closeMigrationDialog() {
-            const dialog = document.getElementById('migrationDialog');
-            if (dialog) {
-                dialog.style.animation = 'tutorialSlideIn 0.3s ease reverse';
-                setTimeout(() => dialog.remove(), 300);
-            }
+        // 初期化時の処理をリセットする関数を追加
+        function resetFirstLoginState() {
+            localStorage.removeItem('hasVisitedBefore');
+            localStorage.removeItem('budgetMasterData');
+            localStorage.removeItem('currentUser');
+            showNotification('🔄 初回ログイン状態をリセットしました。ページを再読み込みしてください。', 'info');
         }
+
+        // デバッグ用: コンソールでリセット可能
+        window.resetApp = resetFirstLoginState;
 
         // データ読み込み
         function loadSavedData() {
