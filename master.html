@@ -15,26 +15,6 @@
     <link rel="stylesheet" href="css/master.css">
 </head>
 <body>
-<!-- ログイン画面 -->
-<div id="loginScreen" class="login-screen">
-    <div class="login-card">
-        <h1>⚙️ マスター管理</h1>
-        <p>家計簿の収入・支出項目を<br>詳細に管理できます</p>
-
-        <button class="google-login-btn" onclick="tryGoogleLogin()">
-            🔐 Googleでログイン
-        </button>
-
-        <button class="local-login-btn" onclick="localLogin()">
-            📱 ローカルモードで開始
-        </button>
-
-        <div id="loginStatus" style="margin-top: 15px; font-size: 0.9em; color: #6c757d; text-align: center;">
-            ローカルモードは同期なしで即座に利用できます
-        </div>
-    </div>
-</div>
-
 <!-- メインアプリ -->
 <div id="appContainer" class="app-container">
     <div class="header">
@@ -42,14 +22,14 @@
             <h1>⚙️ マスター管理</h1>
             <div class="user-info">
                 <span id="userName">ユーザー</span>
-                <button class="logout-btn" onclick="logout()">ログアウト</button>
+                <button class="logout-btn" onclick="window.logout()">ログアウト</button>
             </div>
         </div>
 
         <div class="navigation">
-            <button class="back-btn" onclick="goToDashboard()">← ダッシュボードに戻る</button>
+            <button class="back-btn" onclick="window.goToDashboard()">← ダッシュボードに戻る</button>
             <button class="nav-btn active">⚙️ マスター管理</button>
-            <button class="nav-btn" onclick="openSettings()">🔧 設定</button>
+            <button class="nav-btn" onclick="window.openSettings()">🔧 設定</button>
         </div>
     </div>
 

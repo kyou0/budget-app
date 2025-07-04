@@ -1,13 +1,31 @@
-// js/master.js
-
-// グローバル変数（master.htmlで必要なもの）
+// グローバル変数
 let masterData = [];
-let editingItemId = null; // 編集中のアイテムIDを保持
+let editingItemId = null;
+let currentUser = null; // ログインユーザー情報を保持
 
 // ===================================================================================
-// 初期化処理
+// 初期化処理 & ログインチェック
 // ===================================================================================
 document.addEventListener('DOMContentLoaded', function() {
+  // ★★★ ログインチェック処理 ★★★
+  const savedUserJSON = localStorage.getItem('budgetAppUser');
+  if (!savedUserJSON) {
+    // ログインしていない場合は、ログインページに強制送還
+    alert('ログインが必要です。ログインページに戻ります。');
+    window.location.href = 'index.html';
+    return; // これ以降の処理を中断
+  }
+
+  // ログイン情報をグローバル変数にセット
+  currentUser = JSON.parse(savedUserJSON);
+
+  // ユーザー名を表示
+  const userNameEl = document.getElementById('userName');
+  if (userNameEl) {
+    userNameEl.textContent = currentUser.name;
+  }
+
+  // これまでの初期化処理
   loadData();
   renderMasterList();
 
@@ -19,6 +37,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 });
+
+// ===================================================================================
+// ページ遷移 & ログアウト
+// ===================================================================================
+window.logout = function() {
+  // Googleログインの場合の処理も考慮（main.jsから引用）
+  if (currentUser.mode === 'google' && typeof google !== 'undefined' && google.accounts) {
+    google.accounts.id.disableAutoSelect();
+  }
+  localStorage.removeItem('budgetAppUser');
+  // tutorialCompletedは消さない
+  window.location.href = 'index.html'; // ログアウト後は必ずindexへ
+}
+
+window.goToDashboard = function() {
+  window.location.href = 'index.html';
+}
+
+window.openSettings = function() {
+  window.location.href = 'settings.html';
+}
+
+// ...以降のデータ管理、UI描画関数は変更なし...
+
 
 // ===================================================================================
 // データ管理
