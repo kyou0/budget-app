@@ -203,14 +203,28 @@ function editItem(itemId) {
 }
 
 /**
- * 削除ボタンが押されたときの処理（プレースホルダー）
+ * 削除ボタンが押されたときの処理
  * @param {number} itemId 削除するアイテムのID
  */
 function deleteItem(itemId) {
-  // 今はアラートを出すだけ。後で実際の削除処理を実装します。
-  if (confirm(`ID: ${itemId} のアイテムを本当に削除しますか？`)) {
-    alert(`ID: ${itemId} のアイテムを削除します。`);
-    // TODO: データを削除し、saveData()とrenderMasterList()を呼び出す処理を実装
+  const itemToDelete = masterData.find(item => item.id === itemId);
+  if (!itemToDelete) {
+    console.error('削除対象のアイテムが見つかりません:', itemId);
+    showNotification('エラーが発生しました。', 'error');
+    return;
+  }
+
+  if (confirm(`「${itemToDelete.name}」を本当に削除しますか？この操作は元に戻せません。`)) {
+    // masterData配列から該当アイテムを除外して新しい配列を作成
+    masterData = masterData.filter(item => item.id !== itemId);
+
+    // 変更をlocalStorageに保存
+    saveData();
+
+    // リストを再描画
+    renderMasterList();
+
+    showNotification(`✅ 「${itemToDelete.name}」を削除しました。`);
   }
 }
 
@@ -221,25 +235,6 @@ function openModal(itemId = null) {
 
 function saveMasterItem() {
   // ... モーダルからデータを保存する処理 ...
-  saveData();
-  renderMasterList();
-}
-
-// ===================================================================================
-// 機能（モーダル、保存、削除など）
-// ===================================================================================
-function openModal(itemId = null) {
-  // ... モーダルを開く処理 ...
-}
-
-function saveMasterItem() {
-  // ... モーダルからデータを保存する処理 ...
-  saveData();
-  renderMasterList();
-}
-
-function deleteMasterItem(itemId) {
-  // ... 特定のアイテムを削除する処理 ...
   saveData();
   renderMasterList();
 }
