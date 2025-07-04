@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>💰 家計簿アプリ v2.0 - ダッシュボード</title>
-
     <!-- PWA対応 -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#667eea">
@@ -152,6 +151,9 @@
             .calendar-day { min-height: 80px; }
         }
     </style>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://unpkg.com/jwt-decode/build/jwt-decode.js"></script>
 </head>
 <body>
 <!-- ログイン画面 -->
@@ -233,6 +235,7 @@
   // ===================================================================================
   // グローバル変数
   // ===================================================================================
+  const GOOGLE_CLIENT_ID = '138150284146-07ul0ennhq22tm0ih3hngv8pnjsgo1u3.apps.googleusercontent.com';
   let masterData = [];
   let currentUser = null;
   let loginMode = 'local';
@@ -244,16 +247,34 @@
   // ===================================================================================
   document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 家計簿アプリ v2.0 起動');
+
+    // Googleログインの初期化
+    try {
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleLoginSuccess // ログイン成功時に呼ばれる関数
+      });
+    } catch (e) {
+      console.error("Google Sign-Inの初期化に失敗しました。ライブラリが読み込まれていないか、クライアントIDが不正です。", e);
+    }
+
     // ログイン状態を復元しようと試みる
-    const savedUser = localStorage.getItem('budgetAppUser');
-    if (savedUser && savedUser !== 'undefined') {
+    const savedUserJSON = localStorage.getItem('budgetAppUser');
+    if (savedUserJSON && savedUserJSON !== 'undefined' && savedUserJSON !== 'null') {
       try {
-        currentUser = JSON.parse(savedUser);
-        loginMode = currentUser.mode;
-        showApp();
+        const user = JSON.parse(savedUserJSON);
+        if (user && typeof user === 'object' && user.name && user.mode) {
+          currentUser = user;
+          loginMode = user.mode;
+          showApp();
+          return;
+        } else {
+          console.warn('保存されていたユーザーデータが不正な形式です。');
+          localStorage.removeItem('budgetAppUser');
+        }
       } catch (e) {
         console.error("ユーザーデータの解析に失敗しました:", e);
-        localStorage.removeItem('budgetAppUser'); // 不正なデータを削除
+        localStorage.removeItem('budgetAppUser');
       }
     }
   });
@@ -280,8 +301,37 @@
   // ===================================================================================
   // 認証 & ユーザー管理
   // ===================================================================================
+  /**
+   * Googleログインのプロンプトを表示する
+   */
   function tryGoogleLogin() {
-    showNotification('Googleログイン機能は現在開発中です。ローカルモードをご利用ください。', 'info');
+    try {
+      // Googleのログインプロンプトを表示
+      google.accounts.id.prompt();
+    } catch (e) {
+      console.error("Googleログインのプロンプト表示に失敗しました。", e);
+      showNotification('Googleログインの準備ができていません。ページをリロードしてみてください。', 'error');
+    }
+  }
+
+  /**
+   * Googleログイン成功時に呼び出されるコールバック関数
+   * @param {object} response - Googleからの認証情報
+   */
+  function handleGoogleLoginSuccess(response) {
+    console.log("Googleから認証情報を受け取りました:", response);
+    // jwt-decodeライブラリを使って、認証情報(JWT)からユーザー情報を抜き出す
+    const userObject = jwt_decode(response.credential);
+
+    currentUser = {
+      name: userObject.name,
+      email: userObject.email,
+      mode: 'google'
+    };
+    loginMode = 'google';
+
+    localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
+    showApp();
   }
 
   function localLogin() {
@@ -292,11 +342,14 @@
   }
 
   function logout() {
+    // Googleからもサインアウトする
+    if (loginMode === 'google' && typeof google !== 'undefined') {
+      google.accounts.id.disableAutoSelect();
+    }
     currentUser = null;
     localStorage.removeItem('budgetAppUser');
-    document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('appContainer').style.display = 'none';
-    showNotification('👋 ログアウトしました');
+    // 画面をリロードしてログイン画面に戻すのが一番確実
+    window.location.reload();
   }
 
   // ===================================================================================
@@ -516,5 +569,6 @@
     }, 4000);
   }
 </script>
+
 </body>
 </html>
