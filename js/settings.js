@@ -3,33 +3,28 @@
 // ===================================================================================
 let currentUser = null;
 let masterData = []; // このページでもデータを持つ
-let loginMode = 'local'; // ★★★ 修正ポイント1: loginModeを定義 ★★★
+let loginMode = 'local';
 
 // ===================================================================================
 // 初期化処理 & ログインチェック
 // ===================================================================================
-
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 設定ページ起動');
 
+  // ログイン状態を確認
   const savedUserJSON = localStorage.getItem('budgetAppUser');
-
-  // ▼▼▼ ここからが修正ポイント ▼▼▼
-  const appContainer = document.getElementById('appContainer');
-  const loginScreen = document.getElementById('loginScreen'); // loginScreenも取得
-
   if (!savedUserJSON) {
-    // ログインしていない場合は、ログイン画面を表示
-    if (loginScreen) loginScreen.style.display = 'flex';
-    if (appContainer) appContainer.style.display = 'none';
-    // ここで処理を中断
+    // ログインしていない場合は、ダッシュボード（ログイン画面）に強制送還
+    // これが最も安全で確実な方法です
+    window.location.href = 'index.html';
     return;
   }
 
-  // ログインしている場合の処理
-  if (loginScreen) loginScreen.style.display = 'none';
-  if (appContainer) appContainer.style.display = 'block';
-  // ▲▲▲ ここまで ▲▲▲
+  // ログイン済みの場合の処理
+  const appContainer = document.getElementById('appContainer');
+  if (appContainer) {
+    appContainer.style.display = 'block';
+  }
 
   currentUser = JSON.parse(savedUserJSON);
   loginMode = currentUser.mode;
@@ -43,27 +38,24 @@ document.addEventListener('DOMContentLoaded', function() {
 // データ管理
 // ===================================================================================
 function loadData() {
-  // master.js と全く同じロジックでデータを読み込む
-  if (loginMode === 'google') {
-    const sessionData = sessionStorage.getItem('budgetMasterData');
-    if (sessionData) {
-      try {
-        masterData = JSON.parse(sessionData);
-        console.log('📂 [Googleモード] セッションからデータを読み込みました。');
-      } catch (e) {
-        console.error("セッションデータの解析に失敗:", e);
-        masterData = [];
-      }
-    } else {
-      console.warn('セッションデータが見つかりません。');
-      // Drive同期はメインページで行うため、ここでは通知に留める
-      showNotification('最新のデータを取得できませんでした。ダッシュボードに戻って再同期してください。', 'warning');
+  // master.js と同じロジックでデータを読み込む
+  const dataKey = 'budgetMasterData';
+  const storage = loginMode === 'google' ? sessionStorage : localStorage;
+
+  const savedData = storage.getItem(dataKey);
+  if (savedData) {
+    try {
+      masterData = JSON.parse(savedData);
+      console.log(`📂 [${loginMode}モード] ストレージからデータを読み込みました。`);
+    } catch (e) {
+      console.error("データの解析に失敗:", e);
+      masterData = [];
     }
   } else {
-    // ローカルモード
-    const savedData = localStorage.getItem('budgetMasterData');
-    masterData = savedData ? JSON.parse(savedData) : [];
-    console.log('📂 [ローカルモード] ローカルデータを読み込みました。');
+    console.warn('ストレージにデータが見つかりません。');
+    if (loginMode === 'google') {
+      showNotification('最新のデータを取得できませんでした。ダッシュボードに戻って再同期してください。', 'warning');
+    }
   }
 }
 
@@ -73,14 +65,19 @@ function loadData() {
 function updateSyncStatus() {
   const statusBadge = document.getElementById('syncStatus');
   const syncButton = document.getElementById('manualSyncBtn');
+
+  if (!statusBadge || !syncButton) return;
+
   if (loginMode === 'google') {
     statusBadge.textContent = 'Google Drive';
     statusBadge.className = 'status-badge google';
     syncButton.disabled = false;
+    syncButton.style.display = 'block';
   } else {
     statusBadge.textContent = 'ローカルモード';
     statusBadge.className = 'status-badge local';
     syncButton.disabled = true;
+    syncButton.style.display = 'none'; // ローカルモードでは非表示
   }
 }
 
@@ -89,7 +86,7 @@ function updateSyncStatus() {
 // ===================================================================================
 
 /**
- * 手動でGoogle Driveと同期する
+ * 手動でデータを保存し、Google Driveと同期する
  */
 async function manualSync() {
   const loadingOverlay = document.getElementById('loadingOverlay');
@@ -97,11 +94,11 @@ async function manualSync() {
     loadingOverlay.classList.add('show');
     showNotification('☁️ Google Driveと手動で同期しています...', 'info');
 
-    // ★★★ 修正ポイント3: 賢い保存係に任せる ★★★
-    await saveData(); // これだけでローカル/Drive両対応
+    // 1. まず現在のデータをDriveに保存する (common.jsのsaveDataを呼び出す)
+    await saveData();
 
-    // 保存後、念のためDriveから最新データを再読み込み（他のデバイスでの変更を反映）
-    await forceSyncFromDrive(false); // 通知なしで同期
+    // 2. 保存後、念のためDriveから最新データを再読み込み（他のデバイスでの変更を反映）
+    await forceSyncFromDrive(false); // 成功通知は不要
 
     showNotification('✅ 同期が完了しました！');
 
@@ -137,9 +134,10 @@ async function forceSyncFromDrive(showSuccessNotification = true) {
 
     const dataText = await response.text();
     if (dataText) {
-      masterData = JSON.parse(dataText);
       // 読み込んだデータを短期記憶(sessionStorage)に保存
-      sessionStorage.setItem('budgetMasterData', JSON.stringify(masterData));
+      sessionStorage.setItem('budgetMasterData', dataText);
+      // このページのデータも更新
+      masterData = JSON.parse(dataText);
       if (showSuccessNotification) {
         showNotification('✅ Driveからデータを同期しました！');
       }
@@ -199,7 +197,7 @@ async function importData() {
         try {
           const importedData = JSON.parse(event.target.result);
 
-          // ▼▼▼ ここに「門番」となるバリデーション処理を追加 ▼▼▼
+          // ★★★ 安全性を高める「門番」チェック ★★★
           const isValidData = Array.isArray(importedData) && importedData.every(item =>
             typeof item.id !== 'undefined' &&
             typeof item.name !== 'undefined' &&
@@ -209,44 +207,6 @@ async function importData() {
 
           if (!isValidData) {
             throw new Error('無効なデータ形式です。このアプリのバックアップファイルではありません。');
-          }
-          // ▲▲▲ バリデーションここまで ▲▲▲
-
-          masterData = importedData;
-          await saveData(); // 賢い保存係に保存を任せる
-
-          showNotification('✅ データのインポートが完了しました。');
-
-        } catch (err) {
-          console.error('インポートエラー:', err);
-          showNotification(`インポートに失敗しました: ${err.message}`, 'error');
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
-
-  } catch (error) {
-    console.error('インポート処理の開始に失敗:', error);
-    showNotification('インポート処理を開始できませんでした。', 'error');
-  }
-}
-
-  try {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/json,.json';
-
-    input.onchange = e => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        try {
-          const importedData = JSON.parse(event.target.result);
-          if (!Array.isArray(importedData)) {
-            throw new Error('無効なファイル形式です。');
           }
 
           masterData = importedData;
@@ -275,7 +235,7 @@ async function importData() {
 async function resetAllData() {
   if (confirm('本当にすべてのデータをリセットしますか？この操作は元に戻せません。')) {
     masterData = [];
-    await saveData(); // 賢い保存係に任せる
+    await saveData(); // 変更を保存
     showNotification('🔄 全データをリセットしました。', 'error');
   }
 }
