@@ -185,12 +185,23 @@ function proceedToApp() {
 }
 
 window.logout = function() {
-  if (loginMode === 'google' && typeof google !== 'undefined' && google.accounts) {
-    google.accounts.id.disableAutoSelect();
+  if (currentUser && currentUser.mode === 'google') {
+    // Googleログインモードの場合、トークンを無効化する
+    const accessToken = sessionStorage.getItem('googleAccessToken');
+    if (accessToken) {
+      google.accounts.oauth2.revoke(accessToken, () => {
+        console.log('🔑 Googleアクセストークンを無効化しました。');
+      });
+    }
+    if (typeof google !== 'undefined' && google.accounts) {
+      google.accounts.id.disableAutoSelect();
+    }
   }
-  currentUser = null;
+  // ローカルとセッションの情報をクリア
   localStorage.removeItem('budgetAppUser');
-  window.location.reload();
+  sessionStorage.clear(); // sessionStorageもクリアする
+
+  window.location.href = 'index.html'; // ログインページにリダイレクト
 }
 
 
@@ -419,23 +430,21 @@ let driveFileId = null; // Drive上のデータファイルのIDを保持
 /**
  * Google Driveとの同期を開始する起点となる関数
  */
-
 async function syncWithDrive() {
-  if (!googleAccessToken) {
-    showNotification('Google Driveへのアクセス許可がありません。', 'error');
-    requestDriveAccess();
-    return;
-  }
-  showNotification('🔄 Google Driveと同期しています...', 'info');
-
+  const loadingOverlay = document.getElementById('loadingOverlay');
   try {
+    loadingOverlay.classList.add('show'); // ローダー表示
+
+    if (!googleAccessToken) {
+      showNotification('Google Driveへのアクセス許可が必要です。', 'error');
+      requestDriveAccess();
+      return;
+    }
+
     driveFileId = await findOrCreateDataFile();
     if (driveFileId) {
-      // ▼▼▼ 重要な情報を sessionStorage に保存する処理を追加 ▼▼▼
       sessionStorage.setItem('googleAccessToken', googleAccessToken);
       sessionStorage.setItem('driveFileId', driveFileId);
-      // ▲▲▲
-
       await loadDataFromDrive();
       showNotification('✅ Google Driveとの同期が完了しました。');
     }
@@ -443,9 +452,13 @@ async function syncWithDrive() {
     console.error('Google Driveとの同期中にエラーが発生しました:', error);
     showNotification('Google Driveとの同期に失敗しました。', 'error');
     loadDataFromLocalStorage();
+  } finally {
+    // 成功しても失敗しても、必ずローダーを非表示にする
+    loadingOverlay.classList.remove('show');
+    renderAll();
   }
-  renderAll();
 }
+
 
 /**
  * Drive上でデータファイルを探し、なければ作成する
@@ -506,9 +519,13 @@ async function loadDataFromDrive() {
       console.log('📂 Driveのファイルは空です。サンプルデータで初期化します。');
       masterData = getSampleData();
     }
+    // ▼▼▼ 読み込んだ最新データをsessionStorageにも保存してmaster.jsに引き継ぐ ▼▼▼
+    sessionStorage.setItem('budgetMasterData', JSON.stringify(masterData));
   } catch (e) {
     console.error('Driveデータの解析に失敗しました。', e);
-    masterData = getSampleData(); // 解析失敗時はサンプルデータ
+    masterData = getSampleData();
+    // エラー時もサンプルデータを引き継ぐ
+    sessionStorage.setItem('budgetMasterData', JSON.stringify(masterData));
   }
 }
 

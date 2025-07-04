@@ -30,22 +30,58 @@ document.addEventListener('DOMContentLoaded', function() {
 // ページ遷移 & ログアウト
 // ===================================================================================
 window.logout = function() {
-  if (currentUser.mode === 'google' && typeof google !== 'undefined' && google.accounts) {
-    google.accounts.id.disableAutoSelect();
+  if (currentUser && currentUser.mode === 'google') {
+    // Googleログインモードの場合、トークンを無効化する
+    const accessToken = sessionStorage.getItem('googleAccessToken');
+    if (accessToken) {
+      google.accounts.oauth2.revoke(accessToken, () => {
+        console.log('🔑 Googleアクセストークンを無効化しました。');
+      });
+    }
+    if (typeof google !== 'undefined' && google.accounts) {
+      google.accounts.id.disableAutoSelect();
+    }
   }
+  // ローカルとセッションの情報をクリア
   localStorage.removeItem('budgetAppUser');
-  window.location.href = 'index.html';
+  sessionStorage.clear(); // sessionStorageもクリアする
+
+  window.location.href = 'index.html'; // ログインページにリダイレクト
 }
-window.goToDashboard = function() { window.location.href = 'index.html'; }
-window.openSettings = function() { window.location.href = 'settings.html'; }
+
+// ===================================================================================
+// データ管理
+// ===================================================================================
+// js/master.js の loadData 関数を置き換え
 
 // ===================================================================================
 // データ管理
 // ===================================================================================
 function loadData() {
+  const user = JSON.parse(localStorage.getItem('budgetAppUser'));
+  if (user && user.mode === 'google') {
+    // Googleログインモードの場合、sessionStorageから最新データを読み込む
+    const sessionData = sessionStorage.getItem('budgetMasterData');
+    if (sessionData) {
+      masterData = JSON.parse(sessionData);
+      console.log('📂 [Googleモード] セッションからデータを読み込みました。');
+    } else {
+      // セッションにもない場合（直接master.htmlを開いたなど）、フォールバック
+      console.warn('セッションデータが見つかりません。ローカルデータでフォールバックします。');
+      loadDataFromLocalStorage();
+    }
+  } else {
+    // ローカルモードの場合
+    loadDataFromLocalStorage();
+  }
+}
+
+// ローカル専用の読み込み関数を切り出す
+function loadDataFromLocalStorage() {
   try {
     const savedMaster = localStorage.getItem('budgetMasterData');
     masterData = savedMaster ? JSON.parse(savedMaster) : getSampleData();
+    console.log('📂 [ローカルモード] ローカルデータを読み込みました。');
   } catch (e) {
     console.error("マスターデータの解析に失敗しました。", e);
     masterData = getSampleData();
@@ -291,6 +327,41 @@ async function resetAllData() {
   }
 }
 
-// TODO: loadSampleData, exportData 関数の実装
-function loadSampleData() { alert('サンプルデータ読込機能を実装します。'); }
-function exportData() { alert('データエクスポート機能を実装します。'); }
+/**
+ * サンプルデータを現在のデータに追加する
+ */
+async function loadSampleData() {
+  if (!confirm('現在のデータにサンプルデータを追加しますか？')) return;
+
+  const sample = getSampleData();
+  // IDの重複を避けるために、新しいIDを割り振る
+  const newSample = sample.map(item => ({ ...item, id: Date.now() + Math.random() }));
+
+  masterData.push(...newSample);
+
+  await saveData(masterData);
+  renderAll();
+  showNotification('✅ サンプルデータを追加しました。');
+}
+
+/**
+ * 現在のデータをJSONファイルとしてエクスポートする
+ */
+function exportData() {
+  if (masterData.length === 0) {
+    showNotification('エクスポートするデータがありません。', 'warning');
+    return;
+  }
+  const dataStr = JSON.stringify(masterData, null, 2);
+  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(dataBlob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'budget-data.json'; // ダウンロードファイル名
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  showNotification('✅ データのエクスポートを開始しました。');
+}
