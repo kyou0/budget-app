@@ -11,9 +11,12 @@ let currentMonth = new Date().getMonth() + 1;
 // ===================================================================================
 // 初期化処理
 // ===================================================================================
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('🚀 家計簿アプリ v2.0 起動');
 
+/**
+ * Googleの認証ライブラリが読み込み完了したときに呼び出される関数
+ */
+function onGoogleLibraryLoad() {
+  console.log('✅ Googleライブラリの読み込み完了');
   // Googleログインの初期化
   try {
     google.accounts.id.initialize({
@@ -23,8 +26,14 @@ document.addEventListener('DOMContentLoaded', function() {
   } catch (e) {
     console.error("Google Sign-Inの初期化に失敗しました。", e);
   }
+}
 
-  // ログイン状態を復元しようと試みる (よりシンプルなチェック)
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🚀 家計簿アプリ v2.0 起動');
+
+  // ▼▼▼ Googleの初期化処理は onGoogleLibraryLoad に移動したため、ここでは削除 ▼▼▼
+
+  // ログイン状態を復元しようと試みる
   const savedUserJSON = localStorage.getItem('budgetAppUser');
   if (savedUserJSON) {
     try {
@@ -50,32 +59,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 });
-
-function showApp() {
-  const loginScreenEl = document.getElementById('loginScreen');
-  const appContainerEl = document.getElementById('appContainer');
-  const userNameEl = document.getElementById('userName');
-
-  if (loginScreenEl) loginScreenEl.style.display = 'none';
-  if (appContainerEl) appContainerEl.style.display = 'block';
-  if (userNameEl && currentUser) userNameEl.textContent = currentUser.name;
-
-  initializeApp();
-}
-
-function initializeApp() {
-  loadData();
-  renderAll();
-  if (currentUser) {
-    showNotification(`✅ ${currentUser.name}としてログインしました`);
-  }
-}
-
-function renderAll() {
-  updateCurrentMonthDisplay();
-  generateCalendar();
-  updateSummaryCards();
-}
 
 // ===================================================================================
 // 認証 & ユーザー管理
