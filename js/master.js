@@ -1,6 +1,6 @@
 // グローバル変数
 let masterData = [];
-let editingItemId = null;
+let editingItemId = null; // 編集中のアイテムIDを保持。nullの場合は新規追加モード
 let currentUser = null; // ログインユーザー情報を保持
 
 // ===================================================================================
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
     userNameEl.textContent = currentUser.name;
   }
 
-  // これまでの初期化処理
+  // データとUIの初期化
   loadData();
   renderMasterList();
 
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // ページ遷移 & ログアウト
 // ===================================================================================
 window.logout = function() {
-  // Googleログインの場合の処理も考慮（main.jsから引用）
+  // Googleログインの場合の処理も考慮
   if (currentUser.mode === 'google' && typeof google !== 'undefined' && google.accounts) {
     google.accounts.id.disableAutoSelect();
   }
@@ -59,9 +59,6 @@ window.openSettings = function() {
   window.location.href = 'settings.html';
 }
 
-// ...以降のデータ管理、UI描画関数は変更なし...
-
-
 // ===================================================================================
 // データ管理
 // ===================================================================================
@@ -71,28 +68,13 @@ function loadData() {
     if (savedMaster) {
       masterData = JSON.parse(savedMaster);
     } else {
-      // 保存データがない場合は、main.jsで読み込まれたサンプルデータが引き継がれる想定
-      // もしmaster.htmlを直接開いた場合のためにサンプルデータを読み込む
+      // 保存データがない場合はサンプルデータを読み込む
       masterData = getSampleData();
     }
   } catch (e) {
     console.error("マスターデータの解析に失敗しました。", e);
     masterData = getSampleData();
   }
-}
-
-function saveData() {
-  localStorage.setItem('budgetMasterData', JSON.stringify(masterData));
-}
-
-// サンプルデータを返す関数（main.jsと同じもの）
-function getSampleData() {
-  return [
-    { id: 1, name: 'サンプル：給与', amount: 300000, type: 'income', paymentDay: 25, isActive: true },
-    { id: 2, name: 'サンプル：家賃', amount: -80000, type: 'fixed', paymentDay: 27, isActive: true },
-    { id: 3, name: 'サンプル：スマホ代', amount: -5000, type: 'fixed', paymentDay: 20, isActive: true },
-    { id: 4, name: 'サンプル：奨学金返済', amount: -15000, type: 'loan', paymentDay: 27, isActive: true, loanDetails: { currentBalance: 1500000, interestRate: 1.5 } }
-  ];
 }
 
 /**
@@ -111,14 +93,10 @@ function isSampleDataPresent() {
  */
 function clearSampleData() {
   if (confirm('本当によろしいですか？全てのサンプルデータが削除され、元に戻すことはできません。')) {
-    // localStorageからデータを削除
-    localStorage.removeItem('budgetMasterData');
-    // メモリ上のデータも空にする
     masterData = [];
-    // 画面を再描画して、リストが空になったことを表示
+    saveData(masterData); // 共通関数を使って保存
     renderMasterList();
 
-    // 削除ボタン自体も非表示にする
     const controls = document.getElementById('sample-data-controls');
     if (controls) {
       controls.style.display = 'none';
@@ -134,10 +112,10 @@ function clearSampleData() {
  * masterDataの内容を元に、アイテムリスト全体を再描画する
  */
 function renderMasterList() {
-  const listElement = document.getElementById('itemsGrid'); // master.htmlのIDと合わせる
+  const listElement = document.getElementById('itemsGrid');
   if (!listElement) return;
 
-  listElement.innerHTML = ''; // 既存のリストをクリア
+  listElement.innerHTML = '';
 
   if (masterData.length === 0) {
     listElement.innerHTML = `<div class="empty-list-message">データがありません。「＋ 新規追加」ボタンから収入や支出項目を登録してください。</div>`;
@@ -147,20 +125,16 @@ function renderMasterList() {
   masterData.forEach(item => {
     const itemCard = document.createElement('div');
     itemCard.className = 'item-card';
-    itemCard.dataset.itemId = item.id; // データ識別のためにIDをセット
+    itemCard.dataset.itemId = item.id;
 
-    // アイコンを決定
     const iconMap = {
       income: '💰', loan: '💸', card: '💳', fixed: '🏠',
       bank: '🏦', tax: '🏛️', variable: '🛒'
     };
     const icon = iconMap[item.type] || '📄';
-
-    // 金額のフォーマット
     const amountColor = item.amount > 0 ? 'income' : 'expense';
     const formattedAmount = `${item.amount.toLocaleString()}円`;
 
-    // カードのHTMLを生成
     itemCard.innerHTML = `
       <div class="item-card-header">
         <span class="item-icon">${icon}</span>
@@ -180,7 +154,7 @@ function renderMasterList() {
         </div>
       </div>
       <div class="item-card-actions">
-        <button class="btn-action edit" onclick="editItem(${item.id})">編集</button>
+        <button class="btn-action edit" onclick="showEditForm(${item.id})">編集</button>
         <button class="btn-action delete" onclick="deleteItem(${item.id})">削除</button>
       </div>
     `;
@@ -189,17 +163,93 @@ function renderMasterList() {
 }
 
 // ===================================================================================
-// 機能（モーダル、保存、削除など）
+// 機能（フォーム表示、保存、削除）
 // ===================================================================================
 
 /**
- * 編集ボタンが押されたときの処理（プレースホルダー）
+ * 「新規項目追加」ボタンでフォームを表示する
+ */
+function showAddForm() {
+  editingItemId = null; // 新規追加モードに設定
+  document.getElementById('itemForm').reset(); // フォームをリセット
+  document.getElementById('formTitle').textContent = '➕ 新規項目追加';
+  document.getElementById('addForm').style.display = 'block';
+  document.getElementById('addForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+/**
+ * 「編集」ボタンでフォームを表示し、既存のデータをセットする
  * @param {number} itemId 編集するアイテムのID
  */
-function editItem(itemId) {
-  // 今はアラートを出すだけ。後でフォーム表示処理を実装します。
-  alert(`ID: ${itemId} のアイテムを編集します。`);
-  // TODO: openModal(itemId) を呼び出すように変更する
+function showEditForm(itemId) {
+  const itemToEdit = masterData.find(item => item.id === itemId);
+  if (!itemToEdit) {
+    showNotification('編集対象のアイテムが見つかりません。', 'error');
+    return;
+  }
+
+  editingItemId = itemId; // 編集モードに設定
+
+  // フォームに既存の値をセット
+  document.getElementById('itemName').value = itemToEdit.name;
+  document.getElementById('itemType').value = itemToEdit.type;
+  document.getElementById('amount').value = itemToEdit.amount;
+  document.getElementById('paymentDay').value = itemToEdit.paymentDay || '';
+  document.getElementById('isActive').value = itemToEdit.isActive;
+  // TODO: 借入詳細などの追加フィールドも同様にセットする
+
+  // フォームを表示
+  document.getElementById('formTitle').textContent = '✏️ 項目の編集';
+  document.getElementById('addForm').style.display = 'block';
+  document.getElementById('addForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+/**
+ * フォームを非表示にする
+ */
+function hideAddForm() {
+  document.getElementById('addForm').style.display = 'none';
+  document.getElementById('itemForm').reset();
+  editingItemId = null; // モードをリセット
+}
+
+/**
+ * フォームの入力内容を元にアイテムを保存（新規・編集）する
+ */
+function saveItem() {
+  // フォームから値を取得
+  const name = document.getElementById('itemName').value.trim();
+  const type = document.getElementById('itemType').value;
+  const amount = parseInt(document.getElementById('amount').value, 10);
+  const paymentDay = parseInt(document.getElementById('paymentDay').value, 10) || null;
+  const isActive = document.getElementById('isActive').value === 'true';
+
+  // バリデーション
+  if (!name || !type || isNaN(amount)) {
+    showNotification('項目名、種別、金額は必須です。', 'error');
+    return;
+  }
+
+  if (editingItemId) {
+    // --- 編集モードの処理 ---
+    const itemIndex = masterData.findIndex(item => item.id === editingItemId);
+    if (itemIndex > -1) {
+      masterData[itemIndex] = { ...masterData[itemIndex], name, type, amount, paymentDay, isActive };
+      showNotification(`✅ 「${name}」を更新しました。`);
+    }
+  } else {
+    // --- 新規追加モードの処理 ---
+    const newItem = {
+      id: Date.now(), // ユニークなIDを生成
+      name, type, amount, paymentDay, isActive
+    };
+    masterData.push(newItem);
+    showNotification(`✅ 「${name}」を新しく追加しました。`);
+  }
+
+  saveData(masterData);
+  renderMasterList();
+  hideAddForm();
 }
 
 /**
@@ -210,48 +260,13 @@ function deleteItem(itemId) {
   const itemToDelete = masterData.find(item => item.id === itemId);
   if (!itemToDelete) {
     console.error('削除対象のアイテムが見つかりません:', itemId);
-    showNotification('エラーが発生しました。', 'error');
     return;
   }
 
   if (confirm(`「${itemToDelete.name}」を本当に削除しますか？この操作は元に戻せません。`)) {
-    // masterData配列から該当アイテムを除外して新しい配列を作成
     masterData = masterData.filter(item => item.id !== itemId);
-
-    // 変更をlocalStorageに保存
-    saveData();
-
-    // リストを再描画
+    saveData(masterData);
     renderMasterList();
-
     showNotification(`✅ 「${itemToDelete.name}」を削除しました。`);
   }
-}
-
-// openModal, saveMasterItem は既存のままでOK
-function openModal(itemId = null) {
-  // ... モーダルを開く処理 ...
-}
-
-function saveMasterItem() {
-  // ... モーダルからデータを保存する処理 ...
-  saveData();
-  renderMasterList();
-}
-
-
-// ===================================================================================
-// ヘルパー関数
-// ===================================================================================
-function showNotification(message, type = 'success') {
-  const existing = document.querySelector('.sync-notification');
-  if (existing) existing.remove();
-  const notification = document.createElement('div');
-  notification.className = `sync-notification ${type}`;
-  notification.textContent = message;
-  document.body.appendChild(notification);
-  setTimeout(() => {
-    notification.style.animation = 'slideIn 0.3s ease reverse';
-    setTimeout(() => notification.remove(), 300);
-  }, 4000);
 }

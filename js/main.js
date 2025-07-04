@@ -218,16 +218,6 @@ function loadData() {
   }
 }
 
-// サンプルデータを返す関数
-function getSampleData() {
-  return [
-    { id: 1, name: 'サンプル：給与', amount: 300000, type: 'income', paymentDay: 25, isActive: true },
-    { id: 2, name: 'サンプル：家賃', amount: -80000, type: 'fixed', paymentDay: 27, isActive: true },
-    { id: 3, name: 'サンプル：スマホ代', amount: -5000, type: 'fixed', paymentDay: 20, isActive: true },
-    { id: 4, name: 'サンプル：奨学金返済', amount: -15000, type: 'loan', paymentDay: 27, isActive: true, loanDetails: { currentBalance: 1500000, interestRate: 1.5 } }
-  ];
-}
-
 // ===================================================================================
 // UI描画 & 更新
 // ===================================================================================
@@ -423,20 +413,4 @@ window.goToMasterManagement = function() {
  */
 window.goToSettings = function() {
   window.location.href = 'settings.html';
-}
-
-// ===================================================================================
-// ヘルパー関数
-// ===================================================================================
-function showNotification(message, type = 'success') {
-  const existing = document.querySelector('.sync-notification');
-  if (existing) existing.remove();
-  const notification = document.createElement('div');
-  notification.className = `sync-notification ${type}`;
-  notification.textContent = message;
-  document.body.appendChild(notification);
-  setTimeout(() => {
-    notification.style.animation = 'slideIn 0.3s ease reverse';
-    setTimeout(() => notification.remove(), 300);
-  }, 4000);
 }
