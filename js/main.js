@@ -67,8 +67,10 @@ function renderAll() {
 // ===================================================================================
 // 認証 & ユーザー管理
 // ===================================================================================
+
 /**
  * Googleログインのプロンプトを表示する
+ * HTMLのonclickから呼び出される
  */
 function tryGoogleLogin() {
   try {
@@ -88,9 +90,14 @@ function handleGoogleLoginSuccess(response) {
   console.log('★★★ handleGoogleLoginSuccessが呼び出されました！ ★★★');
   console.log("Googleから認証情報を受け取りました:", response);
 
-  // ▼▼▼ v4.0.0のライブラリに合わせて、関数名を jwtDecode に修正します ▼▼▼
-  const userObject = jwtDecode(response.credential);
-  // ▲▲▲ これでライブラリのバージョンと名前が一致します ▲▲▲
+  // 外部ライブラリの代わりに自作関数を使う
+  const userObject = decodeJWT(response.credential);
+
+  // デコードに失敗した場合は処理を中断
+  if (!userObject) {
+    showNotification('ユーザー情報の解析に失敗しました。', 'error');
+    return;
+  }
 
   currentUser = {
     name: userObject.name,
@@ -103,6 +110,32 @@ function handleGoogleLoginSuccess(response) {
   showApp();
 }
 
+/**
+ * JWTをデコードする自作関数 (ライブラリ不要)
+ * @param {string} token - Googleから受け取ったJWT
+ * @returns {object | null} デコードされたユーザー情報、または失敗時にnull
+ */
+function decodeJWT(token) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    console.error("JWTのデコードに失敗しました:", e);
+    return null;
+  }
+}
+
+/**
+ * ローカルログイン
+ * HTMLのonclickから呼び出される
+ */
 function localLogin() {
   currentUser = { name: 'ローカルユーザー', mode: 'local' };
   loginMode = 'local';
@@ -110,6 +143,10 @@ function localLogin() {
   showApp();
 }
 
+/**
+ * ログアウト
+ * HTMLのonclickから呼び出される
+ */
 function logout() {
   // Googleからもサインアウトする
   if (loginMode === 'google' && typeof google !== 'undefined') {
@@ -120,7 +157,6 @@ function logout() {
   // 画面をリロードしてログイン画面に戻すのが一番確実
   window.location.reload();
 }
-
 // ===================================================================================
 // データ管理
 // ===================================================================================

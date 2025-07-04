@@ -8,17 +8,14 @@
     <!-- PWA対応 -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#667eea">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes"> <!-- 警告への対応 -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="家計簿アプリ">
 
     <!-- CSSの読み込み -->
     <link rel="stylesheet" href="css/style.css">
 
-    <!-- Google認証 & JWTデコード ライブラリの読み込み -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jwt-decode/4.0.0/jwt-decode.min.js"></script>
 </head>
 <body>
 <!-- ログイン画面 -->
@@ -31,8 +28,8 @@
     </div>
 </div>
 
-<!-- メインアプリ -->
-<div id="appContainer" class="app-container">
+<!-- メインアプリ (内容は変更なし) -->
+<div id="appContainer" class="app-container" style="display:none;">
     <div class="header">
         <div class="header-top">
             <h1>💰 ダッシュボード</h1>
@@ -56,7 +53,6 @@
         </div>
     </div>
 
-    <!-- サマリーカード -->
     <div class="summary-cards">
         <div class="summary-card">
             <h3>💰 今月収入予定</h3>
@@ -89,7 +85,6 @@
         </div>
     </div>
 
-    <!-- カレンダー -->
     <div class="calendar-container">
         <h2 class="calendar-header">📅 今月の支払いカレンダー</h2>
         <div class="calendar" id="calendar"></div>
