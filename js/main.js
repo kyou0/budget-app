@@ -19,6 +19,11 @@ let tokenClient;
 /**
  * Googleのライブラリが読み込み完了したときに呼び出される
  */
+// js/main.js の onGoogleLibraryLoad 関数を置き換え
+
+/**
+ * Googleのライブラリが読み込み完了したときに呼び出される
+ */
 window.onGoogleLibraryLoad = function() {
   console.log('✅ Googleライブラリの読み込み完了');
 
@@ -34,6 +39,9 @@ window.onGoogleLibraryLoad = function() {
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: 'https://www.googleapis.com/auth/drive.file',
+      // ▼▼▼ この一行が最終手段です ▼▼▼
+      prompt: 'consent', // これにより、毎回必ず同意画面が表示され、新しい許可証が発行される
+      // ▲▲▲
       callback: (tokenResponse) => {
         if (tokenResponse && tokenResponse.access_token) {
           googleAccessToken = tokenResponse.access_token;
