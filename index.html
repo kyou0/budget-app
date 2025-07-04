@@ -4,16 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>💰 家計簿アプリ v2.0 - ダッシュボード</title>
+
     <!-- PWA対応 -->
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="css/style.css">
     <meta name="theme-color" content="#667eea">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes"> <!-- 警告への対応 -->
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="家計簿アプリ">
 
+    <!-- CSSの読み込み -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Google認証 & JWTデコード ライブラリの読み込み -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://unpkg.com/jwt-decode/build/jwt-decode.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jwt-decode/3.1.2/jwt-decode.min.js"></script>
 </head>
 <body>
 <!-- ログイン画面 -->
