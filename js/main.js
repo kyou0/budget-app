@@ -34,7 +34,7 @@ window.onGoogleLibraryLoad = function() {
     // 2. Drive APIアクセス用のトークンクライアント
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/drive.file',
+      scope: 'https://www.googleapis.com/auth/drive.appdata',
       prompt: 'consent',
 
       // ▼▼▼ ここから診断コード入りのcallbackに置き換えます ▼▼▼
@@ -51,7 +51,7 @@ window.onGoogleLibraryLoad = function() {
 
             console.log('✅ トークンの鑑定結果:', tokenInfo);
 
-            if (tokenInfo.scope && tokenInfo.scope.includes('https://www.googleapis.com/auth/drive.file')) {
+            if (tokenInfo.scope && tokenInfo.scope.includes('https://www.googleapis.com/auth/drive.appdata')) {
               console.log('🟢 成功: トークンには正しいDriveスコープが含まれています。同期処理を続行します。');
               // 権限が正しいことを確認できたので、同期処理を開始
               syncWithDrive();
