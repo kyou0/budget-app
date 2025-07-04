@@ -103,7 +103,7 @@ body {
 }
 
 /* ===================================================================================
-   ヘッダー & ナビゲーション (★重要：全ページ共通の構造★)
+   ヘッダー & ナビゲーション
 =================================================================================== */
 .header {
     background: white;
@@ -112,7 +112,7 @@ body {
     margin-bottom: 20px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
     display: flex;
-    flex-direction: column; /* 縦に並べる */
+    flex-direction: column;
     gap: 20px;
 }
 
@@ -193,7 +193,7 @@ body {
 }
 
 /* ===================================================================================
-   ボタン類
+   ボタン類 (共通)
 =================================================================================== */
 .btn {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -340,6 +340,7 @@ body {
     display: grid;
     grid-template-columns: 300px 1fr;
     gap: 20px;
+    align-items: start;
 }
 
 .sidebar, .content-area {
@@ -349,7 +350,9 @@ body {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
-.sidebar { height: fit-content; }
+.sidebar {
+    height: fit-content;
+}
 
 .section-title {
     color: #2c3e50;
@@ -400,6 +403,34 @@ body {
 .form-group label { margin-bottom: 5px; font-weight: 600; color: #495057; }
 .form-group input, .form-group select { padding: 10px; border: 1px solid #ced4da; border-radius: 6px; font-size: 1em; }
 .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+/* 設定ページ専用 */
+.setting-card {
+    background: #fff;
+    padding: 25px;
+    border-radius: 12px;
+}
+.setting-card h3 {
+    margin-bottom: 10px;
+}
+.setting-card .note {
+    font-size: 0.9em;
+    color: #6c757d;
+    margin-top: 15px;
+}
+.status-badge {
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+.status-badge.google {
+    background-color: #d4edda;
+    color: #155724;
+}
+.status-badge.local {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
 
 /* ===================================================================================
    フローティング保存ボタン
@@ -452,21 +483,5 @@ body {
     }
     .calendar-day {
         min-height: 80px;
-    }
-}
-
-/* レイアウト崩れ防止のための追加設定 */
-.main-content {
-    display: grid;
-    /* サイドバーの最小幅を保証しつつ、コンテンツエリアは残りのスペースを全て使う */
-    grid-template-columns: minmax(250px, 300px) 1fr;
-    gap: 20px;
-    align-items: start; /* 上揃えにして高さのズレを防ぐ */
-}
-
-/* スマホ表示では1列にする（既存のメディアクエリを上書き・確認） */
-@media (max-width: 992px) {
-    .main-content {
-        grid-template-columns: 1fr;
     }
 }
