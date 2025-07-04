@@ -409,6 +409,8 @@ window.checkOverdueRisk = function() {
 const DRIVE_DATA_FILENAME = 'budgetMasterData.json';
 let driveFileId = null;
 
+// js/main.js の syncWithDrive 関数を置き換え
+
 async function syncWithDrive() {
   const loadingOverlay = document.getElementById('loadingOverlay');
   try {
@@ -420,6 +422,38 @@ async function syncWithDrive() {
       return;
     }
 
+    // ▼▼▼ ここからリトマス試験コード ▼▼▼
+    console.log('🔬 APIの生死確認テストを開始します...');
+    try {
+      const aboutResponse = await fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
+        headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+      });
+
+      if (!aboutResponse.ok) {
+        // ここで403エラーが出た場合、APIが無効であることが確定する
+        const errorBody = await aboutResponse.json();
+        console.error('🔴 API生死確認テスト失敗:', errorBody);
+        throw new Error('API is not enabled');
+      }
+
+      const aboutData = await aboutResponse.json();
+      console.log(`🟢 APIは生きています！ ユーザー: ${aboutData.user.displayName}`);
+
+    } catch (e) {
+      if (e.message === 'API is not enabled') {
+        console.error('🔴 やはりAPIが無効です！Google Cloud Consoleで「Google Drive API」を一度無効にしてから、再度有効にしてみてください。');
+        showNotification('致命的なエラー: Drive APIが無効です。', 'error');
+      } else {
+        console.error('🔴 API生死確認テスト中に予期せぬエラー:', e);
+        showNotification('APIの生死確認に失敗しました。', 'error');
+      }
+      // テストが失敗したので、ここで処理を中断
+      return;
+    }
+    // ▲▲▲ リトマス試験コードここまで ▲▲▲
+
+
+    // APIが生きていることが確認できたので、本来の処理を続ける
     driveFileId = await findOrCreateDataFile();
     if (driveFileId) {
       sessionStorage.setItem('googleAccessToken', googleAccessToken);
