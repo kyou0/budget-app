@@ -33,6 +33,23 @@
     <div class="header">
         <div class="header-top">
             <h1>💰 ダッシュボード</h1>
+            <div class="container">
+                <h1>⚙️ マスターデータ管理</h1>
+
+                <!-- ▼▼▼ このブロックを追加 ▼▼▼ -->
+                <div id="sample-data-controls" style="display: none;">
+                    <p class="tutorial-message">これはサンプルデータです。自由に編集・削除できます。<br>下のボタンから全てのサンプルデータを一括で削除し、あなたのデータを入力し始めることができます。</p>
+                    <button class="btn btn-danger" onclick="clearSampleData()">🗑️ 全てのサンプルデータを削除して開始</button>
+                </div>
+                <!-- ▲▲▲ ▲▲▲ -->
+
+                <div class="master-controls">
+                    <button class="btn" onclick="openModal()">＋ 新規追加</button>
+                </div>
+                <div id="masterList" class="master-list">
+                    <!-- データはここに表示されます -->
+                </div>
+            </div>
             <div class="user-info">
                 <span id="userName">ユーザー</span>
                 <button class="logout-btn" onclick="logout()">ログアウト</button>

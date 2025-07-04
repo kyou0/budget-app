@@ -176,13 +176,6 @@ window.localLogin = function() {
 function proceedToApp() {
   if (!localStorage.getItem('tutorialCompleted')) {
     console.log('🎉 初回ログインです。マスター管理画面に移動します。');
-
-    // ▼▼▼ この2行を追加します ▼▼▼
-    // 古いサンプルデータが残っている可能性があるので、マスターデータを完全にクリアする
-    localStorage.removeItem('budgetMasterData');
-    masterData = []; // メモリ上のデータもクリア
-    // ▲▲▲ ▲▲▲
-
     localStorage.setItem('tutorialCompleted', 'true');
     window.location.href = 'master.html';
   } else {
@@ -200,10 +193,7 @@ window.logout = function() {
   }
   currentUser = null;
   localStorage.removeItem('budgetAppUser');
-
-  // ▼▼▼ この行を削除、またはコメントアウトします ▼▼▼
-  // localStorage.removeItem('tutorialCompleted');
-  // ▲▲▲ ▲▲▲
+  // tutorialCompleted は削除しない
 
   window.location.reload();
 }
@@ -218,14 +208,24 @@ function loadData() {
       masterData = JSON.parse(savedMaster);
       console.log('📂 保存されたマスターデータを読み込みました。');
     } else {
-      masterData = [];
-      console.log('📂 保存されたデータがありません。空の状態で開始します。');
+      masterData = getSampleData();
+      console.log('📂 保存データがないため、サンプルデータを読み込みました。');
     }
   } catch (e) {
-    console.error("マスターデータの解析に失敗しました。空の状態で初期化します。", e);
+    console.error("マスターデータの解析に失敗しました。サンプルデータで初期化します。", e);
     localStorage.removeItem('budgetMasterData');
-    masterData = [];
+    masterData = getSampleData();
   }
+}
+
+// サンプルデータを返す関数
+function getSampleData() {
+  return [
+    { id: 1, name: 'サンプル：給与', amount: 300000, type: 'income', paymentDay: 25, isActive: true },
+    { id: 2, name: 'サンプル：家賃', amount: -80000, type: 'fixed', paymentDay: 27, isActive: true },
+    { id: 3, name: 'サンプル：スマホ代', amount: -5000, type: 'fixed', paymentDay: 20, isActive: true },
+    { id: 4, name: 'サンプル：奨学金返済', amount: -15000, type: 'loan', paymentDay: 27, isActive: true, loanDetails: { currentBalance: 1500000, interestRate: 1.5 } }
+  ];
 }
 
 // ===================================================================================
