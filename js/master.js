@@ -12,24 +12,22 @@ let editingItemId = null;
 // ===================================================================================
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 マスター管理ページ起動');
+  const appContainer = document.getElementById('appContainer');
 
-  // ログイン状態を確認
   const savedUserJSON = localStorage.getItem('budgetAppUser');
   if (!savedUserJSON) {
-    // ログインしていない場合は、ログインページに強制送還
     window.location.href = 'index.html';
     return;
   }
 
+  appContainer.style.display = 'block';
   currentUser = JSON.parse(savedUserJSON);
   loginMode = currentUser.mode;
   document.getElementById('userName').textContent = currentUser.name;
 
-  // データの読み込みと画面描画
   loadData();
   renderAll();
 
-  // フォームの種別が変更されたときに、フィールドの表示を更新するイベントリスナー
   document.getElementById('itemType')?.addEventListener('change', updateFormFields);
 });
 
@@ -37,9 +35,8 @@ document.addEventListener('DOMContentLoaded', function() {
 // データ管理
 // ===================================================================================
 function loadData() {
-  const dataKey = loginMode === 'google' ? 'budgetMasterData' : 'budgetMasterData';
+  const dataKey = 'budgetMasterData';
   const storage = loginMode === 'google' ? sessionStorage : localStorage;
-
   const savedData = storage.getItem(dataKey);
   if (savedData) {
     try {
@@ -67,66 +64,39 @@ function renderAll() {
 function renderMasterList() {
   const itemsGrid = document.getElementById('itemsGrid');
   itemsGrid.innerHTML = '';
-
-  const filteredData = currentCategory === 'all'
-    ? masterData
-    : masterData.filter(item => item.type === currentCategory);
+  const filteredData = currentCategory === 'all' ? masterData : masterData.filter(item => item.type === currentCategory);
 
   if (filteredData.length === 0) {
     itemsGrid.innerHTML = `<div class="empty-list-message">表示する項目がありません。</div>`;
     return;
   }
 
-  filteredData.forEach(item => {
+  filteredData.sort((a, b) => a.name.localeCompare(b.name, 'ja')).forEach(item => {
     const itemCard = document.createElement('div');
     itemCard.className = 'item-card';
     itemCard.dataset.id = item.id;
-
-    const icon = {
-      income: '💰', loan: '💸', card: '💳', fixed: '🏠',
-      bank: '🏦', tax: '🏛️', variable: '🛒'
-    }[item.type] || '📄';
-
-    const amountColor = item.amount > 0 ? 'income' : 'expense';
-    const amountText = `¥${Math.abs(item.amount).toLocaleString()}`;
+    const icon = { income: '💰', loan: '💸', card: '💳', fixed: '🏠', bank: '🏦', tax: '🏛️', variable: '🛒' }[item.type] || '📄';
+    const amountColor = item.amount >= 0 ? 'income' : 'expense';
+    const amountText = item.type === 'bank' ? '---' : `¥${Math.abs(item.amount).toLocaleString()}`;
     const statusClass = item.isActive ? 'active' : '';
     const statusText = item.isActive ? '✅ 有効' : '❌ 無効';
 
-    // 収入の場合、ひも付く銀行名を取得
     let bankInfo = '';
     if (item.type === 'income' && item.sourceBankId) {
       const bank = masterData.find(b => b.id === item.sourceBankId);
       if (bank) {
-        bankInfo = `
-                <div class="item-detail">
-                    <span class="item-label">振込先:</span>
-                    <span class="item-value">${bank.name}</span>
-                </div>`;
+        bankInfo = `<div class="item-detail"><span class="item-label">振込先:</span><span class="item-value">${bank.name}</span></div>`;
       }
     }
 
     itemCard.innerHTML = `
-            <div class="item-card-header">
-                <span class="item-icon">${icon}</span>
-                <h4 class="item-name">${item.name}</h4>
-                <span class="item-status ${statusClass}">${statusText}</span>
-            </div>
+            <div class="item-card-header"><span class="item-icon">${icon}</span><h4 class="item-name">${item.name}</h4><span class="item-status ${statusClass}">${statusText}</span></div>
             <div class="item-card-body">
-                <div class="item-detail">
-                    <span class="item-label">金額:</span>
-                    <span class="item-value ${amountColor}">${amountText}</span>
-                </div>
-                <div class="item-detail">
-                    <span class="item-label">支払/入金日:</span>
-                    <span class="item-value">${item.paymentDay ? item.paymentDay + '日' : '未設定'}</span>
-                </div>
+                <div class="item-detail"><span class="item-label">金額:</span><span class="item-value ${amountColor}">${amountText}</span></div>
+                <div class="item-detail"><span class="item-label">支払/入金日:</span><span class="item-value">${item.paymentDay ? item.paymentDay + '日' : '未設定'}</span></div>
                 ${bankInfo}
             </div>
-            <div class="item-card-actions">
-                <button class="btn-action edit" onclick="showEditForm(${item.id})">✏️ 編集</button>
-                <button class="btn-action delete" onclick="deleteItem(${item.id})">🗑️ 削除</button>
-            </div>
-        `;
+            <div class="item-card-actions"><button class="btn-action edit" onclick="showEditForm(${item.id})">✏️ 編集</button><button class="btn-action delete" onclick="deleteItem(${item.id})">🗑️ 削除</button></div>`;
     itemsGrid.appendChild(itemCard);
   });
 }

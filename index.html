@@ -3,95 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💰 家計簿アプリ v2.0 - ダッシュボード</title>
-
+    <title>📈 ダッシュボード - 家計簿アプリ v2.0</title>
+    <link rel="stylesheet" href="css/style.css">
     <!-- PWA対応 -->
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="img/favicon.png" type="image/png">
-    <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon">
     <meta name="theme-color" content="#667eea">
-    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="家計簿アプリ">
-
-    <!-- CSSの読み込み -->
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/common.css">
 </head>
 <body>
 <div class="loading-overlay" id="loadingOverlay">🔄 同期中...</div>
+
 <!-- ログイン画面 -->
-<div id="loginScreen" class="login-screen">
+<div class="login-screen" id="loginScreen">
     <div class="login-card">
-        <h1>💰 家計簿アプリ</h1>
-        <p>滞納防止・借金管理に特化した<br>あなた専用の家計簿システム</p>
-        <button class="google-login-btn" onclick="tryGoogleLogin()">🔐 Googleでログイン</button>
-        <button class="local-login-btn" onclick="localLogin()">📱 ローカルモードで開始</button>
+        <h1>家計簿アプリ v2.0</h1>
+        <p>Googleアカウントまたはローカルでデータを管理します。</p>
+        <button class="btn btn-primary" style="width: 100%; margin-bottom: 15px;" onclick="handleAuthClick()">
+            <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" style="width: 20px; vertical-align: middle; margin-right: 10px;">
+            Googleでログイン
+        </button>
+        <button class="btn btn-secondary" style="width: 100%;" onclick="localLogin()">
+            ローカルで続ける
+        </button>
     </div>
 </div>
 
-<div id="appContainer" class="app-container" style="display:none;">
+<!-- メインアプリ -->
+<div id="appContainer" class="app-container" style="display: none;">
+    <!-- 全ページ共通ヘッダー -->
     <div class="header">
         <div class="header-top">
-            <h1>📊 ダッシュボード</h1>
+            <h1>📈 ダッシュボード</h1>
             <div class="user-info">
                 <span id="userName">ユーザー</span>
                 <button class="logout-btn" onclick="window.logout()">ログアウト</button>
             </div>
         </div>
-
         <div class="navigation">
-            <button class="nav-btn active" onclick="window.goToDashboard()">💰 ダッシュボード</button>
+            <button class="nav-btn active" onclick="window.goToDashboard()">📈 ダッシュボード</button>
             <button class="nav-btn" onclick="window.goToMaster()">⚙️ マスター管理</button>
             <button class="nav-btn" onclick="window.goToSettings()">🔧 設定</button>
         </div>
     </div>
 
+    <div>
+        <div class="controls">
+            <div class="month-selector">
+                <button class="btn" onclick="changeMonth(-1)">＜ 前月</button>
+                <span id="currentMonth" class="current-month"></span>
+                <button class="btn" onclick="changeMonth(1)">次月 ＞</button>
+            </div>
         </div>
 
+        <div class="summary-cards" id="summaryCards">
+            <!-- サマリーカードがここに表示されます -->
+        </div>
 
-        <div class="navigation">
-            <button class="nav-btn" onclick="window.goToDashboard()">
-
-    <div class="summary-cards">
-        <div class="summary-card">
-            <h3>💰 今月収入予定</h3>
-            <div class="amount income" id="summaryIncome">¥0</div>
-        </div>
-        <div class="summary-card">
-            <h3>💸 今月支出予定</h3>
-            <div class="amount expense" id="summaryExpense">¥0</div>
-        </div>
-        <div class="summary-card">
-            <h3>⚖️ 月末予想残高</h3>
-            <div class="amount" id="summaryBalance">¥0</div>
-        </div>
-        <div class="summary-card">
-            <h3>🗓️ 今週の支払い</h3>
-            <div class="amount expense" id="summaryWeekly">¥0</div>
-        </div>
-        <div class="summary-card">
-            <h3>🏦 総借入残高</h3>
-            <div class="amount expense" id="summaryTotalDebt">¥0</div>
-        </div>
-        <div class="summary-card">
-            <h3>💳 月間返済額</h3>
-            <div class="amount" id="summaryMonthlyRepayment">¥0</div>
-        </div>
-        <div class="summary-card">
-            <h3>🏁 完済予定</h3>
-            <div class="amount" id="summaryCompletionDate">--</div>
-            <div class="sub-text" id="summaryCompletionSubtext"></div>
+        <div class="calendar-container">
+            <div class="calendar" id="calendar">
+                <!-- カレンダーがここに表示されます -->
+            </div>
         </div>
     </div>
 
-    <div class="calendar-container">
-        <h2 class="calendar-header">📅 今月の支払いカレンダー</h2>
-        <div class="calendar" id="calendar"></div>
-    </div>
 </div>
+
+<script src="https://apis.google.com/js/api.js"></script>
 <script src="js/common.js"></script>
-<script src="js/main.js"></script>
-<script src="https://accounts.google.com/gsi/client" async onload="onGoogleLibraryLoad()"></script>
+<script src="js/index.js"></script>
 </body>
 </html>
