@@ -8,49 +8,63 @@ let loginMode = 'local';
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
 
+// Google Drive連携用の変数を追加
+let googleAccessToken = null;
+let tokenClient;
+
 // ===================================================================================
 // 初期化処理
 // ===================================================================================
 
 /**
- * Googleの認証ライブラリが読み込み完了したときに呼び出される関数
- * HTMLのonloadから呼び出すため、windowオブジェクトに登録する
+ * Googleのライブラリが読み込み完了したときに呼び出される
  */
 window.onGoogleLibraryLoad = function() {
   console.log('✅ Googleライブラリの読み込み完了');
-  // Googleログインの初期化
+
+  // 認証クライアントを初期化
   try {
+    // 1. ログイン（ID取得）用のクライアント
     google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: handleGoogleLoginSuccess
     });
+
+    // 2. Drive APIアクセス用のトークンクライアント
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      callback: (tokenResponse) => {
+        if (tokenResponse && tokenResponse.access_token) {
+          googleAccessToken = tokenResponse.access_token;
+          console.log('🔑 Google Driveのアクセストークンを取得しました！');
+          // ▼▼▼ トークン取得後に同期処理を呼び出す ▼▼▼
+          syncWithDrive();
+        }
+      },
+    });
+
   } catch (e) {
-    console.error("Google Sign-Inの初期化に失敗しました。", e);
+    console.error("Googleライブラリの初期化に失敗しました。", e);
   }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 家計簿アプリ v2.0 起動');
 
-  // ログイン状態を復元しようと試みる
   const savedUserJSON = localStorage.getItem('budgetAppUser');
   if (savedUserJSON) {
     try {
       const user = JSON.parse(savedUserJSON);
-      if (user && typeof user === 'object' && user.name && user.mode) {
+      if (user && user.name && user.mode) {
         currentUser = user;
         loginMode = user.mode;
-        // チュートリアル完了済みならダッシュボードを表示
         if (localStorage.getItem('tutorialCompleted')) {
           showApp();
         } else {
-          // チュートリアルが完了していないのにリロードされた場合などはマスター画面へ
           window.location.href = 'master.html';
         }
         return;
-      } else {
-        console.warn('保存されていたユーザーデータが不正な形式です。');
-        localStorage.removeItem('budgetAppUser');
       }
     } catch (e) {
       console.error("ユーザーデータの解析に失敗しました:", e);
@@ -59,29 +73,30 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-// この関数は内部でのみ使用するため、windowには登録しない
 function showApp() {
-  const loginScreenEl = document.getElementById('loginScreen');
-  const appContainerEl = document.getElementById('appContainer');
-  const userNameEl = document.getElementById('userName');
-
-  if (loginScreenEl) loginScreenEl.style.display = 'none';
-  if (appContainerEl) appContainerEl.style.display = 'block';
-  if (userNameEl && currentUser) userNameEl.textContent = currentUser.name;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appContainer').style.display = 'block';
+  document.getElementById('userName').textContent = currentUser.name;
 
   initializeApp();
 }
 
-// この関数も内部でのみ使用
-function initializeApp() {
-  loadData();
+// ▼▼▼ 非同期処理に対応するため async を追加 ▼▼▼
+async function initializeApp() {
+  // Googleログインの場合は、Driveへのアクセス許可も確認する
+  if (loginMode === 'google' && !googleAccessToken) {
+    requestDriveAccess();
+  }
+
+  // ▼▼▼ loadDataを非同期呼び出しに変更 ▼▼▼
+  await loadData();
+
   renderAll();
   if (currentUser) {
     showNotification(`✅ ${currentUser.name}としてログインしました`);
   }
 }
 
-// この関数も内部でのみ使用
 function renderAll() {
   updateCurrentMonthDisplay();
   generateCalendar();
@@ -93,13 +108,8 @@ function renderAll() {
 // 認証 & ユーザー管理
 // ===================================================================================
 
-/**
- * Googleログインのプロンプトを表示する
- * HTMLのonclickから呼び出すため、windowオブジェクトに登録する
- */
 window.tryGoogleLogin = function() {
   try {
-    // googleオブジェクトが未定義の場合に備える
     if (typeof google === 'undefined' || !google.accounts) {
       showNotification('Googleログインの準備ができていません。少し待ってからもう一度お試しください。', 'error');
       return;
@@ -111,17 +121,9 @@ window.tryGoogleLogin = function() {
   }
 }
 
-/**
- * Googleログイン成功時に呼び出されるコールバック関数
- * この関数はgoogle.accounts.id.initializeのコールバックとして直接渡されるため、
- * windowに登録する必要はない。
- */
 function handleGoogleLoginSuccess(response) {
-  console.log('★★★ handleGoogleLoginSuccessが呼び出されました！ ★★★');
   console.log("Googleから認証情報を受け取りました:", response);
-
   const userObject = decodeJWT(response.credential);
-
   if (!userObject) {
     showNotification('ユーザー情報の解析に失敗しました。', 'error');
     return;
@@ -133,25 +135,31 @@ function handleGoogleLoginSuccess(response) {
     mode: 'google'
   };
   loginMode = 'google';
-
   localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
+
   proceedToApp();
 }
 
 /**
- * JWTをデコードする自作関数 (ライブラリ不要)
+ * Google Drive APIへのアクセス許可をリクエストする
  */
+function requestDriveAccess() {
+  if (googleAccessToken) {
+    console.log('すでにアクセストークンを持っています。');
+    return;
+  }
+  // トークンがない場合、ユーザーに許可を求めるプロンプトを表示
+  if (tokenClient) {
+    tokenClient.requestAccessToken();
+  }
+}
+
 function decodeJWT(token) {
   try {
     const base64Url = token.split('.')[1];
     if (!base64Url) return null;
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
     return JSON.parse(jsonPayload);
   } catch (e) {
     console.error("JWTのデコードに失敗しました:", e);
@@ -159,10 +167,6 @@ function decodeJWT(token) {
   }
 }
 
-/**
- * ローカルログイン
- * HTMLのonclickから呼び出すため、windowオブジェクトに登録する
- */
 window.localLogin = function() {
   currentUser = { name: 'ローカルユーザー', mode: 'local' };
   loginMode = 'local';
@@ -170,9 +174,6 @@ window.localLogin = function() {
   proceedToApp();
 }
 
-/**
- * ログイン後の共通処理（初回判定と画面遷移）
- */
 function proceedToApp() {
   if (!localStorage.getItem('tutorialCompleted')) {
     console.log('🎉 初回ログインです。マスター管理画面に移動します。');
@@ -183,40 +184,34 @@ function proceedToApp() {
   }
 }
 
-/**
- * ログアウト
- * HTMLのonclickから呼び出すため、windowオブジェクトに登録する
- */
 window.logout = function() {
   if (loginMode === 'google' && typeof google !== 'undefined' && google.accounts) {
     google.accounts.id.disableAutoSelect();
   }
   currentUser = null;
   localStorage.removeItem('budgetAppUser');
-  // tutorialCompleted は削除しない
-
   window.location.reload();
 }
+
 
 // ===================================================================================
 // データ管理
 // ===================================================================================
-function loadData() {
-  try {
-    const savedMaster = localStorage.getItem('budgetMasterData');
-    if (savedMaster) {
-      masterData = JSON.parse(savedMaster);
-      console.log('📂 保存されたマスターデータを読み込みました。');
-    } else {
-      masterData = getSampleData();
-      console.log('📂 保存データがないため、サンプルデータを読み込みました。');
+// ▼▼▼ loadDataを非同期処理に変更 ▼▼▼
+async function loadData() {
+  if (loginMode === 'google') {
+    // Googleログインの場合、同期処理を待つ
+    // syncWithDriveはトークン取得後に自動で呼ばれるので、ここでは何もしないか、
+    // 既にデータがある場合はそれを表示するなどの工夫も可能
+    if (masterData.length === 0) {
+      console.log("Driveからのデータロードを待っています...");
     }
-  } catch (e) {
-    console.error("マスターデータの解析に失敗しました。サンプルデータで初期化します。", e);
-    localStorage.removeItem('budgetMasterData');
-    masterData = getSampleData();
+  } else {
+    // ローカルモードの場合は、localStorageから読み込む
+    loadDataFromLocalStorage();
   }
 }
+
 
 // ===================================================================================
 // UI描画 & 更新
@@ -413,4 +408,125 @@ window.goToMasterManagement = function() {
  */
 window.goToSettings = function() {
   window.location.href = 'settings.html';
+}
+
+// ===================================================================================
+// Google Drive API 連携
+// ===================================================================================
+const DRIVE_DATA_FILENAME = 'budgetMasterData.json';
+let driveFileId = null; // Drive上のデータファイルのIDを保持
+
+/**
+ * Google Driveとの同期を開始する起点となる関数
+ */
+
+async function syncWithDrive() {
+  if (!googleAccessToken) {
+    showNotification('Google Driveへのアクセス許可がありません。', 'error');
+    requestDriveAccess();
+    return;
+  }
+  showNotification('🔄 Google Driveと同期しています...', 'info');
+
+  try {
+    driveFileId = await findOrCreateDataFile();
+    if (driveFileId) {
+      // ▼▼▼ 重要な情報を sessionStorage に保存する処理を追加 ▼▼▼
+      sessionStorage.setItem('googleAccessToken', googleAccessToken);
+      sessionStorage.setItem('driveFileId', driveFileId);
+      // ▲▲▲
+
+      await loadDataFromDrive();
+      showNotification('✅ Google Driveとの同期が完了しました。');
+    }
+  } catch (error) {
+    console.error('Google Driveとの同期中にエラーが発生しました:', error);
+    showNotification('Google Driveとの同期に失敗しました。', 'error');
+    loadDataFromLocalStorage();
+  }
+  renderAll();
+}
+
+/**
+ * Drive上でデータファイルを探し、なければ作成する
+ * @returns {Promise<string|null>} データファイルのID
+ */
+async function findOrCreateDataFile() {
+  // 1. ファイルを検索
+  const response = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_DATA_FILENAME}' and 'appDataFolder' in parents&spaces=appDataFolder&fields=files(id,name)`, {
+    headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+  });
+  if (!response.ok) throw new Error('ファイル検索に失敗しました: ' + response.statusText);
+
+  const data = await response.json();
+  if (data.files.length > 0) {
+    console.log(`📄 データファイルが見つかりました。ID: ${data.files[0].id}`);
+    return data.files[0].id;
+  }
+
+  // 2. ファイルが見つからなければ、空のファイルを作成
+  console.log('データファイルが見つからないため、新規作成します。');
+  const metadata = {
+    name: DRIVE_DATA_FILENAME,
+    parents: ['appDataFolder']
+  };
+  const createResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${googleAccessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(metadata)
+  });
+  if (!createResponse.ok) throw new Error('ファイルの作成に失敗しました: ' + createResponse.statusText);
+
+  const newFile = await createResponse.json();
+  console.log(`📄 新しいデータファイルを作成しました。ID: ${newFile.id}`);
+  return newFile.id;
+}
+
+/**
+ * Driveからデータを読み込み、masterDataを更新する
+ */
+async function loadDataFromDrive() {
+  if (!driveFileId) return;
+
+  const response = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
+    headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+  });
+  if (!response.ok) throw new Error('ファイルの読み込みに失敗しました: ' + response.statusText);
+
+  try {
+    const dataText = await response.text();
+    if (dataText) {
+      masterData = JSON.parse(dataText);
+      console.log('📂 Google Driveからデータを読み込みました。');
+    } else {
+      // Drive上にはファイルがあるが中身が空の場合（初回作成時など）
+      console.log('📂 Driveのファイルは空です。サンプルデータで初期化します。');
+      masterData = getSampleData();
+    }
+  } catch (e) {
+    console.error('Driveデータの解析に失敗しました。', e);
+    masterData = getSampleData(); // 解析失敗時はサンプルデータ
+  }
+}
+
+/**
+ * ローカルストレージからデータを読み込む（フォールバック用）
+ */
+function loadDataFromLocalStorage() {
+  try {
+    const savedMaster = localStorage.getItem('budgetMasterData');
+    if (savedMaster) {
+      masterData = JSON.parse(savedMaster);
+      console.log('📂 [フォールバック] ローカルデータを読み込みました。');
+    } else {
+      masterData = getSampleData();
+      console.log('📂 [フォールバック] サンプルデータを読み込みました。');
+    }
+  } catch (e) {
+    console.error("ローカルデータの解析に失敗しました。", e);
+    masterData = getSampleData();
+  }
 }

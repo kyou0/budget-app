@@ -206,7 +206,7 @@ function hideAddForm() {
   editingItemId = null;
 }
 
-function saveItem() {
+async function saveItem() {
   // 基本情報の取得
   const name = document.getElementById('itemName').value.trim();
   const type = document.getElementById('itemType').value;
@@ -242,17 +242,17 @@ function saveItem() {
     showNotification(`✅ 「${name}」を新しく追加しました。`);
   }
 
-  saveData(masterData);
+  await saveData(masterData);
   renderAll();
   hideAddForm();
 }
 
-function deleteItem(itemId) {
+async function deleteItem(itemId) {
   const itemToDelete = masterData.find(item => item.id === itemId);
   if (!itemToDelete) return;
   if (confirm(`「${itemToDelete.name}」を本当に削除しますか？`)) {
     masterData = masterData.filter(item => item.id !== itemId);
-    saveData(masterData);
+    await saveData(masterData);
     renderAll();
     showNotification(`✅ 「${itemToDelete.name}」を削除しました。`);
   }
@@ -277,10 +277,10 @@ function showCategory(category, element) {
 /**
  * 全てのデータをリセットする関数
  */
-function resetAllData() {
+async function resetAllData() {
   if (confirm('本当によろしいですか？全てのデータが削除され、元に戻すことはできません。')) {
     masterData = [];
-    saveData(masterData);
+    await saveData(masterData);
 
     // sample-data-controls はもう存在しないため、この行は不要
     // const controls = document.getElementById('sample-data-controls');
