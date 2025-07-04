@@ -19,11 +19,7 @@ let tokenClient;
 /**
  * Googleのライブラリが読み込み完了したときに呼び出される
  */
-// js/main.js の onGoogleLibraryLoad 関数を置き換え
 
-/**
- * Googleのライブラリが読み込み完了したときに呼び出される
- */
 window.onGoogleLibraryLoad = function() {
   console.log('✅ Googleライブラリの読み込み完了');
 
@@ -39,16 +35,47 @@ window.onGoogleLibraryLoad = function() {
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: 'https://www.googleapis.com/auth/drive.file',
-      // ▼▼▼ この一行が最終手段です ▼▼▼
-      prompt: 'consent', // これにより、毎回必ず同意画面が表示され、新しい許可証が発行される
-      // ▲▲▲
-      callback: (tokenResponse) => {
+      prompt: 'consent',
+
+      // ▼▼▼ ここから診断コード入りのcallbackに置き換えます ▼▼▼
+      callback: async (tokenResponse) => { // async を追加
         if (tokenResponse && tokenResponse.access_token) {
           googleAccessToken = tokenResponse.access_token;
           console.log('🔑 Google Driveのアクセストークンを取得しました！');
-          syncWithDrive();
+
+          // --- ここから診断コード ---
+          console.log('🕵️‍♀️ 受け取ったアクセストークンを検証します...');
+          try {
+            const validationResponse = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${googleAccessToken}`);
+            const tokenInfo = await validationResponse.json();
+
+            console.log('✅ トークンの鑑定結果:', tokenInfo);
+
+            if (tokenInfo.scope && tokenInfo.scope.includes('https://www.googleapis.com/auth/drive.file')) {
+              console.log('🟢 成功: トークンには正しいDriveスコープが含まれています。同期処理を続行します。');
+              // 権限が正しいことを確認できたので、同期処理を開始
+              syncWithDrive();
+            } else {
+              console.error('🔴 致命的なエラー: トークンにDriveの権限が含まれていません！');
+              console.error('🔴 原因: OAuth同意画面の「スコープ」設定が、何らかの理由で反映されていません。');
+              showNotification('認証エラー: Driveの権限がありません。設定を確認してください。', 'error');
+              // ローダーが表示されている可能性があるので隠す
+              document.getElementById('loadingOverlay')?.classList.remove('show');
+            }
+          } catch (e) {
+            console.error('トークンの検証中にエラーが発生しました:', e);
+            showNotification('認証トークンの検証に失敗しました。', 'error');
+            document.getElementById('loadingOverlay')?.classList.remove('show');
+          }
+          // --- 診断コードここまで ---
+
+        } else {
+          // トークンが取得できなかった場合
+          console.error('アクセストークンの取得に失敗しました。', tokenResponse);
+          showNotification('Google Driveへのアクセス許可が得られませんでした。', 'error');
         }
       },
+      // ▲▲▲ ここまで ▲▲▲
     });
 
   } catch (e) {
