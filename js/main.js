@@ -19,7 +19,6 @@ let tokenClient;
 /**
  * Googleのライブラリが読み込み完了したときに呼び出される
  */
-
 window.onGoogleLibraryLoad = function() {
   console.log('✅ Googleライブラリの読み込み完了');
 
@@ -35,47 +34,18 @@ window.onGoogleLibraryLoad = function() {
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: 'https://www.googleapis.com/auth/drive.appdata',
-      prompt: 'consent',
-
-      // ▼▼▼ ここから診断コード入りのcallbackに置き換えます ▼▼▼
-      callback: async (tokenResponse) => { // async を追加
+      prompt: 'consent', // 初回同意を促しやすくするため、残しておくと親切です
+      callback: (tokenResponse) => {
         if (tokenResponse && tokenResponse.access_token) {
           googleAccessToken = tokenResponse.access_token;
           console.log('🔑 Google Driveのアクセストークンを取得しました！');
-
-          // --- ここから診断コード ---
-          console.log('🕵️‍♀️ 受け取ったアクセストークンを検証します...');
-          try {
-            const validationResponse = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${googleAccessToken}`);
-            const tokenInfo = await validationResponse.json();
-
-            console.log('✅ トークンの鑑定結果:', tokenInfo);
-
-            if (tokenInfo.scope && tokenInfo.scope.includes('https://www.googleapis.com/auth/drive.appdata')) {
-              console.log('🟢 成功: トークンには正しいDriveスコープが含まれています。同期処理を続行します。');
-              // 権限が正しいことを確認できたので、同期処理を開始
-              syncWithDrive();
-            } else {
-              console.error('🔴 致命的なエラー: トークンにDriveの権限が含まれていません！');
-              console.error('🔴 原因: OAuth同意画面の「スコープ」設定が、何らかの理由で反映されていません。');
-              showNotification('認証エラー: Driveの権限がありません。設定を確認してください。', 'error');
-              // ローダーが表示されている可能性があるので隠す
-              document.getElementById('loadingOverlay')?.classList.remove('show');
-            }
-          } catch (e) {
-            console.error('トークンの検証中にエラーが発生しました:', e);
-            showNotification('認証トークンの検証に失敗しました。', 'error');
-            document.getElementById('loadingOverlay')?.classList.remove('show');
-          }
-          // --- 診断コードここまで ---
-
+          // トークン取得後、同期処理を開始
+          syncWithDrive();
         } else {
-          // トークンが取得できなかった場合
           console.error('アクセストークンの取得に失敗しました。', tokenResponse);
           showNotification('Google Driveへのアクセス許可が得られませんでした。', 'error');
         }
       },
-      // ▲▲▲ ここまで ▲▲▲
     });
 
   } catch (e) {
@@ -409,8 +379,6 @@ window.checkOverdueRisk = function() {
 const DRIVE_DATA_FILENAME = 'budgetMasterData.json';
 let driveFileId = null;
 
-// js/main.js の syncWithDrive 関数を置き換え
-
 async function syncWithDrive() {
   const loadingOverlay = document.getElementById('loadingOverlay');
   try {
@@ -421,37 +389,6 @@ async function syncWithDrive() {
       requestDriveAccess();
       return;
     }
-
-    // ▼▼▼ ここからリトマス試験コード ▼▼▼
-    console.log('🔬 APIの生死確認テストを開始します...');
-    try {
-      const aboutResponse = await fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
-        headers: { 'Authorization': `Bearer ${googleAccessToken}` }
-      });
-
-      if (!aboutResponse.ok) {
-        // ここで403エラーが出た場合、APIが無効であることが確定する
-        const errorBody = await aboutResponse.json();
-        console.error('🔴 API生死確認テスト失敗:', errorBody);
-        throw new Error('API is not enabled');
-      }
-
-      const aboutData = await aboutResponse.json();
-      console.log(`🟢 APIは生きています！ ユーザー: ${aboutData.user.displayName}`);
-
-    } catch (e) {
-      if (e.message === 'API is not enabled') {
-        console.error('🔴 やはりAPIが無効です！Google Cloud Consoleで「Google Drive API」を一度無効にしてから、再度有効にしてみてください。');
-        showNotification('致命的なエラー: Drive APIが無効です。', 'error');
-      } else {
-        console.error('🔴 API生死確認テスト中に予期せぬエラー:', e);
-        showNotification('APIの生死確認に失敗しました。', 'error');
-      }
-      // テストが失敗したので、ここで処理を中断
-      return;
-    }
-    // ▲▲▲ リトマス試験コードここまで ▲▲▲
-
 
     // APIが生きていることが確認できたので、本来の処理を続ける
     driveFileId = await findOrCreateDataFile();
