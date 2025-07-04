@@ -454,3 +454,19 @@ body {
         min-height: 80px;
     }
 }
+
+/* レイアウト崩れ防止のための追加設定 */
+.main-content {
+    display: grid;
+    /* サイドバーの最小幅を保証しつつ、コンテンツエリアは残りのスペースを全て使う */
+    grid-template-columns: minmax(250px, 300px) 1fr;
+    gap: 20px;
+    align-items: start; /* 上揃えにして高さのズレを防ぐ */
+}
+
+/* スマホ表示では1列にする（既存のメディアクエリを上書き・確認） */
+@media (max-width: 992px) {
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+}

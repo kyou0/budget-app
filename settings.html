@@ -4,33 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🔧 設定 - 家計簿アプリ v2.0</title>
-
-    <!-- PWA対応 -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#667eea">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="家計簿設定">
-
-    <link rel="stylesheet" href="css/settings.css">
-    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div class="loading-overlay" id="loadingOverlay">🔄 同期中...</div>
 
-<!-- ログイン画面 -->
-<div id="loginScreen" class="login-screen">
-    <div class="login-card">
-        <h1>🔧 設定</h1>
-        <p>アプリケーションの同期や<br>データ管理を行います</p>
-        <button class="google-login-btn" onclick="tryGoogleLogin()">🔐 Googleでログイン</button>
-        <button class="btn" onclick="forceSyncFromDrive()">💾 今すぐ同期＆保存</button>
-    </div>
-</div>
-
-<!-- メインアプリ -->
-<div id="appContainer" class="app-container">
-
+<div id="appContainer" class="app-container" style="display: none;">
+    <!-- 全ページ共通ヘッダー -->
     <div class="header">
         <div class="header-top">
             <h1>🔧 設定</h1>
@@ -39,62 +19,37 @@
                 <button class="logout-btn" onclick="window.logout()">ログアウト</button>
             </div>
         </div>
-
         <div class="navigation">
-            <button class="nav-btn" onclick="window.goToDashboard()">💰 ダッシュボード</button>
+            <button class="nav-btn" onclick="window.goToDashboard()">📈 ダッシュボード</button>
             <button class="nav-btn" onclick="window.goToMaster()">⚙️ マスター管理</button>
             <button class="nav-btn active" onclick="window.goToSettings()">🔧 設定</button>
         </div>
     </div>
 
-    <div class="settings-grid">
-        <!-- データ同期設定 -->
-        <div class="setting-card">
-            <h2>☁️ データ同期設定</h2>
-            <p>データの同期状態を確認・管理します。Googleアカウントでのログインを推奨します。</p>
-            <div class="setting-item">
-                <span class="setting-label">現在のモード</span>
-                <span id="syncStatus" class="status-badge local">ローカルモード</span>
-            </div>
-            <div class="setting-item">
-                <span class="setting-label">手動同期</span>
-                <button id="manualSyncBtn" class="btn btn-primary" onclick="manualSync()">今すぐ同期</button>
+    <!-- 設定ページ専用コンテンツ -->
+    <div class="main-content">
+        <!-- サイドバーは設定ページではシンプルに -->
+        <div class="sidebar">
+            <h3 class="section-title">データ管理</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="btn btn-warning" onclick="exportData()">📤 データエクスポート</button>
+                <button class="btn btn-primary" onclick="importData()">📥 データインポート</button>
+                <button class="btn btn-danger" onclick="resetAllData()">🔄 全データリセット</button>
             </div>
         </div>
 
-        <!-- データ管理 -->
-        <div class="setting-card">
-            <h2>💾 データ管理</h2>
-            <p>マスターデータのバックアップや初期化を行います。操作は慎重に行ってください。</p>
-            <div class="setting-item">
-                <span class="setting-label">データをバックアップ</span>
-                <button class="btn btn-warning" onclick="exportData()">📤 エクスポート</button>
-            </div>
-            <div class="setting-item">
-                <span class="setting-label">バックアップから復元</span>
-                <button class="btn btn-secondary" onclick="importData()">📥 インポート</button>
-            </div>
-            <div class="setting-item">
-                <span class="setting-label">全データを初期化</span>
-                <button class="btn btn-danger" onclick="resetAllData()">🔄 全リセット</button>
-            </div>
-        </div>
-
-        <!-- アプリ情報 -->
-        <div class="setting-card">
-            <h2>ℹ️ アプリ情報</h2>
-            <p>このアプリケーションのバージョン情報です。</p>
-            <div class="setting-item">
-                <span class="setting-label">バージョン</span>
-                <span>v2.0.0</span>
-            </div>
-            <div class="setting-item">
-                <span class="setting-label">最終更新</span>
-                <span>2025-07-20</span>
-            </div>
-            <div class="setting-item">
-                <span class="setting-label">開発者</span>
-                <span>onuma kyosuke</span>
+        <!-- メインエリア -->
+        <div class="content-area">
+            <h2 class="section-title">同期設定</h2>
+            <div class="setting-card">
+                <h3>現在の同期モード</h3>
+                <p>
+                    現在のデータは <span id="syncStatus" class="status-badge local">ローカル</span> に保存されています。
+                </p>
+                <button id="manualSyncBtn" class="btn" onclick="manualSync()" style="display: none;">💾 今すぐ保存＆同期</button>
+                <p class="note">
+                    Google Driveとの同期は、Googleアカウントでログインした場合にのみ有効になります。
+                </p>
             </div>
         </div>
     </div>
