@@ -92,23 +92,9 @@ async function initializeApp() {
     requestDriveAccess();
   }
 
-  // ★★★ 修正ポイント ★★★
   // 先にデータを読み込み、UIを即座に描画する
   await loadData();
   renderAll(); // どのモードでもここで一度描画する
-
-  if (currentUser) {
-    showNotification(`✅ ${currentUser.name}としてログインしました`);
-  }
-}
-
-  await loadData();
-
-  // renderAllはsyncWithDriveのfinallyで呼ばれるので、ここでは不要な場合がある
-  // ただし、ローカルモードの場合はここで呼ぶ必要がある
-  if (loginMode !== 'google') {
-    renderAll();
-  }
 
   if (currentUser) {
     showNotification(`✅ ${currentUser.name}としてログインしました`);
