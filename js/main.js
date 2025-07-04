@@ -176,6 +176,13 @@ window.localLogin = function() {
 function proceedToApp() {
   if (!localStorage.getItem('tutorialCompleted')) {
     console.log('🎉 初回ログインです。マスター管理画面に移動します。');
+
+    // ▼▼▼ この2行を追加します ▼▼▼
+    // 古いサンプルデータが残っている可能性があるので、マスターデータを完全にクリアする
+    localStorage.removeItem('budgetMasterData');
+    masterData = []; // メモリ上のデータもクリア
+    // ▲▲▲ ▲▲▲
+
     localStorage.setItem('tutorialCompleted', 'true');
     window.location.href = 'master.html';
   } else {
@@ -193,7 +200,11 @@ window.logout = function() {
   }
   currentUser = null;
   localStorage.removeItem('budgetAppUser');
-  localStorage.removeItem('tutorialCompleted');
+
+  // ▼▼▼ この行を削除、またはコメントアウトします ▼▼▼
+  // localStorage.removeItem('tutorialCompleted');
+  // ▲▲▲ ▲▲▲
+
   window.location.reload();
 }
 
