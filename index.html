@@ -3,22 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💰 家計簿アプリ v2.0</title>
-    
+    <title>💰 家計簿アプリ v2.0 - ダッシュボード</title>
+
     <!-- PWA対応 -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#667eea">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="家計簿アプリ">
-    
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
 
+    <style>
+        /* --- 基本スタイル --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -26,338 +22,50 @@
             color: #333;
         }
 
-        /* ログイン画面 */
-        .login-screen {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
+        /* --- ログイン画面 --- */
+        .login-screen { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .login-card { background: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 20px; text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); backdrop-filter: blur(10px); max-width: 400px; width: 100%; }
+        .login-card h1 { color: #2c3e50; margin-bottom: 10px; font-size: 2.5em; }
+        .login-card p { color: #6c757d; margin-bottom: 30px; font-size: 1.1em; }
+        .google-login-btn, .local-login-btn { background: #4285f4; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-size: 1.1em; font-weight: 600; cursor: pointer; width: 100%; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3); margin-bottom: 15px; }
+        .local-login-btn { background: #28a745; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); }
+        .google-login-btn:hover { background: #3367d6; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4); }
+        .local-login-btn:hover { background: #218838; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4); }
 
-        .login-card {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 40px;
-            border-radius: 20px;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(10px);
-            max-width: 400px;
-            width: 100%;
-        }
+        /* --- メインアプリ --- */
+        .app-container { display: none; max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { background: rgba(255, 255, 255, 0.95); border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); backdrop-filter: blur(10px); }
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .header h1 { color: #2c3e50; font-size: 2em; }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .logout-btn { background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .navigation { display: flex; gap: 10px; flex-wrap: wrap; }
+        .nav-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; text-decoration: none; display: inline-block; }
+        .nav-btn.active { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); }
+        .controls { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; margin-top: 15px; }
+        .month-selector { display: flex; align-items: center; gap: 10px; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); }
+        .current-month { font-size: 1.2em; font-weight: bold; color: #2c3e50; min-width: 120px; text-align: center; }
 
-        .login-card h1 {
-            color: #2c3e50;
-            margin-bottom: 10px;
-            font-size: 2.5em;
-        }
+        /* --- 通知 --- */
+        .sync-notification { position: fixed; top: 20px; right: 20px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); z-index: 1000; font-weight: 600; animation: slideIn 0.3s ease; }
+        .sync-notification.warning { background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%); }
+        .sync-notification.info { background: linear-gradient(135deg, #4285f4 0%, #3367d6 100%); }
+        .sync-notification.error { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-        .login-card p {
-            color: #6c757d;
-            margin-bottom: 30px;
-            font-size: 1.1em;
-        }
+        /* --- サマリーカード --- */
+        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .summary-card { background: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
+        .summary-card h3 { font-size: 0.9em; margin-bottom: 10px; color: #6c757d; display: flex; align-items: center; gap: 8px; }
+        .summary-card .amount { font-size: 1.8em; font-weight: bold; color: #2c3e50; }
+        .summary-card .amount.income { color: #28a745; }
+        .summary-card .amount.expense { color: #dc3545; }
+        .summary-card .sub-text { font-size: 0.8em; color: #6c757d; margin-top: 5px; height: 1.2em; }
 
-        .google-login-btn, .local-login-btn {
-            background: #4285f4;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 10px;
-            font-size: 1.1em;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
-            margin-bottom: 15px;
-        }
-
-        .local-login-btn {
-            background: #28a745;
-            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
-        }
-
-        .google-login-btn:hover {
-            background: #3367d6;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4);
-        }
-
-        .local-login-btn:hover {
-            background: #218838;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
-        }
-
-        /* メインアプリ */
-        .app-container {
-            display: none;
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-        }
-
-        .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .header h1 {
-            color: #2c3e50;
-            font-size: 2em;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .logout-btn {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .navigation {
-            display: flex;
-            gap: 10px;
-        }
-
-        .nav-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .nav-btn.active {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        }
-
-        .nav-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .controls {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-top: 15px;
-        }
-
-        .month-selector {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .current-month {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #2c3e50;
-            min-width: 120px;
-            text-align: center;
-        }
-
-        /* 同期通知 */
-        .sync-notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-            font-weight: 600;
-            animation: slideIn 0.3s ease;
-        }
-
-        .sync-notification.warning {
-            background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
-        }
-
-        .sync-notification.error {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-        }
-
-        /* チュートリアル関連のスタイル */
-        .tutorial-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 2000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .tutorial-modal {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 40px;
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(10px);
-            animation: tutorialSlideIn 0.5s ease;
-        }
-
-        @keyframes tutorialSlideIn {
-            from { transform: scale(0.8); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-
-        .tutorial-modal h2 {
-            color: #2c3e50;
-            margin-bottom: 20px;
-            font-size: 2em;
-        }
-
-        .tutorial-modal p {
-            color: #6c757d;
-            margin-bottom: 30px;
-            font-size: 1.1em;
-            line-height: 1.6;
-        }
-
-        .tutorial-modal .btn-group {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            margin-top: 20px;
-        }
-
-        .tutorial-modal .btn-primary {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .tutorial-modal .btn-secondary {
-            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .tutorial-modal .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        /* 案内バッジ */
-        .sample-data-badge {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
-            color: white;
-            padding: 10px 15px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: 600;
-            box-shadow: 0 4px 15px rgba(255, 167, 38, 0.3);
-            cursor: pointer;
-            animation: pulse 2s infinite;
-            z-index: 1500;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        .sample-data-badge:hover {
-            transform: scale(1.1);
-        }
-
-        /* サマリーカード */
-        .summary-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .summary-card {
-            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .summary-card h3 {
-            font-size: 0.9em;
-            margin-bottom: 5px;
-            opacity: 0.9;
-        }
-
-        .summary-card .amount {
-            font-size: 1.5em;
-            font-weight: bold;
-        }
-
-        /* カレンダー */
+        /* --- カレンダー --- */
         .calendar-container {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
@@ -365,7 +73,6 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(10px);
         }
-
         .calendar-header {
             color: #2c3e50;
             margin-bottom: 20px;
@@ -373,7 +80,6 @@
             border-bottom: 2px solid #667eea;
             padding-bottom: 5px;
         }
-
         .calendar {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
@@ -382,7 +88,6 @@
             border-radius: 10px;
             overflow: hidden;
         }
-
         .calendar-day-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -390,1152 +95,426 @@
             text-align: center;
             font-weight: 600;
         }
-
         .calendar-day {
             background: white;
             min-height: 120px;
             padding: 8px;
             position: relative;
             border: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
         }
-
         .calendar-day.other-month {
             background: #f8f9fa;
             opacity: 0.5;
         }
-
         .calendar-day.today {
-            background: #fff5f5;
-            border: 2px solid #dc3545;
+            background: #fff3cd;
+            border: 2px solid #ffc107;
         }
-
         .day-number {
             font-weight: bold;
             margin-bottom: 5px;
             color: #2c3e50;
         }
-
         .calendar-item {
-            background: #667eea;
             color: white;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-size: 0.7em;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
             margin-bottom: 2px;
             cursor: pointer;
             transition: transform 0.2s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-
         .calendar-item:hover {
             transform: scale(1.05);
         }
-
-        .calendar-item.income {
-            background: #28a745;
+        .calendar-item.income { background: #28a745; }
+        .calendar-item.expense { background: #dc3545; }
+        .calendar-item.loan { background: #ffc107; color: #000; }
+        .calendar-item.overdue {
+            border: 2px dashed #dc3545;
+            animation: blink 1.5s infinite;
         }
+        @keyframes blink { 50% { opacity: 0.5; } }
 
-        .calendar-item.expense {
-            background: #dc3545;
-        }
-
-        .calendar-item.loan {
-            background: #ffc107;
-            color: #000;
-        }
-
-        /* レスポンシブ */
+        /* --- レスポンシブ --- */
         @media (max-width: 768px) {
-            .controls {
+            .controls, .navigation {
                 flex-direction: column;
                 align-items: stretch;
             }
-            
-            .navigation {
-                flex-direction: column;
-            }
-            
-            .calendar {
-                font-size: 0.8em;
-            }
-            
-            .calendar-day {
-                min-height: 80px;
-            }
+            .calendar { font-size: 0.8em; }
+            .calendar-day { min-height: 80px; }
         }
     </style>
 </head>
 <body>
-    <!-- ログイン画面 -->
-    <div id="loginScreen" class="login-screen">
-        <div class="login-card">
-            <h1>💰 家計簿アプリ</h1>
-            <p>滞納防止・借金管理に特化した<br>あなた専用の家計簿システム</p>
-            
-            <button class="google-login-btn" onclick="tryGoogleLogin()">
-                🔐 Googleでログイン
-            </button>
-            
-            <button class="local-login-btn" onclick="localLogin()">
-                📱 ローカルモードで開始
-            </button>
-            
-            <div id="loginStatus" style="margin-top: 15px; font-size: 0.9em; color: #6c757d; text-align: center;">
-                ローカルモードは同期なしで即座に利用できます
+<!-- ログイン画面 -->
+<div id="loginScreen" class="login-screen">
+    <div class="login-card">
+        <h1>💰 家計簿アプリ</h1>
+        <p>滞納防止・借金管理に特化した<br>あなた専用の家計簿システム</p>
+        <button class="google-login-btn" onclick="tryGoogleLogin()">🔐 Googleでログイン</button>
+        <button class="local-login-btn" onclick="localLogin()">📱 ローカルモードで開始</button>
+    </div>
+</div>
+
+<!-- メインアプリ -->
+<div id="appContainer" class="app-container">
+    <div class="header">
+        <div class="header-top">
+            <h1>💰 ダッシュボード</h1>
+            <div class="user-info">
+                <span id="userName">ユーザー</span>
+                <button class="logout-btn" onclick="logout()">ログアウト</button>
             </div>
+        </div>
+        <div class="navigation">
+            <button class="nav-btn active">📊 ダッシュボード</button>
+            <button class="nav-btn" onclick="goToMasterManagement()">⚙️ マスター管理</button>
+            <button class="nav-btn" onclick="goToSettings()">🔧 設定</button>
+        </div>
+        <div class="controls">
+            <div class="month-selector">
+                <button class="btn" onclick="changeMonth(-1)">◀ 前月</button>
+                <div class="current-month" id="currentMonth">2025年7月</div>
+                <button class="btn" onclick="changeMonth(1)">次月 ▶</button>
+            </div>
+            <button class="btn" onclick="checkOverdueRisk()">⚠️ 滞納チェック</button>
         </div>
     </div>
 
-    <!-- メインアプリ -->
-    <div id="appContainer" class="app-container">
-        <div class="header">
-            <div class="header-top">
-                <h1>💰 家計簿ダッシュボード</h1>
-                <div class="user-info">
-                    <span id="userName">ユーザー</span>
-                    <button class="logout-btn" onclick="logout()">ログアウト</button>
-                </div>
-            </div>
-            
-            <div class="navigation">
-                <button class="nav-btn active">📊 ダッシュボード</button>
-                <button class="nav-btn" onclick="openMasterManagement()">⚙️ マスター管理</button>
-                <button class="nav-btn" onclick="openSettings()">🔧 設定</button>
-            </div>
-
-            <div class="controls">
-                <div class="month-selector">
-                    <button class="btn" onclick="changeMonth(-1)">◀ 前月</button>
-                    <div class="current-month" id="currentMonth">2025年7月</div>
-                    <button class="btn" onclick="changeMonth(1)">次月 ▶</button>
-                </div>
-                <button class="btn" onclick="generateNextMonth()">📅 翌月生成</button>
-                <button class="btn" onclick="checkOverdueRisk()">⚠️ 滞納チェック</button>
-                <button class="btn" onclick="openEmergencyLoan()">💸 緊急借入</button>
-                <button class="btn" onclick="markPaymentComplete()">✅ 支払い完了</button>
-            </div>
+    <!-- サマリーカード -->
+    <div class="summary-cards">
+        <div class="summary-card">
+            <h3>💰 今月収入予定</h3>
+            <div class="amount income" id="summaryIncome">¥0</div>
         </div>
-
-        <!-- サマリーカード -->
-        <div class="summary-cards">
-            <div class="summary-card">
-                <h3>今月収入予定</h3>
-                <div class="amount" id="monthlyIncome">¥350,000</div>
-            </div>
-            <div class="summary-card">
-                <h3>今月支出予定</h3>
-                <div class="amount" id="monthlyExpense">¥225,000</div>
-            </div>
-            <div class="summary-card">
-                <h3>月末予想残高</h3>
-                <div class="amount" id="expectedBalance">¥125,000</div>
-            </div>
-            <div class="summary-card">
-                <h3>今週の支払い</h3>
-                <div class="amount" id="weeklyPayments">¥45,000</div>
-            </div>
+        <div class="summary-card">
+            <h3>💸 今月支出予定</h3>
+            <div class="amount expense" id="summaryExpense">¥0</div>
         </div>
-
-        <!-- カレンダー -->
-        <div class="calendar-container">
-            <h2 class="calendar-header">📅 今月の支払いカレンダー</h2>
-            <div class="calendar" id="calendar">
-                <!-- カレンダーがJavaScriptで生成される -->
-            </div>
+        <div class="summary-card">
+            <h3>⚖️ 月末予想残高</h3>
+            <div class="amount" id="summaryBalance">¥0</div>
+        </div>
+        <div class="summary-card">
+            <h3>🗓️ 今週の支払い</h3>
+            <div class="amount expense" id="summaryWeekly">¥0</div>
+        </div>
+        <div class="summary-card">
+            <h3>🏦 総借入残高</h3>
+            <div class="amount expense" id="summaryTotalDebt">¥0</div>
+        </div>
+        <div class="summary-card">
+            <h3>💳 月間返済額</h3>
+            <div class="amount" id="summaryMonthlyRepayment">¥0</div>
+        </div>
+        <div class="summary-card">
+            <h3>🏁 完済予定</h3>
+            <div class="amount" id="summaryCompletionDate">--</div>
+            <div class="sub-text" id="summaryCompletionSubtext"></div>
         </div>
     </div>
 
-    <script>
-        // グローバル変数（チュートリアル関連追加）
-        let currentYear = 2025;
-        let currentMonth = 7;
-        let isLoggedIn = false;
-        let currentUser = null;
-        let loginMode = 'local'; // 'google' or 'local'
-        let isFirstLogin = false; // 初回ログインフラグ
-        let isSampleData = true; // サンプルデータ使用フラグ
+    <!-- カレンダー -->
+    <div class="calendar-container">
+        <h2 class="calendar-header">📅 今月の支払いカレンダー</h2>
+        <div class="calendar" id="calendar"></div>
+    </div>
+</div>
 
-        // サンプルデータ
-        let masterData = [
-            {name: "メイン銀行", type: "bank", paymentDay: 5, amount: -15000, paymentMethod: "メイン銀行", isActive: true},
-            {name: "サブ銀行", type: "bank", paymentDay: 26, amount: -30000, paymentMethod: "サブ銀行", isActive: true},
-            {name: "メインカード", type: "card", paymentDay: 4, amount: -50000, paymentMethod: "メイン銀行", isActive: true},
-            {name: "サブカード", type: "card", paymentDay: 4, amount: -30000, paymentMethod: "サブ銀行", isActive: true},
-            {name: "家賃", type: "fixed", paymentDay: 27, amount: -80000, paymentMethod: "銀行振込", isActive: true},
-            {name: "奨学金", type: "fixed", paymentDay: 27, amount: -20000, paymentMethod: "銀行振込", isActive: true},
-            {name: "クライアントA", type: "income", paymentDay: 10, amount: 200000, paymentMethod: "銀行振込", isActive: true},
-            {name: "クライアントB", type: "income", paymentDay: 25, amount: 150000, paymentMethod: "銀行振込", isActive: true}
-        ];
+<script>
+  // ===================================================================================
+  // グローバル変数
+  // ===================================================================================
+  let masterData = [];
+  let currentUser = null;
+  let loginMode = 'local';
+  let currentYear = new Date().getFullYear();
+  let currentMonth = new Date().getMonth() + 1;
 
-        // 通知表示
-        function showNotification(message, type = 'success') {
-            // 既存の通知を削除
-            const existing = document.querySelector('.sync-notification');
-            if (existing) {
-                existing.remove();
-            }
-            
-            const notification = document.createElement('div');
-            notification.className = `sync-notification ${type}`;
-            notification.textContent = message;
-            
-            document.body.appendChild(notification);
-            
-            // 4秒後に自動削除
-            setTimeout(() => {
-                if (notification) {
-                    notification.style.animation = 'slideIn 0.3s ease reverse';
-                    setTimeout(() => notification.remove(), 300);
-                }
-            }, 4000);
-        }
+  // ===================================================================================
+  // 初期化処理
+  // ===================================================================================
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 家計簿アプリ v2.0 起動');
+    // ログイン状態を復元しようと試みる
+    const savedUser = localStorage.getItem('budgetAppUser');
+    if (savedUser && savedUser !== 'undefined') {
+      try {
+        currentUser = JSON.parse(savedUser);
+        loginMode = currentUser.mode;
+        showApp();
+      } catch (e) {
+        console.error("ユーザーデータの解析に失敗しました:", e);
+        localStorage.removeItem('budgetAppUser'); // 不正なデータを削除
+      }
+    }
+  });
 
-        // Googleログイン試行（リダイレクト方式）
-        function tryGoogleLogin() {
-            showNotification('🔐 Googleログインを開始中...', 'info');
-            updateLoginStatus('Googleログインページに移動中...');
-            
-            // リダイレクト方式でGoogle認証を実行
-            const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
-            const scope = encodeURIComponent([
-                'https://www.googleapis.com/auth/userinfo.profile',
-                'https://www.googleapis.com/auth/userinfo.email',
-                'https://www.googleapis.com/auth/drive.file'
-            ].join(' '));
-            
-            const state = generateRandomState();
-            sessionStorage.setItem('oauth_state', state);
-            sessionStorage.setItem('auth_in_progress', 'true');
-            
-            const googleAuthUrl = 
-                `https://accounts.google.com/o/oauth2/v2/auth?` +
-                `client_id=138150284146-07ul0ennhq22tm0ih3hngv8pnjsgo1u3.apps.googleusercontent.com&` +
-                `redirect_uri=${redirectUri}&` +
-                `scope=${scope}&` +
-                `response_type=code&` +
-                `access_type=offline&` +
-                `state=${state}&` +
-                `prompt=consent`;
-            
-            console.log('リダイレクト先URL:', googleAuthUrl);
-            
-            // Googleの認証ページにリダイレクト
-            window.location.href = googleAuthUrl;
-        }
-        
-        // ランダム状態生成
-        function generateRandomState() {
-            return Math.random().toString(36).substring(2) + Date.now().toString(36);
-        }
-        
-        // 認証コールバック処理（ユーザー情報取得付き）
-        async function handleOAuthCallback() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const state = urlParams.get('state');
-            const error = urlParams.get('error');
-            const authInProgress = sessionStorage.getItem('auth_in_progress');
-            const storedState = sessionStorage.getItem('oauth_state');
-            
-            if (error) {
-                console.error('Google認証エラー:', error);
-                showNotification('❌ Google認証がキャンセルされました', 'error');
-                sessionStorage.removeItem('auth_in_progress');
-                sessionStorage.removeItem('oauth_state');
-                return;
-            }
-            
-            if (code && authInProgress && state === storedState) {
-                console.log('✅ Google認証成功！ユーザー情報を取得中...');
-                showNotification('🔄 ユーザー情報を取得中...', 'info');
-                
-                // セッション情報をクリア
-                sessionStorage.removeItem('auth_in_progress');
-                sessionStorage.removeItem('oauth_state');
-                
-                // URLをクリア
-                const cleanUrl = window.location.origin + window.location.pathname;
-                window.history.replaceState({}, document.title, cleanUrl);
-                
-                try {
-                    // Googleユーザー情報を取得
-                    const userInfo = await fetchGoogleUserInfo(code);
-                    
-                    currentUser = {
-                        name: userInfo.name || 'Google ユーザー',
-                        email: userInfo.email || 'user@gmail.com',
-                        picture: userInfo.picture || '',
-                        mode: 'google',
-                        authCode: code,
-                        id: userInfo.id || 'google_user_' + Date.now()
-                    };
-                    
-                    console.log('取得したユーザー情報:', currentUser);
-                    
-                } catch (error) {
-                    console.warn('ユーザー情報取得失敗:', error);
-                    // フォールバック
-                    currentUser = {
-                        name: 'Google ユーザー',
-                        email: 'user@gmail.com',
-                        mode: 'google',
-                        authCode: code,
-                        id: 'google_user_' + Date.now()
-                    };
-                }
-                
-                isLoggedIn = true;
-                loginMode = 'google';
-                
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('appContainer').style.display = 'block';
-                document.getElementById('userName').textContent = currentUser.name;
-                
-                // ユーザー画像がある場合は表示
-                if (currentUser.picture) {
-                    updateUserAvatar(currentUser.picture);
-                }
-                
-                initializeApp();
-                showNotification(`✅ ${currentUser.name}としてログイン完了！`);
-                
-                // Google Driveからデータを同期
-                setTimeout(() => {
-                    syncWithGoogleDrive();
-                }, 1000);
-                
-                // 初回ログインチェック（Google認証後も必ず実行）
-                setTimeout(() => {
-                    checkFirstLogin();
-                }, 500);
-                
-                return true;
-            }
-            
-            return false;
-        }
+  function showApp() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'block';
+    document.getElementById('userName').textContent = currentUser.name;
+    initializeApp();
+  }
 
-        // Googleユーザー情報取得（実際のユーザー名を取得）
-        async function fetchGoogleUserInfo(authCode) {
-            try {
-                // 実際のGoogleユーザー情報を取得するため、
-                // デモ版では認証済みユーザーのメールアドレスを使用
-                const userInfo = {
-                    name: 'onuma kyosuke', // 実際のGoogle名
-                    email: 'onuma.kyosuke@gmail.com', // 認証済みのメール
-                    picture: 'https://lh3.googleusercontent.com/a/default-user=s96-c',
-                    id: 'google_user_' + Date.now()
-                };
-                
-                console.log('Googleユーザー情報を取得:', userInfo);
-                return userInfo;
-                
-            } catch (error) {
-                console.error('ユーザー情報取得エラー:', error);
-                // フォールバック
-                return {
-                    name: 'Google ユーザー',
-                    email: 'user@gmail.com',
-                    picture: '',
-                    id: 'google_user_' + Date.now()
-                };
-            }
-        }
+  function initializeApp() {
+    loadData();
+    renderAll();
+    showNotification(`✅ ${currentUser.name}としてログインしました`);
+  }
 
-        // ユーザーアバター更新
-        function updateUserAvatar(pictureUrl) {
-            const userNameElement = document.getElementById('userName');
-            if (userNameElement && pictureUrl) {
-                userNameElement.innerHTML = `
-                    <img src="${pictureUrl}" alt="プロフィール" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 8px; vertical-align: middle;">
-                    ${currentUser.name}
-                `;
-            }
-        }
+  function renderAll() {
+    updateCurrentMonthDisplay();
+    generateCalendar();
+    updateSummaryCards();
+  }
 
-        // Google Drive同期
-        async function syncWithGoogleDrive() {
-            if (!currentUser || currentUser.mode !== 'google') {
-                return;
-            }
-            
-            showNotification('☁️ Google Driveと同期中...', 'info');
-            
-            try {
-                // Google Drive APIを使用してデータを同期
-                // 実際の実装では、Google Drive APIでファイルの読み書きを行います
-                
-                console.log('Google Drive同期を開始...');
+  // ===================================================================================
+  // 認証 & ユーザー管理
+  // ===================================================================================
+  function tryGoogleLogin() {
+    showNotification('Googleログイン機能は現在開発中です。ローカルモードをご利用ください。', 'info');
+  }
 
-                // デモ用: 2秒後に同期完了とする
-                setTimeout(() => {
-                    showNotification('✅ Google Driveと同期完了！');
-                    console.log('Google Drive同期完了');
-                    
-                    // 同期ステータスを表示 (トークンエラーとは直接関係なし)
-                    addSyncStatus();
-                }, 2000); // 修正: ここで予期しないトークンエラーが発生する可能性のあるコードを修正
-                
-            } catch (error) {
-                console.error('Google Drive同期エラー:', error);
-                showNotification('⚠️ Google Drive同期に失敗しました', 'warning');
-            }
-        }
+  function localLogin() {
+    currentUser = { name: 'ローカルユーザー', mode: 'local' };
+    loginMode = 'local';
+    localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
+    showApp();
+  }
 
-        // 同期ステータス表示
-        function addSyncStatus() {
-            const header = document.querySelector('.header-top .user-info');
-            if (header && !document.getElementById('syncStatus')) {
-                const syncStatus = document.createElement('span');
-                syncStatus.id = 'syncStatus';
-                syncStatus.innerHTML = '☁️ 同期済み';
-                syncStatus.style.cssText = `
-                    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-                    color: white;
-                    padding: 4px 8px;
-                    border-radius: 12px;
-                    font-size: 0.8em;
-                    margin-right: 10px;
-                `;
-                header.insertBefore(syncStatus, header.firstChild);
-            }
-        }
+  function logout() {
+    currentUser = null;
+    localStorage.removeItem('budgetAppUser');
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('appContainer').style.display = 'none';
+    showNotification('👋 ログアウトしました');
+  }
 
-        // ローカルログイン（初回ログインチェック付き）
-        function localLogin() {
-            showNotification('📱 ローカルモードで起動中...', 'info');
-            updateLoginStatus('ローカルモードで起動中...');
-            
-            setTimeout(() => {
-                isLoggedIn = true;
-                loginMode = 'local';
-                currentUser = { 
-                    name: 'ローカルユーザー', 
-                    email: 'local@example.com',
-                    mode: 'local'
-                };
-                
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('appContainer').style.display = 'block';
-                document.getElementById('userName').textContent = currentUser.name;
-                
-                initializeApp();
-                showNotification(`✅ ${currentUser.name}でローカルログイン完了`);
-                
-                // 初回ログインチェック（必ずここで実行）
-                setTimeout(() => {
-                    checkFirstLogin();
-                }, 500);
-                
-            }, 1500);
-        }
+  // ===================================================================================
+  // データ管理
+  // ===================================================================================
+  function loadData() {
+    try {
+      const savedMaster = localStorage.getItem('budgetMasterData');
+      if (savedMaster && savedMaster !== 'undefined' && JSON.parse(savedMaster).length > 0) {
+        masterData = JSON.parse(savedMaster);
+        console.log('📂 保存されたマスターデータを読み込みました。');
+      } else {
+        loadSampleData();
+        localStorage.setItem('budgetMasterData', JSON.stringify(masterData));
+      }
+    } catch (e) {
+      console.error("マスターデータの解析に失敗しました。サンプルデータで初期化します。", e);
+      localStorage.removeItem('budgetMasterData'); // 不正なデータを削除
+      loadSampleData();
+      localStorage.setItem('budgetMasterData', JSON.stringify(masterData));
+    }
+  }
 
-        // ログアウト
-        function logout() {
-            isLoggedIn = false;
-            currentUser = null;
-            loginMode = 'local';
-            
-            document.getElementById('loginScreen').style.display = 'flex';
-            document.getElementById('appContainer').style.display = 'none';
-            
-            showNotification('👋 ログアウトしました');
-            updateLoginStatus('ローカルモードは同期なしで即座に利用できます');
-        }
+  function loadSampleData() {
+    masterData = [
+      { id: 'item_1', name: "クライアントA", type: "income", paymentDay: 10, amount: 200000, paymentMethod: "銀行振込", isActive: true },
+      { id: 'item_3', name: "家賃", type: "fixed", paymentDay: 27, amount: -80000, paymentMethod: "銀行振込", isActive: true },
+      { id: 'item_5', name: "メインカード", type: "card", paymentDay: 4, amount: -50000, paymentMethod: "メイン銀行", isActive: true },
+      { id: 'item_8', name: "アコム", type: "loan", paymentDay: 27, amount: -15000, paymentMethod: "メイン銀行", isActive: true, loanDetails: { loanType: "消費者金融", interestRate: 18.0, maxLimit: 500000, currentBalance: 234567 } },
+      { id: 'item_9', name: "楽天カードローン", type: "loan", paymentDay: 12, amount: -12000, paymentMethod: "楽天銀行", isActive: true, loanDetails: { loanType: "クレジットカード", interestRate: 15.0, maxLimit: 1000000, currentBalance: 450000 } }
+    ];
+    showNotification('📋 サンプルデータを読み込みました。', 'info');
+  }
 
-        // ログイン状況更新
-        function updateLoginStatus(message) {
-            const statusElement = document.getElementById('loginStatus');
-            if (statusElement) {
-                statusElement.textContent = message;
-            }
-        }
+  // ===================================================================================
+  // UI描画 & 更新
+  // ===================================================================================
+  function changeMonth(delta) {
+    currentMonth += delta;
+    if (currentMonth > 12) {
+      currentMonth = 1;
+      currentYear++;
+    } else if (currentMonth < 1) {
+      currentMonth = 12;
+      currentYear--;
+    }
+    renderAll();
+  }
 
-        // アプリ初期化（エラー修正版）
-        function initializeApp() {
-            loadSavedData();
-            updateCurrentMonth();
-            generateCalendar();
-            updateSummaryCards();
-            
-            // データ変更監視を開始
-            startDataSyncMonitoring();
-            
-            showNotification(`🚀 ${currentUser.name}でログイン完了`);
-            
-            // ユーザーモード別の追加メッセージ
-            if (currentUser.mode === 'google') {
-                setTimeout(() => {
-                    showNotification('☁️ Google Driveとの同期が有効です');
-                }, 3000);
-            } else {
-                setTimeout(() => {
-                    showNotification('📱 ローカルモードで動作中（同期なし）');
-                }, 3000);
-            }
-            
-            // 必ずサンプルデータバッジを表示（テスト用）
-            setTimeout(() => {
-                console.log('🧪 強制的にサンプルデータバッジを表示');
-                showSampleDataBadge();
-            }, 1000);
-            
-            // 2秒後にチュートリアル強制表示（テスト用）
-            setTimeout(() => {
-                console.log('🧪 強制的にチュートリアルを表示');
-                showWelcomeTutorial();
-            }, 2000);
-        }
+  function updateCurrentMonthDisplay() {
+    document.getElementById('currentMonth').textContent = `${currentYear}年${currentMonth}月`;
+  }
 
-        // データ変更監視（Google Drive同期付き）
-        function startDataSyncMonitoring() {
-            // localStorage変更を監視
-            window.addEventListener('storage', function(e) {
-                if (e.key === 'budgetMasterData') {
-                    loadSavedData();
-                    generateCalendar();
-                    updateSummaryCards();
-                    showNotification('🔄 データを同期しました');
-                    
-                    // Google Driveユーザーの場合は自動同期
-                    if (currentUser && currentUser.mode === 'google') {
-                        setTimeout(() => {
-                            syncWithGoogleDrive();
-                        }, 1000);
-                    }
-                }
-            });
-            
-            // 定期的なGoogle Drive同期（5分ごと）
-            if (currentUser && currentUser.mode === 'google') {
-                setInterval(() => {
-                    console.log('定期同期実行中...');
-                    syncWithGoogleDrive();
-                }, 5 * 60 * 1000); // 5分
-            }
-        }
+  function generateCalendar() {
+    const calendar = document.getElementById('calendar');
+    calendar.innerHTML = '';
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+    weekdays.forEach(day => {
+      const header = document.createElement('div');
+      header.className = 'calendar-day-header';
+      header.textContent = day;
+      calendar.appendChild(header);
+    });
 
-        // データ保存（Google Drive同期付き）
-        function saveData() {
-            localStorage.setItem('budgetMasterData', JSON.stringify(masterData));
-            localStorage.setItem('budgetCurrentDate', JSON.stringify({year: currentYear, month: currentMonth}));
-            
-            // Google Driveユーザーの場合は自動同期
-            if (currentUser && currentUser.mode === 'google') {
-                // 少し待ってから同期（連続保存での負荷軽減）
-                clearTimeout(window.syncTimeout);
-                window.syncTimeout = setTimeout(() => {
-                    syncWithGoogleDrive();
-                }, 2000);
-            }
-        }
+    const firstDayOfMonth = new Date(currentYear, currentMonth - 1, 1);
+    const startingDay = firstDayOfMonth.getDay();
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
 
-        // 初回ログインチェック（強制実行版）
-        function checkFirstLogin() {
-            const hasVisited = localStorage.getItem('hasVisitedBefore');
-            const hasSavedData = localStorage.getItem('budgetMasterData');
-            
-            console.log('🔍 初回ログインチェック実行:', { 
-                hasVisited, 
-                hasSavedData: hasSavedData ? 'あり' : 'なし',
-                currentUser: currentUser?.name 
-            });
-            
-            // デバッグ用: 強制的に初回として扱う
-            const forceFirstTime = !hasVisited || hasSavedData === null;
-            
-            if (forceFirstTime) {
-                console.log('✅ 初回ログインとして処理');
-                isFirstLogin = true;
-                isSampleData = true;
-                localStorage.setItem('hasVisitedBefore', 'true');
-                
-                // チュートリアルを表示（少し遅延）
-                setTimeout(() => {
-                    console.log('📖 チュートリアル表示開始');
-                    showWelcomeTutorial();
-                }, 2000);
-                
-                // サンプルデータバッジも表示
-                setTimeout(() => {
-                    console.log('🏷️ サンプルデータバッジ表示');
-                    showSampleDataBadge();
-                }, 3000);
-                
-            } else {
-                console.log('⚠️ 既存ユーザーとして処理');
-                isFirstLogin = false;
-                // 既存データがサンプルデータかチェック
-                checkIfSampleData();
-            }
-        }
+    for (let i = 0; i < startingDay; i++) {
+      calendar.insertAdjacentHTML('beforeend', '<div class="calendar-day other-month"></div>');
+    }
 
-        // サンプルデータ使用中かチェック（修正版）
-        function checkIfSampleData() {
-            const savedData = localStorage.getItem('budgetMasterData');
-            
-            if (savedData) {
-                const data = JSON.parse(savedData);
-                console.log('保存データをチェック:', data);
-                
-                // サンプルデータの特徴で判定
-                const hasSampleItems = data.some(item => 
-                    item.name.includes('クライアントA') || 
-                    item.name.includes('クライアントB') ||
-                    item.name.includes('メイン銀行') ||
-                    item.name.includes('サブ銀行')
-                );
-                
-                console.log('サンプルデータ判定:', hasSampleItems);
-                
-                if (hasSampleItems) {
-                    isSampleData = true;
-                    setTimeout(() => {
-                        showSampleDataBadge();
-                    }, 1000);
-                } else {
-                    isSampleData = false;
-                }
-            } else {
-                // データがない場合はサンプルデータ使用中
-                isSampleData = true;
-                setTimeout(() => {
-                    showSampleDataBadge();
-                }, 1000);
-            }
-        }
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dayElement = document.createElement('div');
+      dayElement.className = 'calendar-day';
+      const today = new Date();
+      if (currentYear === today.getFullYear() && currentMonth === today.getMonth() + 1 && day === today.getDate()) {
+        dayElement.classList.add('today');
+      }
+      dayElement.innerHTML = `<div class="day-number">${day}</div>`;
 
-        // ウェルカムチュートリアル表示（エラーハンドリング付き）
-        function showWelcomeTutorial() {
-            console.log('📖 ウェルカムチュートリアル表示処理開始');
-            
-            // 既存のチュートリアルがあれば削除
-            const existing = document.getElementById('welcomeTutorial');
-            if (existing) {
-                existing.remove();
-            }
-            
-            const overlay = document.createElement('div');
-            overlay.className = 'tutorial-overlay';
-            overlay.id = 'welcomeTutorial';
-            
-            overlay.innerHTML = `
-                <div class="tutorial-modal">
-                    <h2>🎉 ようこそ！</h2>
-                    <p>
-                        <strong>家計簿アプリ</strong>へようこそ！<br><br>
-                        現在、<strong>サンプルデータ</strong>が入っています。<br>
-                        実際のデータに変更するには、右上の<br>
-                        <strong>「📝 実データに移行」</strong>ボタンを<br>
-                        クリックしてください。<br><br>
-                        まずはサンプルデータで機能を<br>
-                        試してみることをお勧めします！
-                    </p>
-                    <div class="btn-group">
-                        <button class="btn-primary" onclick="closeTutorial()">
-                            ✅ 理解しました
-                        </button>
-                        <button class="btn-secondary" onclick="goToMasterPage()">
-                            ⚙️ マスター設定へ
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(overlay);
-            console.log('✅ チュートリアルモーダルを追加しました');
-        }
+      const itemsForDay = masterData.filter(item => item.isActive && item.paymentDay === day);
+      itemsForDay.forEach(item => {
+        const itemElement = document.createElement('div');
+        itemElement.className = 'calendar-item';
+        const icon = { income: '💰', expense: '💸', loan: '🏦', card: '💳', fixed: '🏠', tax: '🏛️', bank: '🏦', variable: '🛒' }[item.type] || '📄';
+        itemElement.innerHTML = `${icon} ${item.name}`;
+        itemElement.title = `${item.name}: ${item.amount.toLocaleString()}円`;
+        if (item.amount > 0) itemElement.classList.add('income');
+        else if (item.type === 'loan') itemElement.classList.add('loan');
+        else itemElement.classList.add('expense');
+        dayElement.appendChild(itemElement);
+      });
+      calendar.appendChild(dayElement);
+    }
+  }
 
-        // サンプルデータバッジ表示（強制表示版）
-        function showSampleDataBadge() {
-            console.log('🏷️ サンプルデータバッジ表示処理開始');
-            
-            // 既存のバッジがあれば削除
-            const existing = document.getElementById('sampleDataBadge');
-            if (existing) {
-                existing.remove();
-            }
-            
-            const badge = document.createElement('div');
-            badge.id = 'sampleDataBadge';
-            badge.className = 'sample-data-badge';
-            badge.innerHTML = '📝 実データに移行';
-            badge.onclick = showMigrationDialog;
-            
-            document.body.appendChild(badge);
-            console.log('✅ サンプルデータバッジを追加しました');
-        }
+  function updateSummaryCards() {
+    const activeItems = masterData.filter(item => item.isActive);
+    const income = activeItems.filter(i => i.amount > 0).reduce((sum, i) => sum + i.amount, 0);
+    const expense = activeItems.filter(i => i.amount < 0).reduce((sum, i) => sum + i.amount, 0);
 
-        // チュートリアル閉じる
-        function closeTutorial() {
-            const tutorial = document.getElementById('welcomeTutorial');
-            if (tutorial) {
-                tutorial.style.animation = 'tutorialSlideIn 0.3s ease reverse';
-                setTimeout(() => tutorial.remove(), 300);
-            }
-            
-            // サンプルデータバッジを表示
-            if (isSampleData) {
-                setTimeout(() => {
-                    showSampleDataBadge();
-                }, 500);
-            }
-        }
+    const today = new Date();
+    const weekEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7);
+    const weeklyExpense = activeItems.filter(i => {
+      if (i.amount >= 0 || !i.paymentDay) return false;
+      const paymentDateThisMonth = new Date(currentYear, currentMonth - 1, i.paymentDay);
+      return paymentDateThisMonth >= today && paymentDateThisMonth < weekEnd;
+    }).reduce((sum, i) => sum + i.amount, 0);
 
-        // マスター設定ページへ移動（修正版）
-        function goToMasterPage() {
-            closeTutorial();
-            
-            // 実際にマスター管理機能を表示
-            showMasterManagement();
-        }
+    const loanItems = activeItems.filter(i => i.type === 'loan');
+    const totalDebt = loanItems.reduce((sum, i) => sum + (i.loanDetails?.currentBalance || 0), 0);
+    const monthlyRepayment = loanItems.reduce((sum, i) => sum + Math.abs(i.amount), 0);
 
-        // マスター管理画面を表示
-        function showMasterManagement() {
-            const overlay = document.createElement('div');
-            overlay.className = 'tutorial-overlay';
-            overlay.id = 'masterManagement';
-            
-            overlay.innerHTML = `
-                <div class="tutorial-modal" style="max-width: 600px;">
-                    <h2>⚙️ マスター管理</h2>
-                    <p style="text-align: left; margin-bottom: 20px;">
-                        <strong>📝 収入・支出項目の管理</strong><br>
-                        以下の項目を追加・編集できます：
-                    </p>
-                    <div style="text-align: left; margin-bottom: 20px;">
-                        <strong>💰 収入項目:</strong><br>
-                        • 給与、副業収入<br>
-                        • クライアント収入<br>
-                        • その他の収入<br><br>
-                        
-                        <strong>💸 支出項目:</strong><br>
-                        • 家賃、光熱費<br>
-                        • クレジットカード<br>
-                        • ローン・借入<br>
-                        • その他固定費
-                    </div>
-                    <div class="btn-group">
-                        <button class="btn-primary" onclick="closeMasterManagement()">
-                            📱 今はサンプルで試す
-                        </button>
-                        <button class="btn-secondary" onclick="showComingSoon()">
-                            🚧 詳細機能（開発中）
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(overlay);
-        }
+    document.getElementById('summaryIncome').textContent = `¥${income.toLocaleString()}`;
+    document.getElementById('summaryExpense').textContent = `¥${Math.abs(expense).toLocaleString()}`;
+    document.getElementById('summaryBalance').textContent = `¥${(income + expense).toLocaleString()}`;
+    document.getElementById('summaryWeekly').textContent = `¥${Math.abs(weeklyExpense).toLocaleString()}`;
+    document.getElementById('summaryTotalDebt').textContent = `¥${totalDebt.toLocaleString()}`;
+    document.getElementById('summaryMonthlyRepayment').textContent = `¥${monthlyRepayment.toLocaleString()}`;
 
-        // マスター管理を閉じる
-        function closeMasterManagement() {
-            const management = document.getElementById('masterManagement');
-            if (management) {
-                management.style.animation = 'tutorialSlideIn 0.3s ease reverse';
-                setTimeout(() => management.remove(), 300);
-            }
-            
-            // サンプルデータバッジを表示
-            setTimeout(() => {
-                showSampleDataBadge();
-            }, 500);
-        }
+    // 完済予定日の計算
+    const { years, months } = calculateCompletionDate(loanItems);
+    if (years > 0 || months > 0) {
+      let completionText = '';
+      if (years > 0) completionText += `${years}年`;
+      if (months > 0) completionText += `${months}ヶ月`;
+      completionText += '後';
 
-        // 開発中機能の説明
-        function showComingSoon() {
-            closeMasterManagement();
-            
-            setTimeout(() => {
-                alert('🚧 開発中の機能\n\n• 項目の追加・削除\n• 支払日の設定\n• カテゴリ分類\n• CSV インポート/エクスポート\n• 自動計算機能\n\nサンプルデータで基本機能をお試しください！');
-                showSampleDataBadge();
-            }, 300);
-        }
+      document.getElementById('summaryCompletionDate').textContent = completionText;
+      const completionDate = new Date();
+      completionDate.setMonth(completionDate.getMonth() + (years * 12 + months));
+      document.getElementById('summaryCompletionSubtext').textContent = `( ${completionDate.getFullYear()}年${completionDate.getMonth() + 1}月頃 )`;
+    } else if (loanItems.length > 0 && monthlyRepayment > 0) {
+      document.getElementById('summaryCompletionDate').textContent = "計算不可";
+      document.getElementById('summaryCompletionSubtext').textContent = "返済額が利息を下回っています";
+    } else {
+      document.getElementById('summaryCompletionDate').textContent = "借入なし";
+      document.getElementById('summaryCompletionSubtext').textContent = "";
+    }
+  }
 
-        // マスター管理を開く（ナビゲーションボタン用）
-        function openMasterManagement() {
-            showMasterManagement();
-        }
+  function calculateCompletionDate(loanItems) {
+    if (loanItems.length === 0) return { years: 0, months: 0 };
+    let maxMonths = 0;
+    loanItems.forEach(loan => {
+      const balance = loan.loanDetails?.currentBalance || 0;
+      const monthlyPayment = Math.abs(loan.amount) || 0;
+      const annualRate = loan.loanDetails?.interestRate || 0;
+      if (balance <= 0 || monthlyPayment <= 0) return;
+      if (annualRate === 0) {
+        const months = Math.ceil(balance / monthlyPayment);
+        if (months > maxMonths) maxMonths = months;
+        return;
+      }
+      const monthlyRate = annualRate / 100 / 12;
+      const minPayment = balance * monthlyRate;
+      if (monthlyPayment <= minPayment) {
+        maxMonths = Infinity;
+        return;
+      }
+      const num = -Math.log(1 - (balance * monthlyRate) / monthlyPayment);
+      const den = Math.log(1 + monthlyRate);
+      const months = Math.ceil(num / den);
+      if (months > maxMonths) maxMonths = months;
+    });
+    if (maxMonths === Infinity || !isFinite(maxMonths)) return { years: 0, months: 0 };
+    const years = Math.floor(maxMonths / 12);
+    const months = maxMonths % 12;
+    return { years, months };
+  }
 
-        // 実データ移行ダイアログ
-        function showMigrationDialog() {
-            const overlay = document.createElement('div');
-            overlay.className = 'tutorial-overlay';
-            overlay.id = 'migrationDialog';
-            
-            overlay.innerHTML = `
-                <div class="tutorial-modal">
-                    <h2>📝 実データに移行</h2>
-                    <p>
-                        サンプルデータを削除して、<br>
-                        あなた専用のデータに切り替えますか？<br><br>
-                        <strong>⚠️ この操作は取り消せません</strong><br><br>
-                        移行後は、マスター管理ページで<br>
-                        収入・支出項目を設定してください。
-                    </p>
-                    <div class="btn-group">
-                        <button class="btn-primary" onclick="migrateToRealData()">
-                            🚀 実データに移行
-                        </button>
-                        <button class="btn-secondary" onclick="closeMigrationDialog()">
-                            ❌ キャンセル
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(overlay);
-        }
+  // ===================================================================================
+  // 機能 & ページ遷移
+  // ===================================================================================
+  function checkOverdueRisk() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const overdueItems = masterData.filter(item => {
+      if (!item.isActive || item.amount >= 0 || !item.paymentDay) return false;
+      const paymentDate = new Date(currentYear, currentMonth - 1, item.paymentDay);
+      return paymentDate < today && paymentDate.getMonth() === currentMonth - 1;
+    });
+    if (overdueItems.length > 0) {
+      let message = '⚠️ 以下の項目が支払期日を過ぎています！\n\n';
+      overdueItems.forEach(item => {
+        message += `• ${item.paymentDay}日: ${item.name} (${Math.abs(item.amount).toLocaleString()}円)\n`;
+      });
+      alert(message);
+      showNotification('⚠️ 滞納リスクが発見されました', 'warning');
+    } else {
+      showNotification('✅ 現時点で滞納している項目はありません。');
+    }
+  }
 
-        // 実データ移行実行（修正版）
-        function migrateToRealData() {
-            console.log('🚀 実データ移行開始');
-            
-            // サンプルデータをクリア
-            masterData = [];
-            isSampleData = false;
-            
-            // データを保存
-            saveData();
-            
-            // UI更新
-            generateCalendar();
-            updateSummaryCards();
-            
-            // バッジを削除
-            const badge = document.getElementById('sampleDataBadge');
-            if (badge) {
-                badge.remove();
-                console.log('✅ サンプルデータバッジを削除');
-            }
-            
-            // ダイアログを閉じる
-            closeMigrationDialog();
-            
-            // 完了通知
-            showNotification('🎉 実データに移行完了！マスター管理で項目を設定してください。');
-            
-            // 少し待ってからマスター管理を表示
-            setTimeout(() => {
-                showMasterManagement();
-            }, 1000);
-            
-            // Google Driveユーザーの場合は同期
-            if (currentUser && currentUser.mode === 'google') {
-                setTimeout(() => {
-                    syncWithGoogleDrive();
-                }, 2000);
-            }
-            
-            console.log('✅ 実データ移行完了');
-        }
+  function goToMasterManagement() {
+    window.location.href = 'master.html';
+  }
 
-        // 初期化時の処理をリセットする関数を追加
-        function resetFirstLoginState() {
-            localStorage.removeItem('hasVisitedBefore');
-            localStorage.removeItem('budgetMasterData');
-            localStorage.removeItem('currentUser');
-            showNotification('🔄 初回ログイン状態をリセットしました。ページを再読み込みしてください。', 'info');
-        }
+  function goToSettings() {
+    window.location.href = 'settings.html';
+  }
 
-        // 設定を開く
-        function openSettings() {
-            const overlay = document.createElement('div');
-            overlay.className = 'tutorial-overlay';
-            overlay.id = 'settingsPage';
-            
-            overlay.innerHTML = `
-                <div class="tutorial-modal" style="max-width: 500px;">
-                    <h2>🔧 設定</h2>
-                    <p style="text-align: left; margin-bottom: 20px;">
-                        <strong>📱 アプリケーション設定</strong>
-                    </p>
-                    <div style="text-align: left; margin-bottom: 20px;">
-                        <strong>🔔 通知設定:</strong><br>
-                        • 支払期日の通知<br>
-                        • 滞納リスクの警告<br><br>
-                        
-                        <strong>💾 データ管理:</strong><br>
-                        • データのエクスポート<br>
-                        • バックアップ作成<br><br>
-                        
-                        <strong>🎨 表示設定:</strong><br>
-                        • テーマの変更<br>
-                        • カレンダー表示オプション
-                    </div>
-                    <div class="btn-group">
-                        <button class="btn-primary" onclick="closeSettings()">
-                            ✅ 閉じる
-                        </button>
-                        <button class="btn-secondary" onclick="showSettingsComingSoon()">
-                            🚧 詳細設定（開発中）
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(overlay);
-        }
-
-        // 設定を閉じる
-        function closeSettings() {
-            const settings = document.getElementById('settingsPage');
-            if (settings) {
-                settings.style.animation = 'tutorialSlideIn 0.3s ease reverse';
-                setTimeout(() => settings.remove(), 300);
-            }
-        }
-
-        // 設定開発中機能
-        function showSettingsComingSoon() {
-            closeSettings();
-            
-            setTimeout(() => {
-                alert('🚧 設定機能（開発中）\n\n• プッシュ通知\n• データ同期設定\n• テーマカスタマイズ\n• 言語設定\n• プライバシー設定\n\n基本機能は現在利用可能です！');
-            }, 300);
-        }
-
-        // データ読み込み
-        function loadSavedData() {
-            const savedData = localStorage.getItem('budgetMasterData');
-            if (savedData) {
-                masterData = JSON.parse(savedData);
-            }
-            
-            const savedDate = localStorage.getItem('budgetCurrentDate');
-            if (savedDate) {
-                const dateData = JSON.parse(savedDate);
-                currentYear = dateData.year;
-                currentMonth = dateData.month;
-            }
-        }
-
-        // データ保存
-        function saveData() {
-            localStorage.setItem('budgetMasterData', JSON.stringify(masterData));
-            localStorage.setItem('budgetCurrentDate', JSON.stringify({year: currentYear, month: currentMonth}));
-        }
-
-        // 月変更
-        function changeMonth(delta) {
-            currentMonth += delta;
-            if (currentMonth > 12) {
-                currentMonth = 1;
-                currentYear++;
-            } else if (currentMonth < 1) {
-                currentMonth = 12;
-                currentYear--;
-            }
-            saveData();
-            updateCurrentMonth();
-            generateCalendar();
-            updateSummaryCards();
-        }
-
-        // 現在月表示更新
-        function updateCurrentMonth() {
-            document.getElementById('currentMonth').textContent = `${currentYear}年${currentMonth}月`;
-        }
-
-        // カレンダー生成
-        function generateCalendar() {
-            const calendar = document.getElementById('calendar');
-            calendar.innerHTML = '';
-
-            // 曜日ヘッダー
-            const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-            weekdays.forEach(day => {
-                const header = document.createElement('div');
-                header.className = 'calendar-day-header';
-                header.textContent = day;
-                calendar.appendChild(header);
-            });
-
-            // 月の日数計算
-            const firstDay = new Date(currentYear, currentMonth - 1, 1);
-            const startDate = new Date(firstDay);
-            startDate.setDate(startDate.getDate() - firstDay.getDay());
-
-            // カレンダーの日付を生成（6週間分）
-            for (let i = 0; i < 42; i++) {
-                const date = new Date(startDate);
-                date.setDate(startDate.getDate() + i);
-                
-                const dayElement = document.createElement('div');
-                dayElement.className = 'calendar-day';
-                
-                if (date.getMonth() !== currentMonth - 1) {
-                    dayElement.classList.add('other-month');
-                }
-                
-                // 今日の日付をハイライト
-                const today = new Date();
-                if (date.toDateString() === today.toDateString()) {
-                    dayElement.classList.add('today');
-                }
-
-                const dayNumber = document.createElement('div');
-                dayNumber.className = 'day-number';
-                dayNumber.textContent = date.getDate();
-                dayElement.appendChild(dayNumber);
-
-                // その日の支払い項目を追加
-                const dayItems = masterData.filter(item => 
-                    item.isActive && item.paymentDay === date.getDate() && 
-                    date.getMonth() === currentMonth - 1
-                );
-
-                dayItems.forEach(item => {
-                    const itemElement = document.createElement('div');
-                    itemElement.className = 'calendar-item';
-                    
-                    if (item.amount > 0) {
-                        itemElement.classList.add('income');
-                    } else if (item.type === 'loan') {
-                        itemElement.classList.add('loan');
-                    } else {
-                        itemElement.classList.add('expense');
-                    }
-                    
-                    const icon = getItemIcon(item.type);
-                    itemElement.textContent = `${icon} ${item.name}`;
-                    itemElement.title = `${item.name}: ${item.amount.toLocaleString()}円`;
-                    
-                    dayElement.appendChild(itemElement);
-                });
-
-                calendar.appendChild(dayElement);
-            }
-        }
-
-        // アイコン取得
-        function getItemIcon(type) {
-            const icons = {
-                bank: '🏦',
-                card: '💳',
-                fixed: '🏠',
-                variable: '🛒',
-                tax: '🏛️',
-                income: '💰',
-                loan: '💸'
-            };
-            return icons[type] || '📋';
-        }
-
-        // サマリーカード更新
-        function updateSummaryCards() {
-            const activeItems = masterData.filter(item => item.isActive);
-            
-            const monthlyIncome = activeItems
-                .filter(item => item.amount > 0)
-                .reduce((sum, item) => sum + item.amount, 0);
-            
-            const monthlyExpense = activeItems
-                .filter(item => item.amount < 0)
-                .reduce((sum, item) => sum + Math.abs(item.amount), 0);
-
-            const today = new Date();
-            const oneWeekLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-            
-            const weeklyPayments = activeItems
-                .filter(item => {
-                    const paymentDate = new Date(currentYear, currentMonth - 1, item.paymentDay);
-                    return item.amount < 0 && paymentDate <= oneWeekLater && paymentDate >= today;
-                })
-                .reduce((sum, item) => sum + Math.abs(item.amount), 0);
-
-            document.getElementById('monthlyIncome').textContent = `¥${monthlyIncome.toLocaleString()}`;
-            document.getElementById('monthlyExpense').textContent = `¥${monthlyExpense.toLocaleString()}`;
-            document.getElementById('expectedBalance').textContent = `¥${(monthlyIncome - monthlyExpense).toLocaleString()}`;
-            document.getElementById('weeklyPayments').textContent = `¥${weeklyPayments.toLocaleString()}`;
-        }
-
-        // 機能関数群
-        function generateNextMonth() {
-            const confirmMsg = `${currentYear}年${currentMonth + 1}月のデータを生成しますか？`;
-            if (confirm(confirmMsg)) {
-                changeMonth(1);
-                showNotification('📅 翌月のデータを生成しました！');
-            }
-        }
-
-        function checkOverdueRisk() {
-            const today = new Date();
-            const currentDate = new Date(currentYear, currentMonth - 1, today.getDate());
-            
-            const overdueItems = masterData.filter(item => {
-                if (!item.isActive || item.amount >= 0) return false;
-                const paymentDate = new Date(currentYear, currentMonth - 1, item.paymentDay);
-                return paymentDate < currentDate;
-            });
-
-            if (overdueItems.length > 0) {
-                let message = '⚠️ 以下の項目が支払期日を過ぎています：\n\n';
-                overdueItems.forEach(item => {
-                    message += `• ${item.name}: ${Math.abs(item.amount).toLocaleString()}円 (${item.paymentDay}日)\n`;
-                });
-                alert(message);
-                showNotification('⚠️ 滞納リスクが発見されました', 'warning');
-            } else {
-                showNotification('✅ 滞納リスクはありません');
-                alert('✅ 現在、滞納リスクのある項目はありません。');
-            }
-        }
-
-        function openEmergencyLoan() {
-            showNotification('💸 緊急借入機能は開発中です', 'info');
-            alert('💸 緊急借入機能は開発中です。\nマスター管理ページで借入先を設定後、利用可能になります。');
-        }
-
-        function markPaymentComplete() {
-            showNotification('✅ 支払い完了機能は開発中です', 'info');
-            alert('✅ 支払い完了機能は開発中です。\n今後、支払い状況の管理機能を追加予定です。');
-        }
-
-        // 初期化
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 家計簿アプリ v2.0 起動');
-            
-            // OAuth認証コールバックをチェック（最優先）
-            if (handleOAuthCallback()) {
-                return; // 認証処理が完了した場合は以降の処理をスキップ
-            }
-            
-            // 既存のログイン状態をチェック
-            const savedUser = localStorage.getItem('currentUser');
-            if (savedUser && savedUser !== 'undefined' && savedUser !== 'null') { // 'undefined' および 'null' 文字列をチェック
-                currentUser = JSON.parse(savedUser);
-                isLoggedIn = true;
-                loginMode = currentUser.mode; // ログインモードを復元
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('appContainer').style.display = 'block';
-                document.getElementById('userName').textContent = currentUser.name;
-                
-                initializeApp();
-                showNotification(`🔄 ${currentUser.name}として復帰しました`);
-            } else {
-                updateLoginStatus('Googleログインまたはローカルモードを選択してください');
-            }
-        });
-
-        // ページ離脱時にユーザー情報保存（改良版）
-        window.addEventListener('beforeunload', function() {
-            if (currentUser && isLoggedIn) {
-                console.log('💾 ユーザー情報を保存:', currentUser.name);
-                localStorage.setItem('currentUser', JSON.stringify(currentUser));
-            }
-        });
-
-        // ページ可視性変更時の処理
-        document.addEventListener('visibilitychange', function() {
-            if (!document.hidden && currentUser && isLoggedIn) {
-                // ページがアクティブになった時にデータを同期
-                checkForDataChanges();
-                
-                // ユーザー情報を再保存
-                localStorage.setItem('currentUser', JSON.stringify(currentUser));
-            }
-        });
-    </script>
+  // ===================================================================================
+  // ヘルパー関数
+  // ===================================================================================
+  function showNotification(message, type = 'success') {
+    const existing = document.querySelector('.sync-notification');
+    if (existing) existing.remove();
+    const notification = document.createElement('div');
+    notification.className = `sync-notification ${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    setTimeout(() => {
+      notification.style.animation = 'slideIn 0.3s ease reverse';
+      setTimeout(() => notification.remove(), 300);
+    }, 4000);
+  }
+</script>
 </body>
 </html>
