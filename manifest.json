@@ -16,7 +16,7 @@
       "purpose": "any maskable"
     },
     {
-      "src": "icon-512.png", 
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -25,18 +25,18 @@
   "categories": ["finance", "productivity", "utilities"],
   "lang": "ja",
   "dir": "ltr",
-  "screenshots": [
-    {
-      "src": "screenshot-wide.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    },
-    {
-      "src": "screenshot-narrow.png", 
-      "sizes": "720x1280",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ]
+//  "screenshots": [
+//    {
+//      "src": "screenshot-wide.png",
+//      "sizes": "1280x720",
+//      "type": "image/png",
+//      "form_factor": "wide"
+//    },
+//    {
+//      "src": "screenshot-narrow.png",
+//      "sizes": "720x1280",
+//      "type": "image/png",
+//      "form_factor": "narrow"
+//    }
+//  ]
 }
