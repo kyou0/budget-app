@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
   try {
     google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
-      callback: handleGoogleLoginSuccess // ログイン成功時に呼ばれる関数
+      callback: handleGoogleLoginSuccess // ログイン成功時に呼ばれる関数をグローバルから参照
     });
   } catch (e) {
     console.error("Google Sign-Inの初期化に失敗しました。ライブラリが読み込まれていないか、クライアントIDが不正です。", e);
@@ -85,6 +85,10 @@ function tryGoogleLogin() {
  * @param {object} response - Googleからの認証情報
  */
 function handleGoogleLoginSuccess(response) {
+  // ▼▼▼ デバッグ用のログはここに統合しました ▼▼▼
+  console.log('★★★ handleGoogleLoginSuccessが呼び出されました！ ★★★');
+  // ▲▲▲ ▲▲▲
+
   console.log("Googleから認証情報を受け取りました:", response);
   // jwt-decodeライブラリを使って、認証情報(JWT)からユーザー情報を抜き出す
   const userObject = jwt_decode(response.credential);
