@@ -1,4 +1,6 @@
-/* --- 基本スタイル --- */
+/* ===================================================================================
+   基本スタイル & 全ページ共通
+=================================================================================== */
 * {
     margin: 0;
     padding: 0;
@@ -12,7 +14,16 @@ body {
     color: #333;
 }
 
-/* --- ログイン画面 --- */
+.app-container {
+    display: none; /* JavaScriptで表示を制御 */
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* ===================================================================================
+   ログイン画面
+=================================================================================== */
 .login-screen {
     display: flex;
     justify-content: center;
@@ -77,14 +88,9 @@ body {
     box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
 }
 
-/* --- メインアプリ --- */
-.app-container {
-    display: none;
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
+/* ===================================================================================
+   ヘッダー & ナビゲーション
+=================================================================================== */
 .header {
     background: rgba(255, 255, 255, 0.95);
     border-radius: 15px;
@@ -92,80 +98,28 @@ body {
     margin-bottom: 20px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(10px);
-}
-
-.header-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 15px;
 }
 
 .header h1 {
     color: #2c3e50;
     font-size: 2em;
+    margin: 0;
 }
 
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.logout-btn {
-    background: #dc3545;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-}
-
-.navigation {
+.nav-buttons {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
 }
 
-.nav-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    display: inline-block;
-}
-
-.nav-btn.active {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-}
-
-.nav-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-}
-
-.controls {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-top: 15px;
-}
-
-.month-selector {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
+/* ===================================================================================
+   ボタン類
+=================================================================================== */
 .btn {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -176,11 +130,42 @@ body {
     font-weight: 600;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
 }
 
 .btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+/* ===================================================================================
+   ダッシュボード (index.html)
+=================================================================================== */
+.controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 20px; /* ヘッダーから分離 */
+}
+
+.month-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px;
+    border-radius: 10px;
 }
 
 .current-month {
@@ -191,45 +176,6 @@ body {
     text-align: center;
 }
 
-/* --- 通知 --- */
-.sync-notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    color: white;
-    padding: 15px 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    z-index: 1000;
-    font-weight: 600;
-    animation: slideIn 0.3s ease;
-}
-
-.sync-notification.warning {
-    background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
-}
-
-.sync-notification.info {
-    background: linear-gradient(135deg, #4285f4 0%, #3367d6 100%);
-}
-
-.sync-notification.error {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-}
-
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-/* --- サマリーカード --- */
 .summary-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -248,9 +194,6 @@ body {
     font-size: 0.9em;
     margin-bottom: 10px;
     color: #6c757d;
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
 
 .summary-card .amount {
@@ -259,13 +202,8 @@ body {
     color: #2c3e50;
 }
 
-.summary-card .amount.income {
-    color: #28a745;
-}
-
-.summary-card .amount.expense {
-    color: #dc3545;
-}
+.summary-card .amount.income { color: #28a745; }
+.summary-card .amount.expense { color: #dc3545; }
 
 .summary-card .sub-text {
     font-size: 0.8em;
@@ -274,30 +212,17 @@ body {
     height: 1.2em;
 }
 
-/* --- カレンダー --- */
 .calendar-container {
     background: rgba(255, 255, 255, 0.95);
     border-radius: 15px;
     padding: 20px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(10px);
-}
-
-.calendar-header {
-    color: #2c3e50;
-    margin-bottom: 20px;
-    font-size: 1.3em;
-    border-bottom: 2px solid #667eea;
-    padding-bottom: 5px;
 }
 
 .calendar {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 2px;
-    background: #e9ecef;
-    border-radius: 10px;
-    overflow: hidden;
 }
 
 .calendar-day-header {
@@ -306,34 +231,20 @@ body {
     padding: 10px;
     text-align: center;
     font-weight: 600;
+    border-radius: 4px;
 }
 
 .calendar-day {
     background: white;
     min-height: 120px;
     padding: 8px;
-    position: relative;
     border: 1px solid #e9ecef;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
+    border-radius: 4px;
 }
 
-.calendar-day.other-month {
-    background: #f8f9fa;
-    opacity: 0.5;
-}
-
-.calendar-day.today {
-    background: #fff3cd;
-    border: 2px solid #ffc107;
-}
-
-.day-number {
-    font-weight: bold;
-    margin-bottom: 5px;
-    color: #2c3e50;
-}
+.calendar-day.other-month { background: #f8f9fa; }
+.calendar-day.today { background: #fff3cd; }
+.day-number { font-weight: bold; margin-bottom: 5px; }
 
 .calendar-item {
     color: white;
@@ -341,48 +252,146 @@ body {
     border-radius: 4px;
     font-size: 0.8em;
     margin-bottom: 2px;
-    cursor: pointer;
-    transition: transform 0.2s ease;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
+.calendar-item.income { background: #28a745; }
+.calendar-item.expense { background: #dc3545; }
+.calendar-item.loan { background: #ffc107; color: #000; }
 
-.calendar-item:hover {
-    transform: scale(1.05);
+/* ===================================================================================
+   マスター管理 (master.html)
+=================================================================================== */
+.main-content {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
 }
 
-.calendar-item.income {
-    background: #28a745;
+.sidebar, .content-area {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
-.calendar-item.expense {
-    background: #dc3545;
+.sidebar { height: fit-content; }
+
+.section-title {
+    color: #2c3e50;
+    font-size: 1.3em;
+    margin-bottom: 15px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #667eea;
 }
 
-.calendar-item.loan {
-    background: #ffc107;
-    color: #000;
+.category-list { list-style: none; }
+.category-item { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s ease; display: flex; justify-content: space-between; align-items: center; }
+.category-item:hover { background: #e9ecef; transform: translateX(5px); }
+.category-item.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+.category-item.active .category-count { background: rgba(255, 255, 255, 0.2); }
+.category-count { background: rgba(0, 0, 0, 0.1); padding: 4px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+.stat-card { background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%); color: white; padding: 20px; border-radius: 12px; text-align: center; }
+.stat-card.danger { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); }
+.stat-card.success { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
+.stat-value { font-size: 2em; font-weight: bold; margin-bottom: 5px; }
+.stat-label { font-size: 0.9em; opacity: 0.9; }
+
+.items-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+.item-card { background: #fff; border-radius: 12px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08); padding: 20px; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.item-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12); }
+.item-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 15px; }
+.item-icon { font-size: 1.8em; }
+.item-name { flex-grow: 1; font-size: 1.1em; color: #2c3e50; margin: 0; }
+.item-status { font-size: 0.8em; font-weight: 600; padding: 4px 8px; border-radius: 20px; background: #e9ecef; color: #6c757d; }
+.item-status.active { background: #d4edda; color: #155724; }
+.item-card-body { margin-bottom: 15px; }
+.item-detail { display: flex; justify-content: space-between; font-size: 0.95em; margin-bottom: 8px; }
+.item-label { color: #6c757d; }
+.item-value { font-weight: 600; color: #343a40; }
+.item-value.income { color: #28a745; }
+.item-value.expense { color: #dc3545; }
+.item-card-actions { display: flex; gap: 10px; }
+.btn-action { flex-grow: 1; padding: 8px; border-radius: 6px; border: 1px solid #ddd; background: #f8f9fa; cursor: pointer; font-weight: 600; transition: background-color 0.2s; }
+.btn-action.edit:hover { background-color: #e2e6ea; }
+.btn-action.delete:hover { background-color: #f8d7da; color: #721c24; }
+.empty-list-message { text-align: center; padding: 40px; background: #f8f9fa; border-radius: 12px; color: #6c757d; grid-column: 1 / -1; }
+
+/* ===================================================================================
+   フローティング保存ボタン
+=================================================================================== */
+.floating-save-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1050;
+    background-color: #0d6efd;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 50px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
 }
 
-.calendar-item.overdue {
-    border: 2px dashed #dc3545;
-    animation: blink 1.5s infinite;
+.floating-save-button:hover {
+    background-color: #0b5ed7;
 }
 
-@keyframes blink {
-    50% {
-        opacity: 0.5;
+/* ===================================================================================
+   通知システム
+=================================================================================== */
+.sync-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    font-weight: 600;
+    animation: slideIn 0.3s ease;
+}
+
+.sync-notification.warning { background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%); }
+.sync-notification.info { background: linear-gradient(135deg, #4285f4 0%, #3367d6 100%); }
+.sync-notification.error { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); }
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* ===================================================================================
+   レスポンシブ対応 (スマホ表示)
+=================================================================================== */
+@media (max-width: 992px) {
+    .main-content {
+        grid-template-columns: 1fr;
     }
 }
 
-/* --- レスポンシブ --- */
 @media (max-width: 768px) {
-    .controls,
-    .navigation {
+    .header, .nav-buttons, .controls {
         flex-direction: column;
         align-items: stretch;
     }
+
+    /* ★★★ ここがスマホ表示崩れの修正ポイント ★★★ */
+    .summary-cards,
+    .stats-grid {
+        /* スマホでは無理に複数列にせず、安全な1列表示にする */
+        grid-template-columns: 1fr;
+    }
+
     .calendar {
         font-size: 0.8em;
     }
