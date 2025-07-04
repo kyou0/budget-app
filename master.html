@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>⚙️ マスター管理 - 家計簿アプリ v2.0</title>
-    
+
     <!-- PWA対応 -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#667eea">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="家計簿マスター管理">
-    
+
     <style>
         * {
             margin: 0;
@@ -138,6 +138,7 @@
         .navigation {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
 
         .nav-btn {
@@ -197,7 +198,9 @@
         .sync-notification.warning {
             background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
         }
-
+        .sync-notification.info {
+            background: linear-gradient(135deg, #4285f4 0%, #3367d6 100%);
+        }
         .sync-notification.error {
             background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
         }
@@ -205,33 +208,6 @@
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
-        }
-
-        /* サンプルデータバッジ（index.htmlと統一） */
-        .sample-data-badge {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
-            color: white;
-            padding: 10px 15px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: 600;
-            box-shadow: 0 4px 15px rgba(255, 167, 38, 0.3);
-            cursor: pointer;
-            animation: pulse 2s infinite;
-            z-index: 1500;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        .sample-data-badge:hover {
-            transform: scale(1.1);
         }
 
         /* メインコンテンツ */
@@ -277,7 +253,7 @@
             font-weight: 600;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            margin: 5px;
+            margin: 5px 0;
         }
 
         .btn:hover {
@@ -347,6 +323,9 @@
             border-radius: 12px;
             font-size: 0.8em;
             font-weight: bold;
+        }
+        .category-item.active .category-count {
+            background: rgba(255, 255, 255, 0.2);
         }
 
         /* 統計カード */
@@ -536,99 +515,23 @@
             justify-content: flex-end;
         }
 
-        /* 借金関連 */
-        .loan-progress {
-            margin-top: 10px;
-        }
-
-        .progress-bar {
-            background: #e9ecef;
-            height: 8px;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 5px;
-        }
-
-        .progress-fill {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            height: 100%;
-            transition: width 0.3s ease;
-        }
-
-        .progress-text {
-            font-size: 0.8em;
-            color: #6c757d;
-        }
-
-        /* モーダル（index.htmlと統一） */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 2000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 30px;
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(10px);
-            animation: modalSlideIn 0.3s ease;
-        }
-
-        @keyframes modalSlideIn {
-            from { transform: scale(0.8); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-
-        .modal h2 {
-            color: #2c3e50;
-            margin-bottom: 20px;
-            font-size: 1.5em;
-        }
-
-        .modal p {
-            color: #6c757d;
-            margin-bottom: 30px;
-            font-size: 1.1em;
-            line-height: 1.6;
-        }
-
-        .modal .btn-group {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            margin-top: 20px;
-        }
-
         /* レスポンシブ */
-        @media (max-width: 768px) {
+        @media (max-width: 992px) {
             .main-content {
                 grid-template-columns: 1fr;
             }
-            
+        }
+        @media (max-width: 768px) {
             .navigation {
                 flex-direction: column;
             }
-            
             .form-grid {
                 grid-template-columns: 1fr;
             }
-
             .item-actions {
                 flex-direction: column;
+                align-items: flex-end;
             }
-
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
@@ -636,205 +539,640 @@
     </style>
 </head>
 <body>
-    <!-- ログイン画面 -->
-    <div id="loginScreen" class="login-screen">
-        <div class="login-card">
+<!-- ログイン画面 -->
+<div id="loginScreen" class="login-screen">
+    <div class="login-card">
+        <h1>⚙️ マスター管理</h1>
+        <p>家計簿の収入・支出項目を<br>詳細に管理できます</p>
+
+        <button class="google-login-btn" onclick="tryGoogleLogin()">
+            🔐 Googleでログイン
+        </button>
+
+        <button class="local-login-btn" onclick="localLogin()">
+            📱 ローカルモードで開始
+        </button>
+
+        <div id="loginStatus" style="margin-top: 15px; font-size: 0.9em; color: #6c757d; text-align: center;">
+            ローカルモードは同期なしで即座に利用できます
+        </div>
+    </div>
+</div>
+
+<!-- メインアプリ -->
+<div id="appContainer" class="app-container">
+    <div class="header">
+        <div class="header-top">
             <h1>⚙️ マスター管理</h1>
-            <p>家計簿の収入・支出項目を<br>詳細に管理できます</p>
-            
-            <button class="google-login-btn" onclick="tryGoogleLogin()">
-                🔐 Googleでログイン
-            </button>
-            
-            <button class="local-login-btn" onclick="localLogin()">
-                📱 ローカルモードで開始
-            </button>
-            
-            <div id="loginStatus" style="margin-top: 15px; font-size: 0.9em; color: #6c757d; text-align: center;">
-                ローカルモードは同期なしで即座に利用できます
+            <div class="user-info">
+                <span id="userName">ユーザー</span>
+                <button class="logout-btn" onclick="logout()">ログアウト</button>
             </div>
+        </div>
+
+        <div class="navigation">
+            <button class="back-btn" onclick="goToDashboard()">← ダッシュボードに戻る</button>
+            <button class="nav-btn active">⚙️ マスター管理</button>
+            <button class="nav-btn" onclick="openSettings()">🔧 設定</button>
         </div>
     </div>
 
-    <!-- メインアプリ -->
-    <div id="appContainer" class="app-container">
-        <div class="header">
-            <div class="header-top">
-                <h1>⚙️ マスター管理</h1>
-                <div class="user-info">
-                    <span id="userName">ユーザー</span>
-                    <button class="logout-btn" onclick="logout()">ログアウト</button>
-                </div>
-            </div>
-            
-            <div class="navigation">
-                <button class="back-btn" onclick="goToDashboard()">← ダッシュボードに戻る</button>
-                <button class="nav-btn active">⚙️ マスター管理</button>
-                <button class="nav-btn" onclick="openSettings()">🔧 設定</button>
-            </div>
+    <!-- 統計カード -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+            <div class="stat-value" id="statTotalItems">0</div>
+            <div class="stat-label">総項目数</div>
+        </div>
+        <div class="stat-card success">
+            <div class="stat-value" id="statActiveItems">0</div>
+            <div class="stat-label">有効項目</div>
+        </div>
+        <div class="stat-card danger">
+            <div class="stat-value" id="statTotalDebt">¥0</div>
+            <div class="stat-label">総借入額</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="statMonthlyRepayment">¥0</div>
+            <div class="stat-label">月間返済額</div>
+        </div>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="main-content">
+        <!-- サイドバー -->
+        <div class="sidebar">
+            <h3 class="section-title">📂 カテゴリ</h3>
+            <ul class="category-list" id="categoryList">
+                <li class="category-item active" onclick="showCategory('all', this)">
+                    <div class="category-info"><span>📋 すべて</span></div>
+                    <span class="category-count" id="countAll">0</span>
+                </li>
+                <li class="category-item" onclick="showCategory('income', this)">
+                    <div class="category-info"><span>💰 収入</span></div>
+                    <span class="category-count" id="countIncome">0</span>
+                </li>
+                <li class="category-item" onclick="showCategory('loan', this)">
+                    <div class="category-info"><span>💸 借入先</span></div>
+                    <span class="category-count" id="countLoan">0</span>
+                </li>
+                <li class="category-item" onclick="showCategory('card', this)">
+                    <div class="category-info"><span>💳 カード</span></div>
+                    <span class="category-count" id="countCard">0</span>
+                </li>
+                <li class="category-item" onclick="showCategory('fixed', this)">
+                    <div class="category-info"><span>🏠 固定費</span></div>
+                    <span class="category-count" id="countFixed">0</span>
+                </li>
+                <li class="category-item" onclick="showCategory('bank', this)">
+                    <div class="category-info"><span>🏦 銀行</span></div>
+                    <span class="category-count" id="countBank">0</span>
+                </li>
+                <li class="category-item" onclick="showCategory('tax', this)">
+                    <div class="category-info"><span>🏛️ 税金</span></div>
+                    <span class="category-count" id="countTax">0</span>
+                </li>
+                <li class="category-item" onclick="showCategory('variable', this)">
+                    <div class="category-info"><span>🛒 変動費</span></div>
+                    <span class="category-count" id="countVariable">0</span>
+                </li>
+            </ul>
+
+            <h3 class="section-title" style="margin-top: 30px;">🔧 データ管理</h3>
+
+            <button class="btn btn-primary" style="width: 100%;" onclick="showAddForm()">
+                ➕ 新規項目追加
+            </button>
+
+            <button class="btn btn-secondary" style="width: 100%;" onclick="loadSampleData()">
+                📋 サンプルデータ読込
+            </button>
+
+            <button class="btn btn-warning" style="width: 100%;" onclick="exportData()">
+                📤 データエクスポート
+            </button>
+
+            <button class="btn btn-danger" style="width: 100%;" onclick="resetAllData()">
+                🔄 全データリセット
+            </button>
         </div>
 
-        <!-- 統計カード -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
-                <div class="stat-value">0</div>
-                <div class="stat-label">総項目数</div>
-            </div>
-            <div class="stat-card success">
-                <div class="stat-value">0</div>
-                <div class="stat-label">有効項目</div>
-            </div>
-            <div class="stat-card danger">
-                <div class="stat-value">¥0</div>
-                <div class="stat-label">総借入額</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">¥0</div>
-                <div class="stat-label">月間返済額</div>
-            </div>
-        </div>
-
-        <!-- メインコンテンツ -->
-        <div class="main-content">
-            <!-- サイドバー -->
-            <div class="sidebar">
-                <h3 class="section-title">📂 カテゴリ</h3>
-                <ul class="category-list">
-                    <li class="category-item active" onclick="showCategory('all')">
-                        <div class="category-info">
-                            <span>📋 すべて</span>
-                        </div>
-                        <span class="category-count" id="countAll">0</span>
-                    </li>
-                    <li class="category-item" onclick="showCategory('income')">
-                        <div class="category-info">
-                            <span>💰 収入</span>
-                        </div>
-                        <span class="category-count" id="countIncome">0</span>
-                    </li>
-                    <li class="category-item" onclick="showCategory('fixed')">
-                        <div class="category-info">
-                            <span>🏠 固定費</span>
-                        </div>
-                        <span class="category-count" id="countFixed">0</span>
-                    </li>
-                    <li class="category-item" onclick="showCategory('card')">
-                        <div class="category-info">
-                            <span>💳 クレジットカード</span>
-                        </div>
-                        <span class="category-count" id="countCard">0</span>
-                    </li>
-                    <li class="category-item" onclick="showCategory('bank')">
-                        <div class="category-info">
-                            <span>🏦 銀行</span>
-                        </div>
-                        <span class="category-count" id="countBank">0</span>
-                    </li>
-                    <li class="category-item" onclick="showCategory('loan')">
-                        <div class="category-info">
-                            <span>💸 借入先</span>
-                        </div>
-                        <span class="category-count" id="countLoan">0</span>
-                    </li>
-                    <li class="category-item" onclick="showCategory('tax')">
-                        <div class="category-info">
-                            <span>🏛️ 税金</span>
-                        </div>
-                        <span class="category-count" id="countTax">0</span>
-                    </li>
-                    <li class="category-item" onclick="showCategory('variable')">
-                        <div class="category-info">
-                            <span>🛒 変動費</span>
-                        </div>
-                        <span class="category-count" id="countVariable">0</span>
-                    </li>
-                </ul>
-
-                <h3 class="section-title" style="margin-top: 30px;">🔧 データ管理</h3>
-                
-                <button class="btn btn-primary" style="width: 100%; margin-bottom: 10px;" onclick="showAddForm()">
-                    ➕ 新規項目追加
-                </button>
-                
-                <button class="btn btn-secondary" style="width: 100%; margin-bottom: 10px;" onclick="loadSampleData()">
-                    📋 サンプルデータ読み込み
-                </button>
-                
-                <button class="btn btn-warning" style="width: 100%; margin-bottom: 10px;" onclick="exportData()">
-                    📤 データエクスポート
-                </button>
-                
-                <button class="btn btn-danger" style="width: 100%;" onclick="resetAllData()">
-                    🔄 全データリセット
-                </button>
+        <!-- コンテンツエリア -->
+        <div class="content-area">
+            <div class="content-header">
+                <h2 id="categoryTitle" style="color: #2c3e50; font-size: 1.5em;">📋 すべての項目</h2>
             </div>
 
-            <!-- コンテンツエリア -->
-            <div class="content-area">
-                <div class="content-header">
-                    <h2 id="categoryTitle">📋 すべての項目</h2>
+            <!-- 新規/編集フォーム -->
+            <div class="form-container" id="addForm" style="display: none;">
+                <h3 id="formTitle" style="margin-bottom: 20px; color: #2c3e50;">➕ 新規項目追加</h3>
+                <input type="hidden" id="editingItemId">
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="itemName">項目名 *</label>
+                        <input type="text" id="itemName" placeholder="例: 楽天カード" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="itemType">種別 *</label>
+                        <select id="itemType" required onchange="updateFormFields()">
+                            <option value="">選択してください</option>
+                            <option value="income">💰 収入</option>
+                            <option value="loan">💸 借入先</option>
+                            <option value="card">💳 カード</option>
+                            <option value="fixed">🏠 固定費</option>
+                            <option value="bank">🏦 銀行</option>
+                            <option value="tax">🏛️ 税金</option>
+                            <option value="variable">🛒 変動費</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="paymentDay">支払/入金日</label>
+                        <input type="number" id="paymentDay" min="1" max="31" placeholder="例: 27">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="amount">金額/月々返済額 *</label>
+                        <input type="number" id="amount" step="1" placeholder="収入は正数、支出は負数" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="paymentMethod">支払先/振込先</label>
+                        <input type="text" id="paymentMethod" placeholder="例: メイン銀行">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="isActive">状態</label>
+                        <select id="isActive">
+                            <option value="true">✅ 有効</option>
+                            <option value="false">❌ 無効</option>
+                        </select>
+                    </div>
+
+                    <!-- 借入先専用フィールド -->
+                    <div class="form-group loan-field" style="display: none;">
+                        <label for="loanType">借入種別</label>
+                        <select id="loanType">
+                            <option value="消費者金融">消費者金融</option>
+                            <option value="銀行カードローン">銀行カードローン</option>
+                            <option value="クレジットカード">クレジットカード</option>
+                            <option value="親族">親族</option>
+                            <option value="友人">友人</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                    <div class="form-group loan-field" style="display: none;">
+                        <label for="interestRate">年利率 (%)</label>
+                        <input type="number" id="interestRate" step="0.1" placeholder="例: 18.0">
+                    </div>
+                    <div class="form-group loan-field" style="display: none;">
+                        <label for="maxLimit">限度額</label>
+                        <input type="number" id="maxLimit" step="10000" placeholder="例: 500000">
+                    </div>
+                    <div class="form-group loan-field" style="display: none;">
+                        <label for="currentBalance">現在残高</label>
+                        <input type="number" id="currentBalance" step="1" placeholder="例: 234567">
+                    </div>
                 </div>
 
-                <!-- 新規追加フォーム -->
-                <div class="form-container" id="addForm" style="display: none;">
-                    <h3 style="margin-bottom: 20px; color: #2c3e50;">➕ 新規項目追加</h3>
-                    
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="itemName">項目名 *</label>
-                            <input type="text" id="itemName" placeholder="例: 楽天カード" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="itemType">種別 *</label>
-                            <select id="itemType" required onchange="updateFormFields()">
-                                <option value="">選択してください</option>
-                                <option value="income">💰 収入</option>
-                                <option value="fixed">🏠 固定費</option>
-                                <option value="card">💳 クレジットカード</option>
-                                <option value="bank">🏦 銀行</option>
-                                <option value="loan">💸 借入先</option>
-                                <option value="tax">🏛️ 税金</option>
-                                <option value="variable">🛒 変動費</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="paymentDay">支払日/入金日</label>
-                            <input type="number" id="paymentDay" min="1" max="31" placeholder="例: 27">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="amount">金額 *</label>
-                            <input type="number" id="amount" step="1000" placeholder="収入は正数、支出は負数" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="paymentMethod">支払先/振込先</label>
-                            <input type="text" id="paymentMethod" placeholder="例: 楽天銀行">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="isActive">状態</label>
-                            <select id="isActive">
-                                <option value="true">有効</option>
-                                <option value="false">無効</option>
-                            </select>
-                        </div>
-                        
-                        <!-- 借入先専用フィールド -->
-                        <div class="form-group" id="interestRateGroup" style="display: none;">
-                            <label for="interestRate">年利率 (%)</label>
-                            <input type="number" id="interestRate" step="0.1" placeholder="例: 18.0">
-                        </div>
-                        
-                        <div class="form-group" id="maxLimitGroup" style="display: none;">
-                            <label for="maxLimit">限度額</label>
-                            <input type="number" id="maxLimit" step="10000" placeholder="例: 500000">
-                        </div>
-                        
-                        <div class="form-group" id="currentBalanceGroup" style="display: none;">
-                            <label for="currentBalance">現在残高</label>
-                            <input type="number" id="currentBalance" step="1000" placeholder="例: 234567">
-                        </div>
-                    
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="hideAddForm()">キャンセル</button>
+                    <button class="btn btn-primary" onclick="saveItem()">💾 保存</button>
+                </div>
+            </div>
+
+            <!-- 項目リスト -->
+            <div class="items-grid" id="itemsGrid">
+                <!-- アイテムカードがここに表示されます -->
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+  // ===================================================================================
+  // グローバル変数 & 初期設定
+  // ===================================================================================
+  let masterData = [];
+  let currentUser = null;
+  let loginMode = 'local';
+  let currentCategory = 'all';
+
+
+  // ===================================================================================
+  // 初期化処理
+  // ===================================================================================
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 マスター管理ページ起動');
+    // このページ単体でも動作するように、ローカルログインを模倣します。
+    localLogin();
+  });
+
+
+  // ===================================================================================
+  // 認証 & ユーザー管理
+  // ===================================================================================
+  function tryGoogleLogin() {
+    // このページではGoogleログインはデモです
+    showNotification('Googleログインはダッシュボードから行ってください。', 'info');
+  }
+
+  function localLogin() {
+    showNotification('📱 ローカルモードで起動中...', 'info');
+    currentUser = { name: 'ローカルユーザー', mode: 'local' };
+    loginMode = 'local';
+
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'block';
+    document.getElementById('userName').textContent = currentUser.name;
+
+    initializeApp();
+    showNotification(`✅ ${currentUser.name}でログイン完了`);
+  }
+
+  function logout() {
+    currentUser = null;
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('appContainer').style.display = 'none';
+    showNotification('👋 ログアウトしました');
+  }
+
+
+  // ===================================================================================
+  // アプリケーション初期化 & 全体描画
+  // ===================================================================================
+  function initializeApp() {
+    loadData();
+    renderAll();
+  }
+
+  function renderAll() {
+    renderItems(currentCategory);
+    updateStats();
+    updateCategoryCounts();
+  }
+
+
+  // ===================================================================================
+  // データ管理 (CRUD - 作成, 読込, 更新, 削除)
+  // ===================================================================================
+  function saveData() {
+    localStorage.setItem('budgetMasterData', JSON.stringify(masterData));
+    console.log('💾 データが保存されました:', masterData);
+  }
+
+  function loadData() {
+    const savedData = localStorage.getItem('budgetMasterData');
+    if (savedData) {
+      masterData = JSON.parse(savedData);
+      console.log('📂 データを読み込みました:', masterData);
+    } else {
+      loadSampleData(false);
+    }
+  }
+
+  function saveItem() {
+    const editingItemId = document.getElementById('editingItemId').value;
+    const itemName = document.getElementById('itemName').value;
+    const itemType = document.getElementById('itemType').value;
+
+    if (!itemName || !itemType) {
+      showNotification('項目名と種別は必須です。', 'error');
+      return;
+    }
+
+    const newItem = {
+      id: editingItemId || generateUniqueId(),
+      name: itemName,
+      type: itemType,
+      paymentDay: parseInt(document.getElementById('paymentDay').value) || null,
+      amount: parseInt(document.getElementById('amount').value) || 0,
+      paymentMethod: document.getElementById('paymentMethod').value,
+      isActive: document.getElementById('isActive').value === 'true',
+    };
+
+    if (itemType === 'loan') {
+      newItem.loanDetails = {
+        loanType: document.getElementById('loanType').value,
+        interestRate: parseFloat(document.getElementById('interestRate').value) || 0,
+        maxLimit: parseInt(document.getElementById('maxLimit').value) || 0,
+        currentBalance: parseInt(document.getElementById('currentBalance').value) || 0,
+      };
+      newItem.amount = -Math.abs(newItem.amount);
+    }
+
+    if (editingItemId) {
+      const index = masterData.findIndex(item => item.id === editingItemId);
+      if (index > -1) {
+        masterData[index] = newItem;
+        showNotification('✅ 項目を更新しました！');
+      }
+    } else {
+      masterData.push(newItem);
+      showNotification('✨ 新規項目を追加しました！');
+    }
+
+    saveData();
+    renderAll();
+    hideAddForm();
+  }
+
+  function deleteItem(itemId) {
+    if (confirm('この項目を本当に削除しますか？この操作は元に戻せません。')) {
+      masterData = masterData.filter(item => item.id !== itemId);
+      saveData();
+      renderAll();
+      showNotification('🗑️ 項目を削除しました。', 'info');
+    }
+  }
+
+
+  // ===================================================================================
+  // UI描画 & 更新
+  // ===================================================================================
+  function renderItems(category) {
+    const itemsGrid = document.getElementById('itemsGrid');
+    itemsGrid.innerHTML = '';
+    currentCategory = category;
+
+    const filteredData = category === 'all'
+      ? masterData
+      : masterData.filter(item => item.type === category);
+
+    if (filteredData.length === 0) {
+      itemsGrid.innerHTML = `<p style="text-align: center; color: #6c757d; padding: 20px;">このカテゴリには項目がありません。</p>`;
+      return;
+    }
+
+    filteredData.forEach(item => {
+      const card = document.createElement('div');
+      card.className = `item-card ${!item.isActive ? 'inactive' : ''} ${item.type === 'loan' ? 'loan-card' : ''}`;
+
+      const statusClass = item.isActive ? 'status-active' : 'status-inactive';
+      const statusText = item.isActive ? '✅ 有効' : '❌ 無効';
+      const amountClass = item.amount >= 0 ? 'income' : 'expense';
+      const amountPrefix = item.amount >= 0 ? '+' : '';
+
+      let detailsHtml = `
+            <div class="detail-item">
+                <div class="detail-label">種別</div>
+                <div class="detail-value">${getItemIcon(item.type)} ${getCategoryName(item.type)}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">${item.type === 'loan' ? '月々返済額' : '金額'}</div>
+                <div class="detail-value amount ${amountClass}">${amountPrefix}${item.amount.toLocaleString()}円</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">支払/入金日</div>
+                <div class="detail-value">${item.paymentDay ? `${item.paymentDay}日` : '未設定'}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">支払先/振込先</div>
+                <div class="detail-value">${item.paymentMethod || '未設定'}</div>
+            </div>
+        `;
+
+      if (item.type === 'loan' && item.loanDetails) {
+        detailsHtml += `
+                <div class="detail-item">
+                    <div class="detail-label">現在残高</div>
+                    <div class="detail-value expense">-${(item.loanDetails.currentBalance || 0).toLocaleString()}円</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">年利率</div>
+                    <div class="detail-value">${item.loanDetails.interestRate || 0}%</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">限度額</div>
+                    <div class="detail-value">${(item.loanDetails.maxLimit || 0).toLocaleString()}円</div>
+                </div>
+                 <div class="detail-item">
+                    <div class="detail-label">借入種別</div>
+                    <div class="detail-value">${item.loanDetails.loanType || '未設定'}</div>
+                </div>
+            `;
+      }
+
+      card.innerHTML = `
+            <div class="item-header">
+                <span class="item-name">${item.name}</span>
+                <span class="item-status ${statusClass}">${statusText}</span>
+            </div>
+            <div class="item-details">
+                ${detailsHtml}
+            </div>
+            <div class="item-actions">
+                <button class="btn btn-small btn-warning" onclick="showEditForm('${item.id}')">✏️ 編集</button>
+                <button class="btn btn-small btn-danger" onclick="deleteItem('${item.id}')">🗑️ 削除</button>
+            </div>
+        `;
+      itemsGrid.appendChild(card);
+    });
+  }
+
+  function updateStats() {
+    const totalItems = masterData.length;
+    const activeItems = masterData.filter(item => item.isActive).length;
+
+    const loanItems = masterData.filter(item => item.type === 'loan' && item.isActive);
+    const totalDebt = loanItems.reduce((sum, item) => sum + (item.loanDetails?.currentBalance || 0), 0);
+    const monthlyRepayment = loanItems.reduce((sum, item) => sum + Math.abs(item.amount || 0), 0);
+
+    document.getElementById('statTotalItems').textContent = totalItems;
+    document.getElementById('statActiveItems').textContent = activeItems;
+    document.getElementById('statTotalDebt').textContent = `¥${totalDebt.toLocaleString()}`;
+    document.getElementById('statMonthlyRepayment').textContent = `¥${monthlyRepayment.toLocaleString()}`;
+  }
+
+  function updateCategoryCounts() {
+    const counts = {
+      all: masterData.length, income: 0, loan: 0, card: 0, fixed: 0, bank: 0, tax: 0, variable: 0
+    };
+    masterData.forEach(item => {
+      if (counts.hasOwnProperty(item.type)) {
+        counts[item.type]++;
+      }
+    });
+
+    for (const category in counts) {
+      const element = document.getElementById(`count${category.charAt(0).toUpperCase() + category.slice(1)}`);
+      if (element) {
+        element.textContent = counts[category];
+      }
+    }
+  }
+
+
+  // ===================================================================================
+  // フォーム & UI操作
+  // ===================================================================================
+  function showAddForm() {
+    document.getElementById('editingItemId').value = '';
+    document.getElementById('formTitle').textContent = '➕ 新規項目追加';
+    document.getElementById('addForm').reset();
+    updateFormFields();
+    document.getElementById('addForm').style.display = 'block';
+    window.scrollTo({ top: document.getElementById('addForm').offsetTop - 20, behavior: 'smooth' });
+  }
+
+  function showEditForm(itemId) {
+    const item = masterData.find(i => i.id === itemId);
+    if (!item) return;
+
+    hideAddForm();
+
+    document.getElementById('editingItemId').value = item.id;
+    document.getElementById('formTitle').textContent = '✏️ 項目編集';
+
+    document.getElementById('itemName').value = item.name;
+    document.getElementById('itemType').value = item.type;
+    document.getElementById('paymentDay').value = item.paymentDay;
+    document.getElementById('amount').value = item.amount;
+    document.getElementById('paymentMethod').value = item.paymentMethod;
+    document.getElementById('isActive').value = item.isActive.toString();
+
+    updateFormFields();
+
+    if (item.type === 'loan' && item.loanDetails) {
+      document.getElementById('loanType').value = item.loanDetails.loanType || '';
+      document.getElementById('interestRate').value = item.loanDetails.interestRate || '';
+      document.getElementById('maxLimit').value = item.loanDetails.maxLimit || '';
+      document.getElementById('currentBalance').value = item.loanDetails.currentBalance || '';
+    }
+
+    document.getElementById('addForm').style.display = 'block';
+    window.scrollTo({ top: document.getElementById('addForm').offsetTop - 20, behavior: 'smooth' });
+  }
+
+  function hideAddForm() {
+    document.getElementById('addForm').style.display = 'none';
+    document.getElementById('addForm').reset();
+    document.getElementById('editingItemId').value = '';
+  }
+
+  function updateFormFields() {
+    const itemType = document.getElementById('itemType').value;
+    const loanFields = document.querySelectorAll('.loan-field');
+    const amountLabel = document.querySelector('label[for="amount"]');
+
+    if (itemType === 'loan') {
+      loanFields.forEach(field => field.style.display = 'flex');
+      amountLabel.textContent = '月々返済額 *';
+    } else {
+      loanFields.forEach(field => field.style.display = 'none');
+      amountLabel.textContent = '金額/月々返済額 *';
+    }
+  }
+
+  // ===================================================================================
+  // UIインタラクション & ヘルパー関数
+  // ===================================================================================
+  function showCategory(category, element) {
+    document.querySelectorAll('.category-item').forEach(item => {
+      item.classList.remove('active');
+    });
+    element.classList.add('active');
+
+    document.getElementById('categoryTitle').textContent = `${getItemIcon(category)} ${getCategoryName(category)}の項目`;
+    hideAddForm();
+    renderItems(category);
+  }
+
+  function getCategoryName(type) {
+    const names = {
+      all: 'すべて', income: '収入', loan: '借入先', card: 'カード',
+      fixed: '固定費', bank: '銀行', tax: '税金', variable: '変動費'
+    };
+    return names[type] || 'その他';
+  }
+
+  function getItemIcon(type) {
+    const icons = {
+      all: '📋', income: '💰', loan: '💸', card: '💳',
+      fixed: '🏠', bank: '🏦', tax: '🏛️', variable: '🛒'
+    };
+    return icons[type] || '📄';
+  }
+
+  function generateUniqueId() {
+    return 'item_' + Date.now() + Math.random().toString(36).substr(2, 9);
+  }
+
+  function showNotification(message, type = 'success') {
+    const existing = document.querySelector('.sync-notification');
+    if (existing) existing.remove();
+
+    const notification = document.createElement('div');
+    notification.className = `sync-notification ${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      notification.style.animation = 'slideIn 0.3s ease reverse';
+      setTimeout(() => notification.remove(), 300);
+    }, 4000);
+  }
+
+  // ===================================================================================
+  // データ管理（サンプル、インポート/エクスポート）
+  // ===================================================================================
+  function loadSampleData(confirmFirst = true) {
+    if (confirmFirst && !confirm('現在のデータは上書きされます。サンプルデータを読み込みますか？')) {
+      return;
+    }
+    masterData = [
+      { id: 'item_1', name: "クライアントA", type: "income", paymentDay: 10, amount: 200000, paymentMethod: "銀行振込", isActive: true },
+      { id: 'item_2', name: "クライアントB", type: "income", paymentDay: 25, amount: 150000, paymentMethod: "銀行振込", isActive: true },
+      { id: 'item_3', name: "家賃", type: "fixed", paymentDay: 27, amount: -80000, paymentMethod: "銀行振込", isActive: true },
+      { id: 'item_4', name: "奨学金", type: "fixed", paymentDay: 27, amount: -20295, paymentMethod: "銀行振込", isActive: true },
+      { id: 'item_5', name: "メインカード", type: "card", paymentDay: 4, amount: -50000, paymentMethod: "メイン銀行", isActive: true },
+      { id: 'item_6', name: "サブカード", type: "card", paymentDay: 10, amount: -30000, paymentMethod: "サブ銀行", isActive: false },
+      { id: 'item_7', name: "メイン銀行", type: "bank", paymentDay: null, amount: 0, paymentMethod: "", isActive: true },
+      { id: 'item_8', name: "アコム", type: "loan", paymentDay: 27, amount: -15000, paymentMethod: "メイン銀行", isActive: true, loanDetails: { loanType: "消費者金融", interestRate: 18.0, maxLimit: 500000, currentBalance: 234567 } },
+      { id: 'item_9', name: "楽天カードローン", type: "loan", paymentDay: 12, amount: -12000, paymentMethod: "楽天銀行", isActive: true, loanDetails: { loanType: "クレジットカード", interestRate: 18.0, maxLimit: 1000000, currentBalance: 450000 } },
+      { id: 'item_10', name: "親", type: "loan", paymentDay: 31, amount: -5000, paymentMethod: "手渡し", isActive: true, loanDetails: { loanType: "親族", interestRate: 0, maxLimit: 0, currentBalance: 100000 } }
+    ];
+    saveData();
+    renderAll();
+    showNotification('📋 サンプルデータを読み込みました。');
+  }
+
+  function exportData() {
+    if (masterData.length === 0) {
+      showNotification('エクスポートするデータがありません。', 'warning');
+      return;
+    }
+    const dataStr = JSON.stringify(masterData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'budget-master-data.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showNotification('📤 データをエクスポートしました。');
+  }
+
+  function resetAllData() {
+    if (confirm('本当にすべてのデータをリセットしますか？この操作は元に戻せません。')) {
+      masterData = [];
+      saveData();
+      renderAll();
+      showNotification('🔄 全データをリセットしました。', 'error');
+    }
+  }
+
+
+  // ===================================================================================
+  // ページ遷移
+  // ===================================================================================
+  function goToDashboard() {
+    window.location.href = 'index.html';
+  }
+
+  function openSettings() {
+    window.location.href = 'settings.html';
+  }
+</script>

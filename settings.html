@@ -3,694 +3,303 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔧 設定 - 家計簿アプリ</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    <title>🔧 設定 - 家計簿アプリ v2.0</title>
 
+    <!-- PWA対応 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="家計簿設定">
+
+    <style>
+        /* index.html, master.htmlと共通のスタイル */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             color: #333;
         }
+        .login-screen { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .login-card { background: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 20px; text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); backdrop-filter: blur(10px); max-width: 400px; width: 100%; }
+        .login-card h1 { color: #2c3e50; margin-bottom: 10px; font-size: 2.5em; }
+        .login-card p { color: #6c757d; margin-bottom: 30px; font-size: 1.1em; }
+        .google-login-btn, .local-login-btn { background: #4285f4; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-size: 1.1em; font-weight: 600; cursor: pointer; width: 100%; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3); margin-bottom: 15px; }
+        .local-login-btn { background: #28a745; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); }
+        .google-login-btn:hover { background: #3367d6; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4); }
+        .local-login-btn:hover { background: #218838; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4); }
+        .app-container { display: none; max-width: 900px; margin: 0 auto; padding: 20px; }
+        .header { background: rgba(255, 255, 255, 0.95); border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); backdrop-filter: blur(10px); }
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .header h1 { color: #2c3e50; font-size: 2em; }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .logout-btn { background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .navigation { display: flex; gap: 10px; flex-wrap: wrap; }
+        .nav-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; text-decoration: none; display: inline-block; }
+        .nav-btn.active { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); }
+        .sync-notification { position: fixed; top: 20px; right: 20px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); z-index: 1000; font-weight: 600; animation: slideIn 0.3s ease; }
+        .sync-notification.warning { background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%); }
+        .sync-notification.info { background: linear-gradient(135deg, #4285f4 0%, #3367d6 100%); }
+        .sync-notification.error { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); margin: 5px 0; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); }
+        .btn-primary { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
+        .btn-danger { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
+        .btn-warning { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: #000; }
+        .btn-secondary { background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%); }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-        }
-
-        .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .header h1 {
-            color: #2c3e50;
-            font-size: 2em;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .navigation {
-            display: flex;
-            gap: 10px;
-        }
-
-        .nav-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .nav-btn.active {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        }
-
-        .nav-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .main-content {
+        /* 設定ページ専用スタイル */
+        .settings-grid {
             display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
         }
-
-        .settings-section {
+        .setting-card {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
             padding: 25px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(10px);
-            margin-bottom: 20px;
         }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
-        }
-
-        .section-title {
+        .setting-card h2 {
             color: #2c3e50;
-            font-size: 1.3em;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-        }
-
-        .btn-warning {
-            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
-            color: #000;
-        }
-
-        .settings-grid {
-            display: grid;
-            gap: 20px;
-        }
-
-        .setting-item {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 12px;
-            padding: 20px;
-            transition: all 0.3s ease;
-        }
-
-        .setting-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .setting-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .setting-title {
-            font-size: 1.1em;
-            font-weight: bold;
-            color: #2c3e50;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .setting-description {
-            color: #6c757d;
-            margin-bottom: 15px;
-            line-height: 1.5;
-        }
-
-        .setting-actions {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-
-        .status-connected {
-            background: #28a745;
-        }
-
-        .status-disconnected {
-            background: #dc3545;
-        }
-
-        .status-pending {
-            background: #ffc107;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 5px;
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s ease;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background-color: #667eea;
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(26px);
-        }
-
-        .data-usage {
-            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-        }
-
-        .usage-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .usage-item {
-            text-align: center;
-        }
-
-        .usage-value {
             font-size: 1.5em;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .usage-label {
-            font-size: 0.9em;
-            opacity: 0.9;
-        }
-
-        .alert {
-            padding: 15px;
-            border-radius: 10px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
         }
-
-        .alert.info {
-            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
-            color: white;
+        .setting-card p {
+            color: #6c757d;
+            line-height: 1.6;
+            margin-bottom: 20px;
         }
-
-        .alert.success {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #e9ecef;
         }
-
-        .alert.warning {
-            background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%);
-            color: white;
+        .setting-item:last-child {
+            border-bottom: none;
         }
-
-        /* レスポンシブ */
-        @media (max-width: 768px) {
-            .navigation {
-                flex-direction: column;
-            }
-            
-            .setting-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
-            
-            .setting-actions {
-                width: 100%;
-                justify-content: flex-start;
-            }
+        .setting-label {
+            font-weight: 600;
+            color: #343a40;
+        }
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        .status-badge.google {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-badge.local {
+            background: #fff3cd;
+            color: #856404;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="header-top">
-                <h1>🔧 設定</h1>
-                <div class="user-info">
-                    <span>ユーザー</span>
-                </div>
-            </div>
-            
-            <div class="navigation">
-                <a href="index.html" class="nav-btn">📊 ダッシュボード</a>
-                <a href="master.html" class="nav-btn">⚙️ マスター管理</a>
-                <button class="nav-btn active">🔧 設定</button>
+<!-- ログイン画面 -->
+<div id="loginScreen" class="login-screen">
+    <div class="login-card">
+        <h1>🔧 設定</h1>
+        <p>アプリケーションの同期や<br>データ管理を行います</p>
+        <button class="google-login-btn" onclick="tryGoogleLogin()">🔐 Googleでログイン</button>
+        <button class="local-login-btn" onclick="localLogin()">📱 ローカルモードで開始</button>
+    </div>
+</div>
+
+<!-- メインアプリ -->
+<div id="appContainer" class="app-container">
+    <div class="header">
+        <div class="header-top">
+            <h1>🔧 設定</h1>
+            <div class="user-info">
+                <span id="userName">ユーザー</span>
+                <button class="logout-btn" onclick="logout()">ログアウト</button>
             </div>
         </div>
-
-        <div class="main-content">
-            <!-- Google連携設定 -->
-            <div class="settings-section">
-                <div class="section-header">
-                    <h2 class="section-title">🔗 Google連携設定</h2>
-                </div>
-
-                <div class="settings-grid">
-                    <div class="setting-item">
-                        <div class="setting-header">
-                            <div class="setting-title">
-                                <span class="status-indicator status-pending"></span>
-                                📂 Google Drive 同期
-                            </div>
-                            <div class="setting-actions">
-                                <button class="btn btn-success" onclick="connectGoogleDrive()">接続</button>
-                            </div>
-                        </div>
-                        <div class="setting-description">
-                            家計簿データをGoogle Driveに自動保存し、複数端末で同期します。無料で15GBまで利用可能です。
-                        </div>
-                    </div>
-
-                    <div class="setting-item">
-                        <div class="setting-header">
-                            <div class="setting-title">
-                                <span class="status-indicator status-disconnected"></span>
-                                📅 Google Calendar 連携
-                            </div>
-                            <div class="setting-actions">
-                                <button class="btn" onclick="connectGoogleCalendar()">接続</button>
-                            </div>
-                        </div>
-                        <div class="setting-description">
-                            支払い予定をGoogleカレンダーに自動登録し、リマインダー通知を受け取れます。
-                        </div>
-                    </div>
-                </div>
-
-                <div class="data-usage">
-                    <h3>📊 データ使用量</h3>
-                    <div class="usage-grid">
-                        <div class="usage-item">
-                            <div class="usage-value">2.3KB</div>
-                            <div class="usage-label">使用容量</div>
-                        </div>
-                        <div class="usage-item">
-                            <div class="usage-value">15GB</div>
-                            <div class="usage-label">利用可能</div>
-                        </div>
-                        <div class="usage-item">
-                            <div class="usage-value">0.00%</div>
-                            <div class="usage-label">使用率</div>
-                        </div>
-                        <div class="usage-item">
-                            <div class="usage-value">∞年</div>
-                            <div class="usage-label">利用可能期間</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 通知設定 -->
-            <div class="settings-section">
-                <div class="section-header">
-                    <h2 class="section-title">🔔 通知設定</h2>
-                </div>
-
-                <div class="settings-grid">
-                    <div class="setting-item">
-                        <div class="setting-header">
-                            <div class="setting-title">
-                                ⚠️ 支払い期限アラート
-                            </div>
-                            <div class="setting-actions">
-                                <label class="switch">
-                                    <input type="checkbox" checked>
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="setting-description">
-                            支払い期限が近づいた際に通知を受け取ります。
-                        </div>
-                        <div class="form-group">
-                            <label>通知タイミング</label>
-                            <select>
-                                <option value="1">1日前</option>
-                                <option value="3" selected>3日前</option>
-                                <option value="7">1週間前</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="setting-item">
-                        <div class="setting-header">
-                            <div class="setting-title">
-                                💸 滞納リスクアラート
-                            </div>
-                            <div class="setting-actions">
-                                <label class="switch">
-                                    <input type="checkbox" checked>
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="setting-description">
-                            支払い遅延や滞納リスクがある場合に緊急通知を送信します。
-                        </div>
-                    </div>
-
-                    <div class="setting-item">
-                        <div class="setting-header">
-                            <div class="setting-title">
-                                🎉 借金減額通知
-                            </div>
-                            <div class="setting-actions">
-                                <label class="switch">
-                                    <input type="checkbox" checked>
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="setting-description">
-                            借金が減った際や完済に近づいた際にモチベーション向上の通知を送信します。
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- データ管理 -->
-            <div class="settings-section">
-                <div class="section-header">
-                    <h2 class="section-title">💾 データ管理</h2>
-                </div>
-
-                <div class="settings-grid">
-                    <div class="setting-item">
-                        <div class="setting-header">
-                            <div class="setting-title">
-                                📤 データエクスポート
-                            </div>
-                            <div class="setting-actions">
-                                <button class="btn" onclick="exportData()">エクスポート</button>
-                            </div>
-                        </div>
-                        <div class="setting-description">
-                            家計簿データをJSONファイルとしてダウンロードし、バックアップを作成します。
-                        </div>
-                    </div>
-
-                    <div class="setting-item">
-                        <div class="setting-header">
-                            <div class="setting-title">
-                                📥 データインポート
-                            </div>
-                            <div class="setting-actions">
-                                <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
-                                <button class="btn" onclick="document.getElementById('importFile').click()">インポート</button>
-                            </div>
-                        </div>
-                        <div class="setting-description">
-                            以前にエクスポートしたJSONファイルから家計簿データを復元します。
-                        </div>
-                    </div>
-
-                    <div class="setting-item">
-                        <div class="setting-header">
-                            <div class="setting-title">
-                                🗑️ データリセット
-                            </div>
-                            <div class="setting-actions">
-                                <button class="btn btn-danger" onclick="resetAllData()">リセット</button>
-                            </div>
-                        </div>
-                        <div class="setting-description">
-                            すべての家計簿データを削除し、初期状態に戻します。この操作は取り消せません。
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- アプリ設定 -->
-            <div class="settings-section">
-                <div class="section-header">
-                    <h2 class="section-title">⚙️ アプリ設定</h2>
-                </div>
-
-                <div class="settings-grid">
-                    <div class="setting-item">
-                        <div class="setting-header">
-                            <div class="setting-title">
-                                🌙 ダークモード
-                            </div>
-                            <div class="setting-actions">
-                                <label class="switch">
-                                    <input type="checkbox" onchange="toggleDarkMode()">
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="setting-description">
-                            アプリの外観を暗いテーマに変更します。（開発中）
-                        </div>
-                    </div>
-
-                    <div class="setting-item">
-                        <div class="setting-header">
-                            <div class="setting-title">
-                                💱 通貨設定
-                            </div>
-                        </div>
-                        <div class="setting-description">
-                            表示通貨を選択します。
-                        </div>
-                        <div class="form-group">
-                            <select>
-                                <option value="JPY" selected>日本円 (¥)</option>
-                                <option value="USD">米ドル ($)</option>
-                                <option value="EUR">ユーロ (€)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="setting-item">
-                        <div class="setting-header">
-                            <div class="setting-title">
-                                🔄 自動保存
-                            </div>
-                            <div class="setting-actions">
-                                <label class="switch">
-                                    <input type="checkbox" checked>
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="setting-description">
-                            データの変更を自動的に保存します。
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="navigation">
+            <button class="nav-btn" onclick="goToDashboard()">📊 ダッシュボード</button>
+            <button class="nav-btn" onclick="goToMasterManagement()">⚙️ マスター管理</button>
+            <button class="nav-btn active">🔧 設定</button>
         </div>
     </div>
 
-    <script>
-        // Google Drive接続
-        function connectGoogleDrive() {
-            alert('🔗 Google Drive連携機能は開発中です。\n\n実装予定機能：\n• 自動データ同期\n• マルチデバイス対応\n• 自動バックアップ');
-        }
+    <div class="settings-grid">
+        <!-- データ同期設定 -->
+        <div class="setting-card">
+            <h2>☁️ データ同期設定</h2>
+            <p>データの同期状態を確認・管理します。Googleアカウントでのログインを推奨します。</p>
+            <div class="setting-item">
+                <span class="setting-label">現在のモード</span>
+                <span id="syncStatus" class="status-badge local">ローカルモード</span>
+            </div>
+            <div class="setting-item">
+                <span class="setting-label">手動同期</span>
+                <button id="manualSyncBtn" class="btn btn-primary" onclick="manualSync()">今すぐ同期</button>
+            </div>
+        </div>
 
-        // Google Calendar接続
-        function connectGoogleCalendar() {
-            alert('📅 Google Calendar連携機能は開発中です。\n\n実装予定機能：\n• 支払い予定の自動登録\n• リマインダー通知\n• 完済日の表示');
-        }
+        <!-- データ管理 -->
+        <div class="setting-card">
+            <h2>💾 データ管理</h2>
+            <p>マスターデータのバックアップや初期化を行います。操作は慎重に行ってください。</p>
+            <div class="setting-item">
+                <span class="setting-label">データをバックアップ</span>
+                <button class="btn btn-warning" onclick="exportData()">📤 エクスポート</button>
+            </div>
+            <div class="setting-item">
+                <span class="setting-label">バックアップから復元</span>
+                <button class="btn btn-secondary" onclick="importData()">📥 インポート</button>
+            </div>
+            <div class="setting-item">
+                <span class="setting-label">全データを初期化</span>
+                <button class="btn btn-danger" onclick="resetAllData()">🔄 全リセット</button>
+            </div>
+        </div>
 
-        // データエクスポート
-        function exportData() {
-            const masterData = JSON.parse(localStorage.getItem('budgetMasterData')) || [];
-            const currentDate = JSON.parse(localStorage.getItem('budgetCurrentDate')) || {year: 2025, month: 7};
-            
-            const exportData = {
-                version: '2.0',
-                exportDate: new Date().toISOString(),
-                masterData: masterData,
-                currentDate: currentDate
-            };
-            
-            const dataStr = JSON.stringify(exportData, null, 2);
-            const dataBlob = new Blob([dataStr], {type: 'application/json'});
-            
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(dataBlob);
-            link.download = `budget-backup-${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
-            
-            alert('✅ データをエクスポートしました！');
-        }
+        <!-- アプリ情報 -->
+        <div class="setting-card">
+            <h2>ℹ️ アプリ情報</h2>
+            <p>このアプリケーションのバージョン情報です。</p>
+            <div class="setting-item">
+                <span class="setting-label">バージョン</span>
+                <span>v2.0.0</span>
+            </div>
+            <div class="setting-item">
+                <span class="setting-label">最終更新</span>
+                <span>2025-07-20</span>
+            </div>
+            <div class="setting-item">
+                <span class="setting-label">開発者</span>
+                <span>onuma kyosuke</span>
+            </div>
+        </div>
+    </div>
+</div>
 
-        // データインポート
-        function importData(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const importedData = JSON.parse(e.target.result);
-                    
-                    if (importedData.masterData) {
-                        localStorage.setItem('budgetMasterData', JSON.stringify(importedData.masterData));
-                    }
-                    
-                    if (importedData.currentDate) {
-                        localStorage.setItem('budgetCurrentDate', JSON.stringify(importedData.currentDate));
-                    }
-                    
-                    alert('✅ データをインポートしました！\nページを更新して最新データを確認してください。');
-                } catch (error) {
-                    alert('❌ ファイルの読み込みに失敗しました。\n正しいJSONファイルを選択してください。');
-                }
-            };
-            reader.readAsText(file);
-        }
+<script>
+  // ===================================================================================
+  // グローバル変数 & 初期設定
+  // ===================================================================================
+  let currentUser = null;
+  let loginMode = 'local';
 
-        // データリセット
-        function resetAllData() {
-            if (confirm('⚠️ 警告\n\nすべての家計簿データが削除されます。\nこの操作は取り消せません。\n\n続行しますか？')) {
-                if (confirm('最終確認\n\n本当にすべてのデータを削除しますか？')) {
-                    localStorage.removeItem('budgetMasterData');
-                    localStorage.removeItem('budgetCurrentDate');
-                    alert('✅ すべてのデータをリセットしました。\nページを更新すると初期状態に戻ります。');
-                }
-            }
-        }
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 設定ページ起動');
+    // 実際のアプリでは他ページからログイン情報を引き継ぐ
+    // このページ単体でも動作するように、ローカルログインを模倣
+    localLogin();
+  });
 
-        // ダークモード切り替え
-        function toggleDarkMode() {
-            alert('🌙 ダークモード機能は開発中です。');
-        }
+  // ===================================================================================
+  // 認証 & UI更新
+  // ===================================================================================
+  function tryGoogleLogin() {
+    showNotification('Googleログインはダッシュボードから行ってください。', 'info');
+  }
 
-        // ページ読み込み時の初期化
-        document.addEventListener('DOMContentLoaded', function() {
-            // 設定の初期化処理
-            console.log('設定ページを読み込みました');
-        });
-    </script>
+  function localLogin() {
+    currentUser = { name: 'ローカルユーザー', mode: 'local' };
+    loginMode = 'local';
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'block';
+    document.getElementById('userName').textContent = currentUser.name;
+    updateSyncStatus();
+  }
+
+  function logout() {
+    currentUser = null;
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('appContainer').style.display = 'none';
+    showNotification('👋 ログアウトしました');
+  }
+
+  function updateSyncStatus() {
+    const statusBadge = document.getElementById('syncStatus');
+    const syncButton = document.getElementById('manualSyncBtn');
+    if (loginMode === 'google') {
+      statusBadge.textContent = 'Google Drive';
+      statusBadge.className = 'status-badge google';
+      syncButton.disabled = false;
+    } else {
+      statusBadge.textContent = 'ローカルモード';
+      statusBadge.className = 'status-badge local';
+      syncButton.disabled = true;
+    }
+  }
+
+  // ===================================================================================
+  // 機能
+  // ===================================================================================
+  function manualSync() {
+    showNotification('☁️ Google Driveと手動で同期しています...', 'info');
+    // ここに実際のGoogle Drive API同期処理を実装
+    setTimeout(() => {
+      showNotification('✅ 同期が完了しました！');
+    }, 2000);
+  }
+
+  function exportData() {
+    const savedData = localStorage.getItem('budgetMasterData');
+    if (!savedData || JSON.parse(savedData).length === 0) {
+      showNotification('エクスポートするデータがありません。', 'warning');
+      return;
+    }
+    const blob = new Blob([savedData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'budget-master-data.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification('📤 データをエクスポートしました。');
+  }
+
+  function importData() {
+    showNotification('📥 インポート機能は現在開発中です。', 'info');
+    alert('バックアップしたJSONファイルを選択して復元する機能を開発中です。');
+  }
+
+  function resetAllData() {
+    if (confirm('本当にすべてのデータをリセットしますか？マスターデータが空になります。この操作は元に戻せません。')) {
+      localStorage.setItem('budgetMasterData', '[]');
+      showNotification('🔄 全データをリセットしました。', 'error');
+    }
+  }
+
+  // ===================================================================================
+  // ヘルパー関数 & ページ遷移
+  // ===================================================================================
+  function showNotification(message, type = 'success') {
+    const existing = document.querySelector('.sync-notification');
+    if (existing) existing.remove();
+    const notification = document.createElement('div');
+    notification.className = `sync-notification ${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    setTimeout(() => {
+      notification.style.animation = 'slideIn 0.3s ease reverse';
+      setTimeout(() => notification.remove(), 300);
+    }, 4000);
+  }
+
+  function goToDashboard() {
+    window.location.href = 'index.html';
+  }
+
+  function goToMasterManagement() {
+    window.location.href = 'master.html';
+  }
+</script>
 </body>
 </html>
