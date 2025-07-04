@@ -14,8 +14,9 @@ let currentMonth = new Date().getMonth() + 1;
 
 /**
  * Googleの認証ライブラリが読み込み完了したときに呼び出される関数
+ * HTMLのonloadから呼び出すため、windowオブジェクトに登録する
  */
-function onGoogleLibraryLoad() {
+window.onGoogleLibraryLoad = function() {
   console.log('✅ Googleライブラリの読み込み完了');
   // Googleログインの初期化
   try {
@@ -30,8 +31,6 @@ function onGoogleLibraryLoad() {
 
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 家計簿アプリ v2.0 起動');
-
-  // ▼▼▼ Googleの初期化処理は onGoogleLibraryLoad に移動したため、ここでは削除 ▼▼▼
 
   // ログイン状態を復元しようと試みる
   const savedUserJSON = localStorage.getItem('budgetAppUser');
@@ -60,16 +59,51 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+// この関数は内部でのみ使用するため、windowには登録しない
+function showApp() {
+  const loginScreenEl = document.getElementById('loginScreen');
+  const appContainerEl = document.getElementById('appContainer');
+  const userNameEl = document.getElementById('userName');
+
+  if (loginScreenEl) loginScreenEl.style.display = 'none';
+  if (appContainerEl) appContainerEl.style.display = 'block';
+  if (userNameEl && currentUser) userNameEl.textContent = currentUser.name;
+
+  initializeApp();
+}
+
+// この関数も内部でのみ使用
+function initializeApp() {
+  loadData();
+  renderAll();
+  if (currentUser) {
+    showNotification(`✅ ${currentUser.name}としてログインしました`);
+  }
+}
+
+// この関数も内部でのみ使用
+function renderAll() {
+  updateCurrentMonthDisplay();
+  generateCalendar();
+  updateSummaryCards();
+}
+
+
 // ===================================================================================
 // 認証 & ユーザー管理
 // ===================================================================================
 
 /**
  * Googleログインのプロンプトを表示する
- * HTMLのonclickから呼び出される
+ * HTMLのonclickから呼び出すため、windowオブジェクトに登録する
  */
-function tryGoogleLogin() {
+window.tryGoogleLogin = function() {
   try {
+    // googleオブジェクトが未定義の場合に備える
+    if (typeof google === 'undefined' || !google.accounts) {
+      showNotification('Googleログインの準備ができていません。少し待ってからもう一度お試しください。', 'error');
+      return;
+    }
     google.accounts.id.prompt();
   } catch (e) {
     console.error("Googleログインのプロンプト表示に失敗しました。", e);
@@ -79,7 +113,8 @@ function tryGoogleLogin() {
 
 /**
  * Googleログイン成功時に呼び出されるコールバック関数
- * @param {object} response - Googleからの認証情報
+ * この関数はgoogle.accounts.id.initializeのコールバックとして直接渡されるため、
+ * windowに登録する必要はない。
  */
 function handleGoogleLoginSuccess(response) {
   console.log('★★★ handleGoogleLoginSuccessが呼び出されました！ ★★★');
@@ -105,8 +140,6 @@ function handleGoogleLoginSuccess(response) {
 
 /**
  * JWTをデコードする自作関数 (ライブラリ不要)
- * @param {string} token - Googleから受け取ったJWT
- * @returns {object | null} デコードされたユーザー情報、または失敗時にnull
  */
 function decodeJWT(token) {
   try {
@@ -128,9 +161,9 @@ function decodeJWT(token) {
 
 /**
  * ローカルログイン
- * HTMLのonclickから呼び出される
+ * HTMLのonclickから呼び出すため、windowオブジェクトに登録する
  */
-function localLogin() {
+window.localLogin = function() {
   currentUser = { name: 'ローカルユーザー', mode: 'local' };
   loginMode = 'local';
   localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
@@ -152,10 +185,10 @@ function proceedToApp() {
 
 /**
  * ログアウト
- * HTMLのonclickから呼び出される
+ * HTMLのonclickから呼び出すため、windowオブジェクトに登録する
  */
-function logout() {
-  if (loginMode === 'google' && typeof google !== 'undefined') {
+window.logout = function() {
+  if (loginMode === 'google' && typeof google !== 'undefined' && google.accounts) {
     google.accounts.id.disableAutoSelect();
   }
   currentUser = null;
@@ -184,12 +217,13 @@ function loadData() {
   }
 }
 
-// (loadSampleData関数は使用されなくなったため削除)
-
 // ===================================================================================
 // UI描画 & 更新
 // ===================================================================================
-function changeMonth(delta) {
+/**
+ * HTMLのonclickから呼び出すため、windowオブジェクトに登録する
+ */
+window.changeMonth = function(delta) {
   currentMonth += delta;
   if (currentMonth > 12) {
     currentMonth = 1;
@@ -343,7 +377,10 @@ function calculateCompletionDate(loanItems) {
 // ===================================================================================
 // 機能 & ページ遷移
 // ===================================================================================
-function checkOverdueRisk() {
+/**
+ * HTMLのonclickから呼び出すため、windowオブジェクトに登録する
+ */
+window.checkOverdueRisk = function() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const overdueItems = masterData.filter(item => {
@@ -363,11 +400,17 @@ function checkOverdueRisk() {
   }
 }
 
-function goToMasterManagement() {
+/**
+ * HTMLのonclickから呼び出すため、windowオブジェクトに登録する
+ */
+window.goToMasterManagement = function() {
   window.location.href = 'master.html';
 }
 
-function goToSettings() {
+/**
+ * HTMLのonclickから呼び出すため、windowオブジェクトに登録する
+ */
+window.goToSettings = function() {
   window.location.href = 'settings.html';
 }
 
