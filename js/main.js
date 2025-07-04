@@ -88,8 +88,8 @@ function handleGoogleLoginSuccess(response) {
   console.log('★★★ handleGoogleLoginSuccessが呼び出されました！ ★★★');
   console.log("Googleから認証情報を受け取りました:", response);
 
-  // ▼▼▼ 関数名を、読み込んでいるライブラリ(v3.1.2)に合わせて jwt_decode に戻します ▼▼▼
-  const userObject = jwt_decode(response.credential);
+  // ▼▼▼ v4.0.0のライブラリに合わせて、関数名を jwtDecode に修正します ▼▼▼
+  const userObject = jwtDecode(response.credential);
   // ▲▲▲ これでライブラリのバージョンと名前が一致します ▲▲▲
 
   currentUser = {
