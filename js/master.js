@@ -27,34 +27,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ===================================================================================
-// ページ遷移 & ログアウト
-// ===================================================================================
-window.logout = function() {
-  if (currentUser && currentUser.mode === 'google') {
-    // Googleログインモードの場合、トークンを無効化する
-    const accessToken = sessionStorage.getItem('googleAccessToken');
-    if (accessToken) {
-      google.accounts.oauth2.revoke(accessToken, () => {
-        console.log('🔑 Googleアクセストークンを無効化しました。');
-      });
-    }
-    if (typeof google !== 'undefined' && google.accounts) {
-      google.accounts.id.disableAutoSelect();
-    }
-  }
-  // ローカルとセッションの情報をクリア
-  localStorage.removeItem('budgetAppUser');
-  sessionStorage.clear(); // sessionStorageもクリアする
-
-  window.location.href = 'index.html'; // ログインページにリダイレクト
-}
-
-// ===================================================================================
-// データ管理
-// ===================================================================================
-// js/master.js の loadData 関数を置き換え
-
-// ===================================================================================
 // データ管理
 // ===================================================================================
 function loadData() {
@@ -91,18 +63,12 @@ function loadDataFromLocalStorage() {
 // ===================================================================================
 // UI描画 & 更新 (統合)
 // ===================================================================================
-/**
- * 画面の全ての動的要素を再描画する統合関数
- */
 function renderAll() {
   renderMasterList();
   updateStats();
   updateCategoryList();
 }
 
-/**
- * masterDataの内容を元に、アイテムリストを描画する
- */
 function renderMasterList() {
   const listElement = document.getElementById('itemsGrid');
   if (!listElement) return;
@@ -148,9 +114,6 @@ function renderMasterList() {
   });
 }
 
-/**
- * 上部の統計カードを更新する
- */
 function updateStats() {
   const activeItems = masterData.filter(item => item.isActive);
   const loanItems = activeItems.filter(item => item.type === 'loan');
@@ -163,9 +126,6 @@ function updateStats() {
   document.getElementById('statMonthlyRepayment').textContent = `¥${monthlyRepayment.toLocaleString()}`;
 }
 
-/**
- * サイドバーのカテゴリリストの件数を更新する
- */
 function updateCategoryList() {
   document.getElementById('countAll').textContent = masterData.length;
   const types = ['income', 'loan', 'card', 'fixed', 'bank', 'tax', 'variable'];
@@ -179,10 +139,6 @@ function updateCategoryList() {
 // ===================================================================================
 // 機能（フォーム、フィルタ、データ操作）
 // ===================================================================================
-
-/**
- * フォームの種別に応じて、追加フィールドの表示/非表示を切り替える
- */
 function updateFormFields() {
   const itemType = document.getElementById('itemType').value;
   const loanFields = document.querySelectorAll('.loan-field');
@@ -196,14 +152,8 @@ function updateFormFields() {
 
 function showAddForm() {
   editingItemId = null;
-
-  // ▼▼▼ ここを修正 ▼▼▼
-  // 先にフォームを表示する
   document.getElementById('addForm').style.display = 'block';
-  // 表示した後にフォームの内容をリセットする
   document.getElementById('addForm').reset();
-  // ▲▲▲
-
   document.getElementById('formTitle').textContent = '➕ 新規項目追加';
   document.getElementById('addForm').scrollIntoView({ behavior: 'smooth' });
   updateFormFields();
@@ -215,14 +165,12 @@ function showEditForm(itemId) {
 
   editingItemId = itemId;
 
-  // 基本情報をフォームにセット
   document.getElementById('itemName').value = itemToEdit.name;
   document.getElementById('itemType').value = itemToEdit.type;
   document.getElementById('amount').value = itemToEdit.amount;
   document.getElementById('paymentDay').value = itemToEdit.paymentDay || '';
   document.getElementById('isActive').value = itemToEdit.isActive;
 
-  // 借入詳細情報をフォームにセット
   if (itemToEdit.type === 'loan' && itemToEdit.loanDetails) {
     document.getElementById('loanType').value = itemToEdit.loanDetails.loanType || '消費者金融';
     document.getElementById('interestRate').value = itemToEdit.loanDetails.interestRate || '';
@@ -234,12 +182,6 @@ function showEditForm(itemId) {
   document.getElementById('addForm').style.display = 'block';
   document.getElementById('addForm').scrollIntoView({ behavior: 'smooth' });
   updateFormFields();
-}
-
-function hideAddForm() {
-  document.getElementById('addForm').style.display = 'none';
-  document.getElementById('addForm').reset();
-  editingItemId = null;
 }
 
 async function saveItem() {
@@ -283,6 +225,12 @@ async function saveItem() {
   hideAddForm();
 }
 
+function hideAddForm() {
+  document.getElementById('addForm').style.display = 'none';
+  document.getElementById('addForm').reset();
+  editingItemId = null;
+}
+
 async function deleteItem(itemId) {
   const itemToDelete = masterData.find(item => item.id === itemId);
   if (!itemToDelete) return;
@@ -294,11 +242,6 @@ async function deleteItem(itemId) {
   }
 }
 
-/**
- * カテゴリでリストをフィルタリングする
- * @param {string} category 'all', 'income', 'loan', etc.
- * @param {HTMLElement} element クリックされたli要素
- */
 function showCategory(category, element) {
   currentFilter = category;
 
@@ -310,26 +253,15 @@ function showCategory(category, element) {
   renderMasterList();
 }
 
-/**
- * 全てのデータをリセットする関数
- */
 async function resetAllData() {
   if (confirm('本当によろしいですか？全てのデータが削除され、元に戻すことはできません。')) {
     masterData = [];
     await saveData(masterData);
-
-    // sample-data-controls はもう存在しないため、この行は不要
-    // const controls = document.getElementById('sample-data-controls');
-    // if (controls) controls.style.display = 'none';
-
     renderAll();
     showNotification('✅ 全てのデータをリセットしました。');
   }
 }
 
-/**
- * サンプルデータを現在のデータに追加する
- */
 async function loadSampleData() {
   if (!confirm('現在のデータにサンプルデータを追加しますか？')) return;
 
@@ -344,9 +276,6 @@ async function loadSampleData() {
   showNotification('✅ サンプルデータを追加しました。');
 }
 
-/**
- * 現在のデータをJSONファイルとしてエクスポートする
- */
 function exportData() {
   if (masterData.length === 0) {
     showNotification('エクスポートするデータがありません。', 'warning');

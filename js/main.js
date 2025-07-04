@@ -38,7 +38,6 @@ window.onGoogleLibraryLoad = function() {
         if (tokenResponse && tokenResponse.access_token) {
           googleAccessToken = tokenResponse.access_token;
           console.log('🔑 Google Driveのアクセストークンを取得しました！');
-          // ▼▼▼ トークン取得後に同期処理を呼び出す ▼▼▼
           syncWithDrive();
         }
       },
@@ -81,17 +80,20 @@ function showApp() {
   initializeApp();
 }
 
-// ▼▼▼ 非同期処理に対応するため async を追加 ▼▼▼
 async function initializeApp() {
   // Googleログインの場合は、Driveへのアクセス許可も確認する
   if (loginMode === 'google' && !googleAccessToken) {
     requestDriveAccess();
   }
 
-  // ▼▼▼ loadDataを非同期呼び出しに変更 ▼▼▼
   await loadData();
 
-  renderAll();
+  // renderAllはsyncWithDriveのfinallyで呼ばれるので、ここでは不要な場合がある
+  // ただし、ローカルモードの場合はここで呼ぶ必要がある
+  if (loginMode !== 'google') {
+    renderAll();
+  }
+
   if (currentUser) {
     showNotification(`✅ ${currentUser.name}としてログインしました`);
   }
@@ -140,15 +142,11 @@ function handleGoogleLoginSuccess(response) {
   proceedToApp();
 }
 
-/**
- * Google Drive APIへのアクセス許可をリクエストする
- */
 function requestDriveAccess() {
   if (googleAccessToken) {
     console.log('すでにアクセストークンを持っています。');
     return;
   }
-  // トークンがない場合、ユーザーに許可を求めるプロンプトを表示
   if (tokenClient) {
     tokenClient.requestAccessToken();
   }
@@ -184,41 +182,15 @@ function proceedToApp() {
   }
 }
 
-window.logout = function() {
-  if (currentUser && currentUser.mode === 'google') {
-    // Googleログインモードの場合、トークンを無効化する
-    const accessToken = sessionStorage.getItem('googleAccessToken');
-    if (accessToken) {
-      google.accounts.oauth2.revoke(accessToken, () => {
-        console.log('🔑 Googleアクセストークンを無効化しました。');
-      });
-    }
-    if (typeof google !== 'undefined' && google.accounts) {
-      google.accounts.id.disableAutoSelect();
-    }
-  }
-  // ローカルとセッションの情報をクリア
-  localStorage.removeItem('budgetAppUser');
-  sessionStorage.clear(); // sessionStorageもクリアする
-
-  window.location.href = 'index.html'; // ログインページにリダイレクト
-}
-
-
 // ===================================================================================
 // データ管理
 // ===================================================================================
-// ▼▼▼ loadDataを非同期処理に変更 ▼▼▼
 async function loadData() {
   if (loginMode === 'google') {
-    // Googleログインの場合、同期処理を待つ
-    // syncWithDriveはトークン取得後に自動で呼ばれるので、ここでは何もしないか、
-    // 既にデータがある場合はそれを表示するなどの工夫も可能
     if (masterData.length === 0) {
       console.log("Driveからのデータロードを待っています...");
     }
   } else {
-    // ローカルモードの場合は、localStorageから読み込む
     loadDataFromLocalStorage();
   }
 }
@@ -227,9 +199,6 @@ async function loadData() {
 // ===================================================================================
 // UI描画 & 更新
 // ===================================================================================
-/**
- * HTMLのonclickから呼び出すため、windowオブジェクトに登録する
- */
 window.changeMonth = function(delta) {
   currentMonth += delta;
   if (currentMonth > 12) {
@@ -310,7 +279,6 @@ function updateSummaryCards() {
   const totalDebt = loanItems.reduce((sum, i) => sum + (i.loanDetails?.currentBalance || 0), 0);
   const monthlyRepayment = loanItems.reduce((sum, i) => sum + Math.abs(i.amount), 0);
 
-  // 各サマリー要素を安全に更新
   const summaryElements = {
     summaryIncome: `¥${income.toLocaleString()}`,
     summaryExpense: `¥${Math.abs(expense).toLocaleString()}`,
@@ -325,7 +293,6 @@ function updateSummaryCards() {
     if (el) el.textContent = summaryElements[id];
   }
 
-  // 完済予定日の計算と表示
   const completionDateEl = document.getElementById('summaryCompletionDate');
   const completionSubtextEl = document.getElementById('summaryCompletionSubtext');
 
@@ -381,12 +348,6 @@ function calculateCompletionDate(loanItems) {
   return { years, months };
 }
 
-// ===================================================================================
-// 機能 & ページ遷移
-// ===================================================================================
-/**
- * HTMLのonclickから呼び出すため、windowオブジェクトに登録する
- */
 window.checkOverdueRisk = function() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -407,33 +368,16 @@ window.checkOverdueRisk = function() {
   }
 }
 
-/**
- * HTMLのonclickから呼び出すため、windowオブジェクトに登録する
- */
-window.goToMasterManagement = function() {
-  window.location.href = 'master.html';
-}
-
-/**
- * HTMLのonclickから呼び出すため、windowオブジェクトに登録する
- */
-window.goToSettings = function() {
-  window.location.href = 'settings.html';
-}
-
 // ===================================================================================
 // Google Drive API 連携
 // ===================================================================================
 const DRIVE_DATA_FILENAME = 'budgetMasterData.json';
-let driveFileId = null; // Drive上のデータファイルのIDを保持
+let driveFileId = null;
 
-/**
- * Google Driveとの同期を開始する起点となる関数
- */
 async function syncWithDrive() {
   const loadingOverlay = document.getElementById('loadingOverlay');
   try {
-    loadingOverlay.classList.add('show'); // ローダー表示
+    loadingOverlay.classList.add('show');
 
     if (!googleAccessToken) {
       showNotification('Google Driveへのアクセス許可が必要です。', 'error');
@@ -453,19 +397,12 @@ async function syncWithDrive() {
     showNotification('Google Driveとの同期に失敗しました。', 'error');
     loadDataFromLocalStorage();
   } finally {
-    // 成功しても失敗しても、必ずローダーを非表示にする
     loadingOverlay.classList.remove('show');
     renderAll();
   }
 }
 
-
-/**
- * Drive上でデータファイルを探し、なければ作成する
- * @returns {Promise<string|null>} データファイルのID
- */
 async function findOrCreateDataFile() {
-  // 1. ファイルを検索
   const response = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_DATA_FILENAME}' and 'appDataFolder' in parents&spaces=appDataFolder&fields=files(id,name)`, {
     headers: { 'Authorization': `Bearer ${googleAccessToken}` }
   });
@@ -477,7 +414,6 @@ async function findOrCreateDataFile() {
     return data.files[0].id;
   }
 
-  // 2. ファイルが見つからなければ、空のファイルを作成
   console.log('データファイルが見つからないため、新規作成します。');
   const metadata = {
     name: DRIVE_DATA_FILENAME,
@@ -498,9 +434,6 @@ async function findOrCreateDataFile() {
   return newFile.id;
 }
 
-/**
- * Driveからデータを読み込み、masterDataを更新する
- */
 async function loadDataFromDrive() {
   if (!driveFileId) return;
 
@@ -515,23 +448,17 @@ async function loadDataFromDrive() {
       masterData = JSON.parse(dataText);
       console.log('📂 Google Driveからデータを読み込みました。');
     } else {
-      // Drive上にはファイルがあるが中身が空の場合（初回作成時など）
       console.log('📂 Driveのファイルは空です。サンプルデータで初期化します。');
       masterData = getSampleData();
     }
-    // ▼▼▼ 読み込んだ最新データをsessionStorageにも保存してmaster.jsに引き継ぐ ▼▼▼
     sessionStorage.setItem('budgetMasterData', JSON.stringify(masterData));
   } catch (e) {
     console.error('Driveデータの解析に失敗しました。', e);
     masterData = getSampleData();
-    // エラー時もサンプルデータを引き継ぐ
     sessionStorage.setItem('budgetMasterData', JSON.stringify(masterData));
   }
 }
 
-/**
- * ローカルストレージからデータを読み込む（フォールバック用）
- */
 function loadDataFromLocalStorage() {
   try {
     const savedMaster = localStorage.getItem('budgetMasterData');

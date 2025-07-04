@@ -1,112 +1,208 @@
- // ===================================================================================
-  // グローバル変数 & 初期設定
-  // ===================================================================================
-  let currentUser = null;
-  let loginMode = 'local';
+// ===================================================================================
+// グローバル変数 & 初期設定
+// ===================================================================================
+let currentUser = null;
+let masterData = []; // このページでもデータを持つ
 
-  document.addEventListener('DOMContentLoaded', function() {
+// ===================================================================================
+// 初期化処理 & ログインチェック
+// ===================================================================================
+document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 設定ページ起動');
-  // 実際のアプリでは他ページからログイン情報を引き継ぐ
-  // このページ単体でも動作するように、ローカルログインを模倣
-  localLogin();
-});
 
-  // ===================================================================================
-  // 認証 & UI更新
-  // ===================================================================================
-  function tryGoogleLogin() {
-  showNotification('Googleログインはダッシュボードから行ってください。', 'info');
-}
+  // ★★★ 他のページと共通の認証ガード ★★★
+  const savedUserJSON = localStorage.getItem('budgetAppUser');
+  if (!savedUserJSON) {
+    // ログインしていない場合は、ログインページに強制送還
+    // このページではログイン機能を提供しないため、戻すだけ
+    const appContainer = document.getElementById('appContainer');
+    appContainer.innerHTML = `
+      <div class="login-required-message">
+        <h2>ログインが必要です</h2>
+        <p>設定を管理するには、まずログインしてください。</p>
+        <button class="btn" onclick="goToDashboard()">ダッシュボードに戻る</button>
+      </div>
+    `;
+    return;
+  }
 
-  function localLogin() {
-  currentUser = { name: 'ローカルユーザー', mode: 'local' };
-  loginMode = 'local';
+  currentUser = JSON.parse(savedUserJSON);
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appContainer').style.display = 'block';
   document.getElementById('userName').textContent = currentUser.name;
+
+  loadData();
   updateSyncStatus();
+});
+
+// ===================================================================================
+// データ管理
+// ===================================================================================
+function loadData() {
+  // master.js と全く同じロジックでデータを読み込む
+  if (currentUser && currentUser.mode === 'google') {
+    const sessionData = sessionStorage.getItem('budgetMasterData');
+    if (sessionData) {
+      masterData = JSON.parse(sessionData);
+      console.log('📂 [Googleモード] セッションからデータを読み込みました。');
+    } else {
+      console.warn('セッションデータが見つかりません。');
+      // Drive同期はメインページで行うため、ここでは通知に留める
+      showNotification('最新のデータを取得できませんでした。ダッシュボードに戻って再同期してください。', 'warning');
+    }
+  } else {
+    // ローカルモード
+    const savedData = localStorage.getItem('budgetMasterData');
+    masterData = savedData ? JSON.parse(savedData) : [];
+    console.log('📂 [ローカルモード] ローカルデータを読み込みました。');
+  }
 }
 
-  function logout() {
-  currentUser = null;
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('appContainer').style.display = 'none';
-  showNotification('👋 ログアウトしました');
-}
-
-  function updateSyncStatus() {
+// ===================================================================================
+// UI更新
+// ===================================================================================
+function updateSyncStatus() {
   const statusBadge = document.getElementById('syncStatus');
   const syncButton = document.getElementById('manualSyncBtn');
-  if (loginMode === 'google') {
-  statusBadge.textContent = 'Google Drive';
-  statusBadge.className = 'status-badge google';
-  syncButton.disabled = false;
-} else {
-  statusBadge.textContent = 'ローカルモード';
-  statusBadge.className = 'status-badge local';
-  syncButton.disabled = true;
-}
-}
-
-  // ===================================================================================
-  // 機能
-  // ===================================================================================
-  function manualSync() {
-  showNotification('☁️ Google Driveと手動で同期しています...', 'info');
-  // ここに実際のGoogle Drive API同期処理を実装
-  setTimeout(() => {
-  showNotification('✅ 同期が完了しました！');
-}, 2000);
+  if (currentUser.mode === 'google') {
+    statusBadge.textContent = 'Google Drive';
+    statusBadge.className = 'status-badge google';
+    syncButton.disabled = false;
+  } else {
+    statusBadge.textContent = 'ローカルモード';
+    statusBadge.className = 'status-badge local';
+    syncButton.disabled = true;
+  }
 }
 
-  function exportData() {
-  const savedData = localStorage.getItem('budgetMasterData');
-  if (!savedData || JSON.parse(savedData).length === 0) {
-  showNotification('エクスポートするデータがありません。', 'warning');
-  return;
+// ===================================================================================
+// 機能（本体システムと連携）
+// ===================================================================================
+
+/**
+ * 手動でGoogle Driveと同期する（main.jsの簡易版）
+ */
+async function manualSync() {
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  try {
+    loadingOverlay.classList.add('show');
+    showNotification('☁️ Google Driveと手動で同期しています...', 'info');
+
+    const accessToken = sessionStorage.getItem('googleAccessToken');
+    const fileId = sessionStorage.getItem('driveFileId');
+
+    if (!accessToken || !fileId) {
+      throw new Error('同期情報が見つかりません。ダッシュボードで再ログインしてください。');
+    }
+
+    // 1. 現在のデータをDriveに保存
+    await saveData(masterData);
+    // 2. Driveから最新データを再読み込み（他のデバイスでの変更を反映）
+    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!response.ok) throw new Error('ファイルの再読み込みに失敗');
+
+    const dataText = await response.text();
+    masterData = dataText ? JSON.parse(dataText) : [];
+    sessionStorage.setItem('budgetMasterData', JSON.stringify(masterData));
+
+    showNotification('✅ 同期が完了しました！');
+
+  } catch (error) {
+    console.error("手動同期エラー:", error);
+    showNotification(error.message || '同期に失敗しました。', 'error');
+  } finally {
+    loadingOverlay.classList.remove('show');
+  }
 }
-  const blob = new Blob([savedData], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'budget-master-data.json';
-  a.click();
+
+/**
+ * 現在のデータをJSONファイルとしてエクスポートする
+ */
+function exportData() {
+  if (masterData.length === 0) {
+    showNotification('エクスポートするデータがありません。', 'warning');
+    return;
+  }
+  const dataStr = JSON.stringify(masterData, null, 2);
+  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(dataBlob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'budget-data.json';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
   URL.revokeObjectURL(url);
-  showNotification('📤 データをエクスポートしました。');
+  showNotification('📤 データのエクスポートを開始しました。');
 }
 
-  function importData() {
-  showNotification('📥 インポート機能は現在開発中です。', 'info');
-  alert('バックアップしたJSONファイルを選択して復元する機能を開発中です。');
+// js/settings.js の importData 関数を置き換え
+
+/**
+ * JSONファイルをインポートしてデータを復元する
+ */
+async function importData() {
+  if (!confirm('現在のデータは上書きされます。バックアップファイルからデータを復元しますか？')) {
+    return;
+  }
+
+  try {
+    // 1. ファイル選択ダイアログを作成して表示
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json'; // JSONファイルのみを許可
+
+    // 2. ファイルが選択されたときの処理を定義
+    input.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const importedData = JSON.parse(event.target.result);
+          // 簡単なデータ形式のチェック
+          if (!Array.isArray(importedData)) {
+            throw new Error('無効なファイル形式です。');
+          }
+
+          masterData = importedData;
+          await saveData(masterData); // 賢い保存係に保存を任せる
+          sessionStorage.setItem('budgetMasterData', JSON.stringify(masterData)); // セッションも更新
+
+          showNotification('✅ データのインポートが完了しました。');
+          // 必要に応じてUIを更新
+          // renderAll(); のような関数があればここで呼ぶ
+
+        } catch (err) {
+          console.error('インポートエラー:', err);
+          showNotification(`インポートに失敗しました: ${err.message}`, 'error');
+        }
+      };
+      reader.readAsText(file);
+    };
+
+    // 3. ダイアログをクリックして表示
+    input.click();
+
+  } catch (error) {
+    console.error('インポート処理の開始に失敗:', error);
+    showNotification('インポート処理を開始できませんでした。', 'error');
+  }
 }
 
-  function resetAllData() {
-  if (confirm('本当にすべてのデータをリセットしますか？マスターデータが空になります。この操作は元に戻せません。')) {
-  localStorage.setItem('budgetMasterData', '[]');
-  showNotification('🔄 全データをリセットしました。', 'error');
-}
-}
-
-  // ===================================================================================
-  // ヘルパー関数 & ページ遷移
-  // ===================================================================================
-  function showNotification(message, type = 'success') {
-  const existing = document.querySelector('.sync-notification');
-  if (existing) existing.remove();
-  const notification = document.createElement('div');
-  notification.className = `sync-notification ${type}`;
-  notification.textContent = message;
-  document.body.appendChild(notification);
-  setTimeout(() => {
-  notification.style.animation = 'slideIn 0.3s ease reverse';
-  setTimeout(() => notification.remove(), 300);
-}, 4000);
-}
-
-  function goToDashboard() {
-  window.location.href = 'index.html';
-}
-
-  function goToMasterManagement() {
-  window.location.href = 'master.html';
+/**
+ * 全てのデータをリセットする
+ */
+async function resetAllData() {
+  if (confirm('本当にすべてのデータをリセットしますか？この操作は元に戻せません。')) {
+    masterData = [];
+    // 賢い保存係に任せる
+    await saveData(masterData);
+    sessionStorage.setItem('budgetMasterData', '[]'); // セッションもクリア
+    showNotification('🔄 全データをリセットしました。', 'error');
+  }
 }

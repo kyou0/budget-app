@@ -106,3 +106,34 @@ function showNotification(message, type = 'success') {
     setTimeout(() => notification.remove(), 300);
   }, 4000);
 }
+
+
+// ===================================================================================
+// 共通ナビゲーション & ログアウト
+// ===================================================================================
+function goToDashboard() {
+  window.location.href = 'index.html';
+}
+
+function goToMasterManagement() {
+  window.location.href = 'master.html';
+}
+
+function goToSettings() {
+  window.location.href = 'settings.html';
+}
+
+function logout() {
+  const user = JSON.parse(localStorage.getItem('budgetAppUser'));
+  if (user && user.mode === 'google') {
+    const accessToken = sessionStorage.getItem('googleAccessToken');
+    if (accessToken && typeof google !== 'undefined' && google.accounts) {
+      google.accounts.oauth2.revoke(accessToken, () => {
+        console.log('🔑 Googleアクセストークンを無効化しました。');
+      });
+    }
+  }
+  localStorage.removeItem('budgetAppUser');
+  sessionStorage.clear();
+  window.location.href = 'index.html';
+}
