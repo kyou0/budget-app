@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   loadData();
-  renderAll(); // ★★★ 統合更新関数を呼び出す
+  renderAll();
 });
 
 // ===================================================================================
@@ -143,35 +143,65 @@ function updateCategoryList() {
 // ===================================================================================
 // 機能（フォーム、フィルタ、データ操作）
 // ===================================================================================
+
+/**
+ * フォームの種別に応じて、追加フィールドの表示/非表示を切り替える
+ */
+function updateFormFields() {
+  const itemType = document.getElementById('itemType').value;
+  const loanFields = document.querySelectorAll('.loan-field');
+
+  if (itemType === 'loan') {
+    loanFields.forEach(field => field.style.display = 'block');
+  } else {
+    loanFields.forEach(field => field.style.display = 'none');
+  }
+}
+
 function showAddForm() {
   editingItemId = null;
-  document.getElementById('itemForm').reset();
+  document.getElementById('addForm').reset();
   document.getElementById('formTitle').textContent = '➕ 新規項目追加';
   document.getElementById('addForm').style.display = 'block';
   document.getElementById('addForm').scrollIntoView({ behavior: 'smooth' });
+  updateFormFields();
 }
 
 function showEditForm(itemId) {
   const itemToEdit = masterData.find(item => item.id === itemId);
   if (!itemToEdit) return;
+
   editingItemId = itemId;
+
+  // 基本情報をフォームにセット
   document.getElementById('itemName').value = itemToEdit.name;
   document.getElementById('itemType').value = itemToEdit.type;
   document.getElementById('amount').value = itemToEdit.amount;
   document.getElementById('paymentDay').value = itemToEdit.paymentDay || '';
   document.getElementById('isActive').value = itemToEdit.isActive;
+
+  // 借入詳細情報をフォームにセット
+  if (itemToEdit.type === 'loan' && itemToEdit.loanDetails) {
+    document.getElementById('loanType').value = itemToEdit.loanDetails.loanType || '消費者金融';
+    document.getElementById('interestRate').value = itemToEdit.loanDetails.interestRate || '';
+    document.getElementById('maxLimit').value = itemToEdit.loanDetails.maxLimit || '';
+    document.getElementById('currentBalance').value = itemToEdit.loanDetails.currentBalance || '';
+  }
+
   document.getElementById('formTitle').textContent = '✏️ 項目の編集';
   document.getElementById('addForm').style.display = 'block';
   document.getElementById('addForm').scrollIntoView({ behavior: 'smooth' });
+  updateFormFields();
 }
 
 function hideAddForm() {
   document.getElementById('addForm').style.display = 'none';
-  document.getElementById('itemForm').reset();
+  document.getElementById('addForm').reset();
   editingItemId = null;
 }
 
 function saveItem() {
+  // 基本情報の取得
   const name = document.getElementById('itemName').value.trim();
   const type = document.getElementById('itemType').value;
   const amount = parseInt(document.getElementById('amount').value, 10);
@@ -183,20 +213,31 @@ function saveItem() {
     return;
   }
 
+  // 借入詳細情報を取得
+  let loanDetails = null;
+  if (type === 'loan') {
+    loanDetails = {
+      loanType: document.getElementById('loanType').value,
+      interestRate: parseFloat(document.getElementById('interestRate').value) || 0,
+      maxLimit: parseInt(document.getElementById('maxLimit').value, 10) || 0,
+      currentBalance: parseInt(document.getElementById('currentBalance').value, 10) || 0,
+    };
+  }
+
   if (editingItemId) {
     const itemIndex = masterData.findIndex(item => item.id === editingItemId);
     if (itemIndex > -1) {
-      masterData[itemIndex] = { ...masterData[itemIndex], name, type, amount, paymentDay, isActive };
+      masterData[itemIndex] = { ...masterData[itemIndex], name, type, amount, paymentDay, isActive, loanDetails };
       showNotification(`✅ 「${name}」を更新しました。`);
     }
   } else {
-    const newItem = { id: Date.now(), name, type, amount, paymentDay, isActive };
+    const newItem = { id: Date.now(), name, type, amount, paymentDay, isActive, loanDetails };
     masterData.push(newItem);
     showNotification(`✅ 「${name}」を新しく追加しました。`);
   }
 
   saveData(masterData);
-  renderAll(); // ★★★ 統合更新関数を呼び出す
+  renderAll();
   hideAddForm();
 }
 
@@ -206,7 +247,7 @@ function deleteItem(itemId) {
   if (confirm(`「${itemToDelete.name}」を本当に削除しますか？`)) {
     masterData = masterData.filter(item => item.id !== itemId);
     saveData(masterData);
-    renderAll(); // ★★★ 統合更新関数を呼び出す
+    renderAll();
     showNotification(`✅ 「${itemToDelete.name}」を削除しました。`);
   }
 }
@@ -219,15 +260,12 @@ function deleteItem(itemId) {
 function showCategory(category, element) {
   currentFilter = category;
 
-  // 全てのカテゴリから 'active' クラスを削除
   document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
-  // クリックされたカテゴリに 'active' クラスを追加
   element.classList.add('active');
 
-  // タイトルを更新
   document.getElementById('categoryTitle').textContent = element.querySelector('.category-info span').textContent + 'の項目';
 
-  renderMasterList(); // リスト部分のみ再描画
+  renderMasterList();
 }
 
 /**
@@ -238,11 +276,10 @@ function resetAllData() {
     masterData = [];
     saveData(masterData);
 
-    // サンプルデータ削除ボタンも非表示にする
     const controls = document.getElementById('sample-data-controls');
     if (controls) controls.style.display = 'none';
 
-    renderAll(); // ★★★ 統合更新関数を呼び出す
+    renderAll();
     showNotification('✅ 全てのデータをリセットしました。');
   }
 }
