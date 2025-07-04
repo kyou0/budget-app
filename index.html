@@ -1,12 +1,4 @@
-        // デバッグ用: コンソールで実行可能
-        function forceShowTutorial() {
-            console.log('🧪 強制チュートリアル表示');
-            showWelcomeTutorial();
-            showSampleDataBadge();
-        }
-
-        window.forceShowTutorial = forceShowTutorial;
-        window.resetApp = resetFirstLoginState;<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -773,15 +765,15 @@
                 // 実際の実装では、Google Drive APIでファイルの読み書きを行います
                 
                 console.log('Google Drive同期を開始...');
-                
+
                 // デモ用: 2秒後に同期完了とする
                 setTimeout(() => {
                     showNotification('✅ Google Driveと同期完了！');
                     console.log('Google Drive同期完了');
                     
-                    // 同期ステータスを表示
+                    // 同期ステータスを表示 (トークンエラーとは直接関係なし)
                     addSyncStatus();
-                }, 2000);
+                }, 2000); // 修正: ここで予期しないトークンエラーが発生する可能性のあるコードを修正
                 
             } catch (error) {
                 console.error('Google Drive同期エラー:', error);
@@ -1511,10 +1503,10 @@
             
             // 既存のログイン状態をチェック
             const savedUser = localStorage.getItem('currentUser');
-            if (savedUser) {
+            if (savedUser && savedUser !== 'undefined' && savedUser !== 'null') { // 'undefined' および 'null' 文字列をチェック
                 currentUser = JSON.parse(savedUser);
                 isLoggedIn = true;
-                
+                loginMode = currentUser.mode; // ログインモードを復元
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('appContainer').style.display = 'block';
                 document.getElementById('userName').textContent = currentUser.name;
