@@ -18,21 +18,27 @@ document.addEventListener('DOMContentLoaded', function() {
   try {
     google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
-      callback: handleGoogleLoginSuccess // ログイン成功時に呼ばれる関数をグローバルから参照
+      callback: handleGoogleLoginSuccess
     });
   } catch (e) {
-    console.error("Google Sign-Inの初期化に失敗しました。ライブラリが読み込まれていないか、クライアントIDが不正です。", e);
+    console.error("Google Sign-Inの初期化に失敗しました。", e);
   }
 
-  // ログイン状態を復元しようと試みる
+  // ログイン状態を復元しようと試みる (よりシンプルなチェック)
   const savedUserJSON = localStorage.getItem('budgetAppUser');
-  if (savedUserJSON && savedUserJSON !== 'undefined' && savedUserJSON !== 'null') {
+  if (savedUserJSON) {
     try {
       const user = JSON.parse(savedUserJSON);
       if (user && typeof user === 'object' && user.name && user.mode) {
         currentUser = user;
         loginMode = user.mode;
-        showApp();
+        // チュートリアル完了済みならダッシュボードを表示
+        if (localStorage.getItem('tutorialCompleted')) {
+          showApp();
+        } else {
+          // チュートリアルが完了していないのにリロードされた場合などはマスター画面へ
+          window.location.href = 'master.html';
+        }
         return;
       } else {
         console.warn('保存されていたユーザーデータが不正な形式です。');
@@ -46,16 +52,23 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function showApp() {
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('appContainer').style.display = 'block';
-  document.getElementById('userName').textContent = currentUser.name;
+  const loginScreenEl = document.getElementById('loginScreen');
+  const appContainerEl = document.getElementById('appContainer');
+  const userNameEl = document.getElementById('userName');
+
+  if (loginScreenEl) loginScreenEl.style.display = 'none';
+  if (appContainerEl) appContainerEl.style.display = 'block';
+  if (userNameEl && currentUser) userNameEl.textContent = currentUser.name;
+
   initializeApp();
 }
 
 function initializeApp() {
   loadData();
   renderAll();
-  showNotification(`✅ ${currentUser.name}としてログインしました`);
+  if (currentUser) {
+    showNotification(`✅ ${currentUser.name}としてログインしました`);
+  }
 }
 
 function renderAll() {
@@ -74,7 +87,6 @@ function renderAll() {
  */
 function tryGoogleLogin() {
   try {
-    // Googleのログインプロンプトを表示
     google.accounts.id.prompt();
   } catch (e) {
     console.error("Googleログインのプロンプト表示に失敗しました。", e);
@@ -90,10 +102,8 @@ function handleGoogleLoginSuccess(response) {
   console.log('★★★ handleGoogleLoginSuccessが呼び出されました！ ★★★');
   console.log("Googleから認証情報を受け取りました:", response);
 
-  // 外部ライブラリの代わりに自作関数を使う
   const userObject = decodeJWT(response.credential);
 
-  // デコードに失敗した場合は処理を中断
   if (!userObject) {
     showNotification('ユーザー情報の解析に失敗しました。', 'error');
     return;
@@ -107,7 +117,7 @@ function handleGoogleLoginSuccess(response) {
   loginMode = 'google';
 
   localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
-  showApp();
+  proceedToApp();
 }
 
 /**
@@ -118,6 +128,7 @@ function handleGoogleLoginSuccess(response) {
 function decodeJWT(token) {
   try {
     const base64Url = token.split('.')[1];
+    if (!base64Url) return null;
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const jsonPayload = decodeURIComponent(
       atob(base64)
@@ -140,7 +151,20 @@ function localLogin() {
   currentUser = { name: 'ローカルユーザー', mode: 'local' };
   loginMode = 'local';
   localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
-  showApp();
+  proceedToApp();
+}
+
+/**
+ * ログイン後の共通処理（初回判定と画面遷移）
+ */
+function proceedToApp() {
+  if (!localStorage.getItem('tutorialCompleted')) {
+    console.log('🎉 初回ログインです。マスター管理画面に移動します。');
+    localStorage.setItem('tutorialCompleted', 'true');
+    window.location.href = 'master.html';
+  } else {
+    showApp();
+  }
 }
 
 /**
@@ -148,46 +172,36 @@ function localLogin() {
  * HTMLのonclickから呼び出される
  */
 function logout() {
-  // Googleからもサインアウトする
   if (loginMode === 'google' && typeof google !== 'undefined') {
     google.accounts.id.disableAutoSelect();
   }
   currentUser = null;
   localStorage.removeItem('budgetAppUser');
-  // 画面をリロードしてログイン画面に戻すのが一番確実
+  localStorage.removeItem('tutorialCompleted');
   window.location.reload();
 }
+
 // ===================================================================================
 // データ管理
 // ===================================================================================
 function loadData() {
   try {
     const savedMaster = localStorage.getItem('budgetMasterData');
-    if (savedMaster && savedMaster !== 'undefined' && JSON.parse(savedMaster).length > 0) {
+    if (savedMaster) {
       masterData = JSON.parse(savedMaster);
       console.log('📂 保存されたマスターデータを読み込みました。');
     } else {
-      loadSampleData();
-      localStorage.setItem('budgetMasterData', JSON.stringify(masterData));
+      masterData = [];
+      console.log('📂 保存されたデータがありません。空の状態で開始します。');
     }
   } catch (e) {
-    console.error("マスターデータの解析に失敗しました。サンプルデータで初期化します。", e);
-    localStorage.removeItem('budgetMasterData'); // 不正なデータを削除
-    loadSampleData();
-    localStorage.setItem('budgetMasterData', JSON.stringify(masterData));
+    console.error("マスターデータの解析に失敗しました。空の状態で初期化します。", e);
+    localStorage.removeItem('budgetMasterData');
+    masterData = [];
   }
 }
 
-function loadSampleData() {
-  masterData = [
-    { id: 'item_1', name: "クライアントA", type: "income", paymentDay: 10, amount: 200000, paymentMethod: "銀行振込", isActive: true },
-    { id: 'item_3', name: "家賃", type: "fixed", paymentDay: 27, amount: -80000, paymentMethod: "銀行振込", isActive: true },
-    { id: 'item_5', name: "メインカード", type: "card", paymentDay: 4, amount: -50000, paymentMethod: "メイン銀行", isActive: true },
-    { id: 'item_8', name: "アコム", type: "loan", paymentDay: 27, amount: -15000, paymentMethod: "メイン銀行", isActive: true, loanDetails: { loanType: "消費者金融", interestRate: 18.0, maxLimit: 500000, currentBalance: 234567 } },
-    { id: 'item_9', name: "楽天カードローン", type: "loan", paymentDay: 12, amount: -12000, paymentMethod: "楽天銀行", isActive: true, loanDetails: { loanType: "クレジットカード", interestRate: 15.0, maxLimit: 1000000, currentBalance: 450000 } }
-  ];
-  showNotification('📋 サンプルデータを読み込みました。', 'info');
-}
+// (loadSampleData関数は使用されなくなったため削除)
 
 // ===================================================================================
 // UI描画 & 更新
@@ -205,11 +219,14 @@ function changeMonth(delta) {
 }
 
 function updateCurrentMonthDisplay() {
-  document.getElementById('currentMonth').textContent = `${currentYear}年${currentMonth}月`;
+  const el = document.getElementById('currentMonth');
+  if (el) el.textContent = `${currentYear}年${currentMonth}月`;
 }
 
 function generateCalendar() {
   const calendar = document.getElementById('calendar');
+  if (!calendar) return;
+
   calendar.innerHTML = '';
   const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
   weekdays.forEach(day => {
@@ -269,36 +286,49 @@ function updateSummaryCards() {
   const totalDebt = loanItems.reduce((sum, i) => sum + (i.loanDetails?.currentBalance || 0), 0);
   const monthlyRepayment = loanItems.reduce((sum, i) => sum + Math.abs(i.amount), 0);
 
-  document.getElementById('summaryIncome').textContent = `¥${income.toLocaleString()}`;
-  document.getElementById('summaryExpense').textContent = `¥${Math.abs(expense).toLocaleString()}`;
-  document.getElementById('summaryBalance').textContent = `¥${(income + expense).toLocaleString()}`;
-  document.getElementById('summaryWeekly').textContent = `¥${Math.abs(weeklyExpense).toLocaleString()}`;
-  document.getElementById('summaryTotalDebt').textContent = `¥${totalDebt.toLocaleString()}`;
-  document.getElementById('summaryMonthlyRepayment').textContent = `¥${monthlyRepayment.toLocaleString()}`;
+  // 各サマリー要素を安全に更新
+  const summaryElements = {
+    summaryIncome: `¥${income.toLocaleString()}`,
+    summaryExpense: `¥${Math.abs(expense).toLocaleString()}`,
+    summaryBalance: `¥${(income + expense).toLocaleString()}`,
+    summaryWeekly: `¥${Math.abs(weeklyExpense).toLocaleString()}`,
+    summaryTotalDebt: `¥${totalDebt.toLocaleString()}`,
+    summaryMonthlyRepayment: `¥${monthlyRepayment.toLocaleString()}`
+  };
 
-  // 完済予定日の計算
-  const { years, months } = calculateCompletionDate(loanItems);
-  if (years > 0 || months > 0) {
-    let completionText = '';
-    if (years > 0) completionText += `${years}年`;
-    if (months > 0) completionText += `${months}ヶ月`;
-    completionText += '後';
+  for (const id in summaryElements) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = summaryElements[id];
+  }
 
-    document.getElementById('summaryCompletionDate').textContent = completionText;
-    const completionDate = new Date();
-    completionDate.setMonth(completionDate.getMonth() + (years * 12 + months));
-    document.getElementById('summaryCompletionSubtext').textContent = `( ${completionDate.getFullYear()}年${completionDate.getMonth() + 1}月頃 )`;
-  } else if (loanItems.length > 0 && monthlyRepayment > 0) {
-    document.getElementById('summaryCompletionDate').textContent = "計算不可";
-    document.getElementById('summaryCompletionSubtext').textContent = "返済額が利息を下回っています";
-  } else {
-    document.getElementById('summaryCompletionDate').textContent = "借入なし";
-    document.getElementById('summaryCompletionSubtext').textContent = "";
+  // 完済予定日の計算と表示
+  const completionDateEl = document.getElementById('summaryCompletionDate');
+  const completionSubtextEl = document.getElementById('summaryCompletionSubtext');
+
+  if (completionDateEl && completionSubtextEl) {
+    const { years, months } = calculateCompletionDate(loanItems);
+    if (years > 0 || months > 0) {
+      let completionText = '';
+      if (years > 0) completionText += `${years}年`;
+      if (months > 0) completionText += `${months}ヶ月`;
+      completionText += '後';
+
+      completionDateEl.textContent = completionText;
+      const completionDate = new Date();
+      completionDate.setMonth(completionDate.getMonth() + (years * 12 + months));
+      completionSubtextEl.textContent = `( ${completionDate.getFullYear()}年${completionDate.getMonth() + 1}月頃 )`;
+    } else if (loanItems.length > 0 && monthlyRepayment > 0) {
+      completionDateEl.textContent = "計算不可";
+      completionSubtextEl.textContent = "返済額が利息を下回っています";
+    } else {
+      completionDateEl.textContent = "借入なし";
+      completionSubtextEl.textContent = "";
+    }
   }
 }
 
 function calculateCompletionDate(loanItems) {
-  if (loanItems.length === 0) return { years: 0, months: 0 };
+  if (!loanItems || loanItems.length === 0) return { years: 0, months: 0 };
   let maxMonths = 0;
   loanItems.forEach(loan => {
     const balance = loan.loanDetails?.currentBalance || 0;
