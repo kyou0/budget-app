@@ -39,6 +39,7 @@
 
     <!-- 統計カード -->
     <div class="stats-grid" id="statsGrid">
+        <!-- (内容は変更なし) -->
         <div class="stat-card">
             <div class="stat-value" id="statTotalItems">0</div>
             <div class="stat-label">総項目数</div>
@@ -59,7 +60,7 @@
 
     <!-- メインコンテンツ -->
     <div class="main-content">
-        <!-- サイドバー -->
+        <!-- サイドバー (内容は変更なし) -->
         <div class="sidebar">
             <h3 class="section-title">📂 カテゴリ</h3>
             <ul class="category-list" id="categoryList">
@@ -122,7 +123,7 @@
                 <h2 id="categoryTitle" style="color: #2c3e50; font-size: 1.5em;">📋 すべての項目</h2>
             </div>
 
-            <!-- 新規/編集フォーム (構造を修正) -->
+            <!-- 新規/編集フォーム (★ここを修正★) -->
             <form class="form-container" id="addForm" style="display: none;">
                 <h3 id="formTitle" style="margin-bottom: 20px; color: #2c3e50;">➕ 新規項目追加</h3>
 
@@ -147,18 +148,20 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="paymentDay">支払/入金日</label>
-                        <input type="number" id="paymentDay" min="1" max="31" placeholder="例: 27">
-                    </div>
-
-                    <div class="form-group">
                         <label for="amount">金額/月々返済額 *</label>
                         <input type="number" id="amount" step="1" placeholder="収入は正数、支出は負数" required>
                     </div>
 
+                    <!-- ▼▼▼ 銀行選択プルダウンを追加 ▼▼▼ -->
+                    <div class="form-group income-field" style="display: none;">
+                        <label for="itemSourceBank">ひも付く銀行</label>
+                        <select id="itemSourceBank"></select>
+                    </div>
+                    <!-- ▲▲▲ ここまで ▲▲▲ -->
+
                     <div class="form-group">
-                        <label for="paymentMethod">支払先/振込先</label>
-                        <input type="text" id="paymentMethod" placeholder="例: メイン銀行">
+                        <label for="paymentDay">支払/入金日</label>
+                        <input type="number" id="paymentDay" min="1" max="31" placeholder="例: 27">
                     </div>
 
                     <div class="form-group">
