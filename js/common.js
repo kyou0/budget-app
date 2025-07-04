@@ -74,11 +74,62 @@ async function saveDataToDrive(data) {
 }
 
 /**
- * データをlocalStorageに保存する
- * @param {Array} data 保存するデータ配列
+ * 現在のマスターデータを保存する（ローカルとDriveの両方に対応）
+ * これが新しい、最強の保存機能です。
  */
-function saveDataToLocalStorage(data) {
-  localStorage.setItem('budgetMasterData', JSON.stringify(data));
+async function saveData() {
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  if (loadingOverlay) loadingOverlay.classList.add('show');
+
+  try {
+    // 1. まず短期記憶（セッションストレージ）に保存する
+    sessionStorage.setItem('budgetMasterData', JSON.stringify(masterData));
+
+    if (loginMode === 'google') {
+      // 2. Googleログインの場合、Driveにも保存する
+      const accessToken = sessionStorage.getItem('googleAccessToken');
+      const fileId = sessionStorage.getItem('driveFileId');
+
+      if (!accessToken || !fileId) {
+        showNotification('Google Driveに接続されていません。再ログインしてください。', 'error');
+        return;
+      }
+
+      const metadata = {
+        mimeType: 'application/json'
+      };
+      const content = JSON.stringify(masterData, null, 2); // 整形して保存
+
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', new Blob([content], { type: 'application/json' }));
+
+      const response = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: form
+      });
+
+      if (!response.ok) {
+        throw new Error('Driveへの保存に失敗しました: ' + response.statusText);
+      }
+      console.log('📄 Google Driveにデータを保存しました。');
+      showNotification('✅ Google Driveに保存しました！');
+
+    } else {
+      // 3. ローカルモードの場合、ローカルストレージに保存する
+      localStorage.setItem('budgetMasterData', JSON.stringify(masterData));
+      console.log('📄 ローカルストレージにデータを保存しました。');
+      showNotification('✅ 保存しました！');
+    }
+  } catch (error) {
+    console.error('データの保存中にエラーが発生しました:', error);
+    showNotification('データの保存に失敗しました。', 'error');
+  } finally {
+    if (loadingOverlay) loadingOverlay.classList.remove('show');
+  }
 }
 
 

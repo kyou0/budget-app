@@ -206,3 +206,46 @@ async function resetAllData() {
     showNotification('🔄 全データをリセットしました。', 'error');
   }
 }
+
+// js/settings.js
+
+document.addEventListener('DOMContentLoaded', function() {
+  // ... (既存のコード)
+});
+
+// ▼▼▼ この関数を追加 ▼▼▼
+async function forceSyncFromDrive() {
+  const accessToken = sessionStorage.getItem('googleAccessToken');
+  const fileId = sessionStorage.getItem('driveFileId');
+
+  if (!accessToken || !fileId) {
+    showNotification('Google Driveに接続されていません。', 'error');
+    return;
+  }
+
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  if (loadingOverlay) loadingOverlay.classList.add('show');
+
+  try {
+    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!response.ok) throw new Error('ファイルの読み込みに失敗しました');
+
+    const dataText = await response.text();
+    if (dataText) {
+      // 読み込んだデータを短期記憶(sessionStorage)に保存
+      sessionStorage.setItem('budgetMasterData', dataText);
+      showNotification('✅ Driveからデータを同期しました！');
+      // 必要であれば、ページをリロードして反映させる
+      // window.location.reload();
+    } else {
+      showNotification('Driveのファイルは空です。', 'warning');
+    }
+  } catch (error) {
+    console.error("Driveからの同期に失敗:", error);
+    showNotification('Driveからの同期に失敗しました。', 'error');
+  } finally {
+    if (loadingOverlay) loadingOverlay.classList.remove('show');
+  }
+}
