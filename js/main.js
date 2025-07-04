@@ -1,7 +1,7 @@
 // ===================================================================================
 // グローバル変数
 // ===================================================================================
-const GOOGLE_CLIENT_ID = '138150284146-07ul0ennhq22tm0ih3hngv8pnjsgo1u3.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '45451544416-9c9vljcaqir137dudhoj0da6ndchlph1.apps.googleusercontent.com';
 let masterData = [];
 let currentUser = null;
 let loginMode = 'local';
