@@ -160,9 +160,15 @@ function updateFormFields() {
 
 function showAddForm() {
   editingItemId = null;
-  document.getElementById('addForm').reset();
-  document.getElementById('formTitle').textContent = '➕ 新規項目追加';
+
+  // ▼▼▼ ここを修正 ▼▼▼
+  // 先にフォームを表示する
   document.getElementById('addForm').style.display = 'block';
+  // 表示した後にフォームの内容をリセットする
+  document.getElementById('addForm').reset();
+  // ▲▲▲
+
+  document.getElementById('formTitle').textContent = '➕ 新規項目追加';
   document.getElementById('addForm').scrollIntoView({ behavior: 'smooth' });
   updateFormFields();
 }
@@ -276,8 +282,9 @@ function resetAllData() {
     masterData = [];
     saveData(masterData);
 
-    const controls = document.getElementById('sample-data-controls');
-    if (controls) controls.style.display = 'none';
+    // sample-data-controls はもう存在しないため、この行は不要
+    // const controls = document.getElementById('sample-data-controls');
+    // if (controls) controls.style.display = 'none';
 
     renderAll();
     showNotification('✅ 全てのデータをリセットしました。');
