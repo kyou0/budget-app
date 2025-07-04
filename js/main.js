@@ -88,8 +88,19 @@ function showApp() {
 async function initializeApp() {
   // Googleログインの場合は、Driveへのアクセス許可も確認する
   if (loginMode === 'google' && !googleAccessToken) {
+    // アクセストークンを要求する。トークン取得後、コールバックでsyncWithDriveが呼ばれる
     requestDriveAccess();
   }
+
+  // ★★★ 修正ポイント ★★★
+  // 先にデータを読み込み、UIを即座に描画する
+  await loadData();
+  renderAll(); // どのモードでもここで一度描画する
+
+  if (currentUser) {
+    showNotification(`✅ ${currentUser.name}としてログインしました`);
+  }
+}
 
   await loadData();
 
@@ -192,10 +203,24 @@ function proceedToApp() {
 // ===================================================================================
 async function loadData() {
   if (loginMode === 'google') {
-    if (masterData.length === 0) {
-      console.log("Driveからのデータロードを待っています...");
+    // ★★★ 修正ポイント ★★★
+    // 他のページ同様、まずセッションストレージからデータを読み込む
+    const sessionData = sessionStorage.getItem('budgetMasterData');
+    if (sessionData) {
+      try {
+        masterData = JSON.parse(sessionData);
+        console.log('📂 [Googleモード] セッションからデータを読み込みました。');
+      } catch (e) {
+        console.error("セッションデータの解析に失敗:", e);
+        // セッションデータが壊れている場合は、ローカルのバックアップも試す
+        loadDataFromLocalStorage();
+      }
+    } else {
+      // セッションにない場合（初回起動など）は、Driveからのロードを待つ
+      console.log("セッションデータなし。Driveからのデータロードを待っています...");
     }
   } else {
+    // ローカルモードの場合は従来通り
     loadDataFromLocalStorage();
   }
 }
