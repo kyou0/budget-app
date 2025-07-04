@@ -8,29 +8,31 @@ let loginMode = 'local'; // ★★★ 修正ポイント1: loginModeを定義 �
 // ===================================================================================
 // 初期化処理 & ログインチェック
 // ===================================================================================
+
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 設定ページ起動');
 
-  // ★★★ 他のページと共通の認証ガード ★★★
   const savedUserJSON = localStorage.getItem('budgetAppUser');
+
+  // ▼▼▼ ここからが修正ポイント ▼▼▼
+  const appContainer = document.getElementById('appContainer');
+  const loginScreen = document.getElementById('loginScreen'); // loginScreenも取得
+
   if (!savedUserJSON) {
-    // ログインしていない場合は、ログインページに強制送還
-    const appContainer = document.getElementById('appContainer');
-    appContainer.innerHTML = `
-      <div class="login-required-message">
-        <h2>ログインが必要です</h2>
-        <p>設定を管理するには、まずログインしてください。</p>
-        <button class="btn" onclick="goToDashboard()">ダッシュボードに戻る</button>
-      </div>
-    `;
+    // ログインしていない場合は、ログイン画面を表示
+    if (loginScreen) loginScreen.style.display = 'flex';
+    if (appContainer) appContainer.style.display = 'none';
+    // ここで処理を中断
     return;
   }
 
-  currentUser = JSON.parse(savedUserJSON);
-  loginMode = currentUser.mode; // ★★★ 修正ポイント2: ログインモードを設定 ★★★
+  // ログインしている場合の処理
+  if (loginScreen) loginScreen.style.display = 'none';
+  if (appContainer) appContainer.style.display = 'block';
+  // ▲▲▲ ここまで ▲▲▲
 
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('appContainer').style.display = 'block';
+  currentUser = JSON.parse(savedUserJSON);
+  loginMode = currentUser.mode;
   document.getElementById('userName').textContent = currentUser.name;
 
   loadData();
