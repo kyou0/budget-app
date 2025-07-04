@@ -99,8 +99,6 @@
                 ➕ 新規項目追加
             </button>
 
-            <button class="btn btn-primary" style="width: 100%" onclick="showAddForm()">💾 保存</button>
-
             <button class="btn btn-secondary" style="width: 100%;" onclick="loadSampleData()">
                 📋 サンプルデータ読込
             </button>
@@ -122,6 +120,7 @@
 
             <!-- 新規/編集フォーム -->
             <div class="form-container" id="addForm" style="display: none;">
+                <form class="form-container" id="itemForm" style="display: none">
                 <h3 id="formTitle" style="margin-bottom: 20px; color: #2c3e50;">➕ 新規項目追加</h3>
                 <input type="hidden" id="editingItemId">
 
@@ -198,6 +197,7 @@
                     <button class="btn btn-secondary" onclick="hideAddForm()">キャンセル</button>
                     <button class="btn btn-primary" onclick="saveItem()">💾 保存</button>
                 </div>
+                </form>
             </div>
 
             <!-- 項目リスト -->
