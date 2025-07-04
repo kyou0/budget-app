@@ -3,6 +3,7 @@
 // ===================================================================================
 let currentUser = null;
 let masterData = []; // このページでもデータを持つ
+let loginMode = 'local'; // ★★★ 修正ポイント1: loginModeを定義 ★★★
 
 // ===================================================================================
 // 初期化処理 & ログインチェック
@@ -14,7 +15,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const savedUserJSON = localStorage.getItem('budgetAppUser');
   if (!savedUserJSON) {
     // ログインしていない場合は、ログインページに強制送還
-    // このページではログイン機能を提供しないため、戻すだけ
     const appContainer = document.getElementById('appContainer');
     appContainer.innerHTML = `
       <div class="login-required-message">
@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   currentUser = JSON.parse(savedUserJSON);
+  loginMode = currentUser.mode; // ★★★ 修正ポイント2: ログインモードを設定 ★★★
+
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appContainer').style.display = 'block';
   document.getElementById('userName').textContent = currentUser.name;
@@ -40,11 +42,16 @@ document.addEventListener('DOMContentLoaded', function() {
 // ===================================================================================
 function loadData() {
   // master.js と全く同じロジックでデータを読み込む
-  if (currentUser && currentUser.mode === 'google') {
+  if (loginMode === 'google') {
     const sessionData = sessionStorage.getItem('budgetMasterData');
     if (sessionData) {
-      masterData = JSON.parse(sessionData);
-      console.log('📂 [Googleモード] セッションからデータを読み込みました。');
+      try {
+        masterData = JSON.parse(sessionData);
+        console.log('📂 [Googleモード] セッションからデータを読み込みました。');
+      } catch (e) {
+        console.error("セッションデータの解析に失敗:", e);
+        masterData = [];
+      }
     } else {
       console.warn('セッションデータが見つかりません。');
       // Drive同期はメインページで行うため、ここでは通知に留める
@@ -64,7 +71,7 @@ function loadData() {
 function updateSyncStatus() {
   const statusBadge = document.getElementById('syncStatus');
   const syncButton = document.getElementById('manualSyncBtn');
-  if (currentUser.mode === 'google') {
+  if (loginMode === 'google') {
     statusBadge.textContent = 'Google Drive';
     statusBadge.className = 'status-badge google';
     syncButton.disabled = false;
@@ -80,7 +87,7 @@ function updateSyncStatus() {
 // ===================================================================================
 
 /**
- * 手動でGoogle Driveと同期する（main.jsの簡易版）
+ * 手動でGoogle Driveと同期する
  */
 async function manualSync() {
   const loadingOverlay = document.getElementById('loadingOverlay');
@@ -88,24 +95,11 @@ async function manualSync() {
     loadingOverlay.classList.add('show');
     showNotification('☁️ Google Driveと手動で同期しています...', 'info');
 
-    const accessToken = sessionStorage.getItem('googleAccessToken');
-    const fileId = sessionStorage.getItem('driveFileId');
+    // ★★★ 修正ポイント3: 賢い保存係に任せる ★★★
+    await saveData(); // これだけでローカル/Drive両対応
 
-    if (!accessToken || !fileId) {
-      throw new Error('同期情報が見つかりません。ダッシュボードで再ログインしてください。');
-    }
-
-    // 1. 現在のデータをDriveに保存
-    await saveData(masterData);
-    // 2. Driveから最新データを再読み込み（他のデバイスでの変更を反映）
-    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
-    });
-    if (!response.ok) throw new Error('ファイルの再読み込みに失敗');
-
-    const dataText = await response.text();
-    masterData = dataText ? JSON.parse(dataText) : [];
-    sessionStorage.setItem('budgetMasterData', JSON.stringify(masterData));
+    // 保存後、念のためDriveから最新データを再読み込み（他のデバイスでの変更を反映）
+    await forceSyncFromDrive(false); // 通知なしで同期
 
     showNotification('✅ 同期が完了しました！');
 
@@ -116,6 +110,48 @@ async function manualSync() {
     loadingOverlay.classList.remove('show');
   }
 }
+
+/**
+ * Driveから最新のデータを強制的に取得する
+ * @param {boolean} showSuccessNotification - 成功時に通知を表示するかどうか
+ */
+async function forceSyncFromDrive(showSuccessNotification = true) {
+  const accessToken = sessionStorage.getItem('googleAccessToken');
+  const fileId = sessionStorage.getItem('driveFileId');
+
+  if (!accessToken || !fileId) {
+    showNotification('Google Driveに接続されていません。', 'error');
+    return;
+  }
+
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  if (loadingOverlay) loadingOverlay.classList.add('show');
+
+  try {
+    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!response.ok) throw new Error('ファイルの読み込みに失敗しました');
+
+    const dataText = await response.text();
+    if (dataText) {
+      masterData = JSON.parse(dataText);
+      // 読み込んだデータを短期記憶(sessionStorage)に保存
+      sessionStorage.setItem('budgetMasterData', JSON.stringify(masterData));
+      if (showSuccessNotification) {
+        showNotification('✅ Driveからデータを同期しました！');
+      }
+    } else {
+      showNotification('Driveのファイルは空です。', 'warning');
+    }
+  } catch (error) {
+    console.error("Driveからの同期に失敗:", error);
+    showNotification('Driveからの同期に失敗しました。', 'error');
+  } finally {
+    if (loadingOverlay) loadingOverlay.classList.remove('show');
+  }
+}
+
 
 /**
  * 現在のデータをJSONファイルとしてエクスポートする
@@ -139,8 +175,6 @@ function exportData() {
   showNotification('📤 データのエクスポートを開始しました。');
 }
 
-// js/settings.js の importData 関数を置き換え
-
 /**
  * JSONファイルをインポートしてデータを復元する
  */
@@ -150,12 +184,10 @@ async function importData() {
   }
 
   try {
-    // 1. ファイル選択ダイアログを作成して表示
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'application/json,.json'; // JSONファイルのみを許可
+    input.accept = 'application/json,.json';
 
-    // 2. ファイルが選択されたときの処理を定義
     input.onchange = e => {
       const file = e.target.files[0];
       if (!file) return;
@@ -164,18 +196,14 @@ async function importData() {
       reader.onload = async (event) => {
         try {
           const importedData = JSON.parse(event.target.result);
-          // 簡単なデータ形式のチェック
           if (!Array.isArray(importedData)) {
             throw new Error('無効なファイル形式です。');
           }
 
           masterData = importedData;
-          await saveData(masterData); // 賢い保存係に保存を任せる
-          sessionStorage.setItem('budgetMasterData', JSON.stringify(masterData)); // セッションも更新
+          await saveData(); // 賢い保存係に保存を任せる
 
           showNotification('✅ データのインポートが完了しました。');
-          // 必要に応じてUIを更新
-          // renderAll(); のような関数があればここで呼ぶ
 
         } catch (err) {
           console.error('インポートエラー:', err);
@@ -184,8 +212,6 @@ async function importData() {
       };
       reader.readAsText(file);
     };
-
-    // 3. ダイアログをクリックして表示
     input.click();
 
   } catch (error) {
@@ -200,52 +226,7 @@ async function importData() {
 async function resetAllData() {
   if (confirm('本当にすべてのデータをリセットしますか？この操作は元に戻せません。')) {
     masterData = [];
-    // 賢い保存係に任せる
-    await saveData(masterData);
-    sessionStorage.setItem('budgetMasterData', '[]'); // セッションもクリア
+    await saveData(); // 賢い保存係に任せる
     showNotification('🔄 全データをリセットしました。', 'error');
-  }
-}
-
-// js/settings.js
-
-document.addEventListener('DOMContentLoaded', function() {
-  // ... (既存のコード)
-});
-
-// ▼▼▼ この関数を追加 ▼▼▼
-async function forceSyncFromDrive() {
-  const accessToken = sessionStorage.getItem('googleAccessToken');
-  const fileId = sessionStorage.getItem('driveFileId');
-
-  if (!accessToken || !fileId) {
-    showNotification('Google Driveに接続されていません。', 'error');
-    return;
-  }
-
-  const loadingOverlay = document.getElementById('loadingOverlay');
-  if (loadingOverlay) loadingOverlay.classList.add('show');
-
-  try {
-    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
-    });
-    if (!response.ok) throw new Error('ファイルの読み込みに失敗しました');
-
-    const dataText = await response.text();
-    if (dataText) {
-      // 読み込んだデータを短期記憶(sessionStorage)に保存
-      sessionStorage.setItem('budgetMasterData', dataText);
-      showNotification('✅ Driveからデータを同期しました！');
-      // 必要であれば、ページをリロードして反映させる
-      // window.location.reload();
-    } else {
-      showNotification('Driveのファイルは空です。', 'warning');
-    }
-  } catch (error) {
-    console.error("Driveからの同期に失敗:", error);
-    showNotification('Driveからの同期に失敗しました。', 'error');
-  } finally {
-    if (loadingOverlay) loadingOverlay.classList.remove('show');
   }
 }
