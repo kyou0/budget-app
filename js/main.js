@@ -84,14 +84,14 @@ function tryGoogleLogin() {
  * Googleログイン成功時に呼び出されるコールバック関数
  * @param {object} response - Googleからの認証情報
  */
-function handleGoogleLoginSuccess(response) {
-  // ▼▼▼ デバッグ用のログはここに統合しました ▼▼▼
-  console.log('★★★ handleGoogleLoginSuccessが呼び出されました！ ★★★');
-  // ▲▲▲ ▲▲▲
 
+function handleGoogleLoginSuccess(response) {
+  console.log('★★★ handleGoogleLoginSuccessが呼び出されました！ ★★★');
   console.log("Googleから認証情報を受け取りました:", response);
-  // jwt-decodeライブラリを使って、認証情報(JWT)からユーザー情報を抜き出す
-  const userObject = jwt_decode(response.credential);
+
+  // ▼▼▼ ここの関数名を jwt_decode から jwtDecode に変更します ▼▼▼
+  const userObject = jwtDecode(response.credential);
+  // ▲▲▲ ▲▲▲
 
   currentUser = {
     name: userObject.name,
