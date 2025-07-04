@@ -196,6 +196,53 @@ async function importData() {
       reader.onload = async (event) => {
         try {
           const importedData = JSON.parse(event.target.result);
+
+          // ▼▼▼ ここに「門番」となるバリデーション処理を追加 ▼▼▼
+          const isValidData = Array.isArray(importedData) && importedData.every(item =>
+            typeof item.id !== 'undefined' &&
+            typeof item.name !== 'undefined' &&
+            typeof item.type !== 'undefined' &&
+            typeof item.amount !== 'undefined'
+          );
+
+          if (!isValidData) {
+            throw new Error('無効なデータ形式です。このアプリのバックアップファイルではありません。');
+          }
+          // ▲▲▲ バリデーションここまで ▲▲▲
+
+          masterData = importedData;
+          await saveData(); // 賢い保存係に保存を任せる
+
+          showNotification('✅ データのインポートが完了しました。');
+
+        } catch (err) {
+          console.error('インポートエラー:', err);
+          showNotification(`インポートに失敗しました: ${err.message}`, 'error');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+
+  } catch (error) {
+    console.error('インポート処理の開始に失敗:', error);
+    showNotification('インポート処理を開始できませんでした。', 'error');
+  }
+}
+
+  try {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+
+    input.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const importedData = JSON.parse(event.target.result);
           if (!Array.isArray(importedData)) {
             throw new Error('無効なファイル形式です。');
           }
