@@ -84,14 +84,13 @@ function tryGoogleLogin() {
  * Googleログイン成功時に呼び出されるコールバック関数
  * @param {object} response - Googleからの認証情報
  */
-
 function handleGoogleLoginSuccess(response) {
   console.log('★★★ handleGoogleLoginSuccessが呼び出されました！ ★★★');
   console.log("Googleから認証情報を受け取りました:", response);
 
-  // ▼▼▼ ここの関数名を jwt_decode から jwtDecode に変更します ▼▼▼
-  const userObject = jwtDecode(response.credential);
-  // ▲▲▲ ▲▲▲
+  // ▼▼▼ 関数名を、読み込んでいるライブラリ(v3.1.2)に合わせて jwt_decode に戻します ▼▼▼
+  const userObject = jwt_decode(response.credential);
+  // ▲▲▲ これでライブラリのバージョンと名前が一致します ▲▲▲
 
   currentUser = {
     name: userObject.name,
