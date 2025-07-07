@@ -371,11 +371,11 @@ async function findOrCreateFile() {
 
 
 // ===================================================================================
-// 未来予測型キャッシュフローエンジン
+// 統合版：未来予測＆借金分析エンジン
 // ===================================================================================
 
 /**
- * 今月のキャッシュフローを日別にシミュレーションし、未来を予測する
+ * キャッシュフローと借金返済の見通しを統合的に分析し、ダッシュボードに描画する
  */
 function generateFinancialForecast() {
   const container = document.getElementById('financialForecast');
@@ -384,77 +384,122 @@ function generateFinancialForecast() {
   // 1. 必要なデータを準備
   const banks = masterData.filter(item => item.type === 'bank' && item.isActive);
   const transactions = masterData.filter(item => item.type !== 'bank' && item.isActive && item.paymentDay);
+  const loans = masterData.filter(item => item.type === 'loan' && item.isActive && item.loanDetails);
 
-  if (banks.length === 0) {
+  // 分析対象が何もなければ、セクションごと非表示にする
+  if (banks.length === 0 && loans.length === 0) {
     container.style.display = 'none';
     return;
   }
 
-  // 2. 日別のイベントリストを作成
-  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-  let dailyEvents = [];
-  for (let day = 1; day <= daysInMonth; day++) {
-    const eventsOnDay = transactions.filter(t => t.paymentDay === day);
-    if (eventsOnDay.length > 0) {
-      dailyEvents.push({ day, events: eventsOnDay });
-    }
-  }
+  let forecastHtml = '<h3>📈 財務健全性の見通し</h3>';
 
-  // 3. シミュレーション開始
-  let bankBalances = {};
-  banks.forEach(b => {
-    bankBalances[b.id] = b.amount; // 各銀行の初期残高を設定
-  });
-
-  let alerts = [];
-  let forecastHtml = '<h3>📈 未来の財務予測</h3>';
-
-  // 4. 1日から最終日までループ
-  for (let day = 1; day <= daysInMonth; day++) {
-    const todayEvents = dailyEvents.find(e => e.day === day);
-    if (todayEvents) {
-      // その日の取引を処理
-      todayEvents.events.forEach(event => {
-        if (event.sourceBankId && bankBalances.hasOwnProperty(event.sourceBankId)) {
-          bankBalances[event.sourceBankId] += event.amount; // 収入/支出を反映
-        }
-      });
+  // --- Part 1: キャッシュフロー予測 ---
+  if (banks.length > 0) {
+    // (このロジックは前回と同じ)
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+    let dailyEvents = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const eventsOnDay = transactions.filter(t => t.paymentDay === day);
+      if (eventsOnDay.length > 0) {
+        dailyEvents.push({ day, events: eventsOnDay });
+      }
     }
 
-    // 5. その日の終わりに、全銀行の残高をチェック
-    for (const bankId in bankBalances) {
-      if (bankBalances[bankId] < 0) {
-        // 既にアラートが出ていない場合のみ追加
-        if (!alerts.some(a => a.bankId === bankId)) {
-          const bank = banks.find(b => b.id === Number(bankId));
-          alerts.push({
-            day,
-            bankId,
-            bankName: bank.name,
-            shortfall: Math.abs(bankBalances[bankId])
-          });
+    let bankBalances = {};
+    banks.forEach(b => { bankBalances[b.id] = b.amount; });
+
+    let alerts = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const todayEvents = dailyEvents.find(e => e.day === day);
+      if (todayEvents) {
+        todayEvents.events.forEach(event => {
+          if (event.sourceBankId && bankBalances.hasOwnProperty(event.sourceBankId)) {
+            bankBalances[event.sourceBankId] += event.amount;
+          }
+        });
+      }
+
+      for (const bankId in bankBalances) {
+        if (bankBalances[bankId] < 0) {
+          if (!alerts.some(a => a.bankId === bankId)) {
+            const bank = banks.find(b => b.id === Number(bankId));
+            if (bank) {
+              alerts.push({
+                day,
+                bankId,
+                bankName: bank.name,
+                shortfall: Math.abs(bankBalances[bankId])
+              });
+            }
+          }
         }
       }
     }
+
+    if (alerts.length > 0) {
+      forecastHtml += '<div class="forecast-section">';
+      forecastHtml += '<h4>🚨 残高不足警告</h4>';
+      alerts.forEach(alert => {
+        forecastHtml += `
+                    <div class="alert-item problematic">
+                        <p><strong>${alert.day}日</strong>、<strong>${alert.bankName}</strong>の残高が不足する可能性があります。</p>
+                        <p class="recommendation">少なくとも<strong>${alert.shortfall.toLocaleString()}円</strong>の入金が必要です。</p>
+                    </div>`;
+      });
+      forecastHtml += '</div>';
+    } else {
+      forecastHtml += '<div class="forecast-section"><p class="forecast-ok">✅ 今月のキャッシュフローは正常です。</p></div>';
+    }
   }
 
-  // 6. 結果を描画
-  if (alerts.length > 0) {
-    forecastHtml += '<div class="forecast-alerts">';
-    alerts.forEach(alert => {
-      forecastHtml += `
-                <div class="alert-item problematic">
-                    <h4>🚨 残高不足警告</h4>
-                    <p><strong>${alert.day}日</strong>、<strong>${alert.bankName}</strong>の残高が不足する可能性があります。</p>
-                    <p class="recommendation">少なくとも<strong>${alert.shortfall.toLocaleString()}円</strong>の入金が必要です。</p>
-                </div>
-            `;
+  // --- Part 2: 借金返済の見通し ---
+  if (loans.length > 0) {
+    forecastHtml += '<div class="forecast-section">';
+    forecastHtml += '<h4>💸 借金返済の見通し</h4>';
+    loans.forEach(loan => {
+      const months = calculateRepaymentPeriod(loan.loanDetails.currentBalance, Math.abs(loan.amount), loan.loanDetails.interestRate);
+      if (months === Infinity) {
+        forecastHtml += `
+                    <div class="analysis-item problematic">
+                        <p><strong>${loan.name}:</strong> このままでは返済が終わりません。返済額の見直しを強く推奨します。</p>
+                    </div>`;
+      } else {
+        const years = Math.floor(months / 12);
+        const remainingMonths = months % 12;
+        forecastHtml += `
+                    <div class="analysis-item">
+                        <p><strong>${loan.name}:</strong> 完済まで 約 <strong>${years}</strong> 年 <strong>${remainingMonths}</strong> ヶ月</p>
+                    </div>`;
+      }
     });
     forecastHtml += '</div>';
-  } else {
-    forecastHtml += '<p class="forecast-ok">✅ 今月のキャッシュフローは正常です。この調子でいきましょう！</p>';
   }
 
   container.innerHTML = forecastHtml;
   container.style.display = 'block';
+}
+
+/**
+ * 返済期間を計算するヘルパー関数 (復活！)
+ * @param {number} balance - 現在の残高
+ * @param {number} monthlyPayment - 月々の返済額
+ * @param {number} interestRate - 年利率 (%)
+ * @returns {number} - 完済までの月数 (終わらない場合は Infinity)
+ */
+function calculateRepaymentPeriod(balance, monthlyPayment, interestRate) {
+  const monthlyInterestRate = interestRate / 100 / 12;
+  if (balance * monthlyInterestRate >= monthlyPayment) {
+    return Infinity;
+  }
+  let months = 0;
+  let currentBalance = balance;
+  while (currentBalance > 0) {
+    const interest = currentBalance * monthlyInterestRate;
+    const principalPaid = monthlyPayment - interest;
+    currentBalance -= principalPaid;
+    months++;
+    if (months > 1200) return Infinity; // 100年で計算打ち切り
+  }
+  return months;
 }
