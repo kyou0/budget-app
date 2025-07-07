@@ -83,30 +83,46 @@ function renderMasterList() {
     const statusClass = item.isActive ? 'active' : '';
     const statusText = item.isActive ? '✅ 有効' : '❌ 無効';
 
-    // ▼▼▼ 修正箇所 ▼▼▼
     let bankInfo = '';
-    // 項目にsourceBankIdが存在する場合
     if (item.sourceBankId) {
       const bank = masterData.find(b => b.id === item.sourceBankId);
       if (bank) {
-        // 収入か支出かでラベルを切り替える
         const label = item.type === 'income' ? '振込先:' : '支払元:';
         bankInfo = `<div class="item-detail"><span class="item-label">${label}</span><span class="item-value">${bank.name}</span></div>`;
       }
+    }
+
+    // ▼▼▼ 修正箇所 ▼▼▼
+    // 借金の場合、詳細情報を生成する
+    let loanDetailsHtml = '';
+    if (item.type === 'loan' && item.loanDetails) {
+      loanDetailsHtml = `
+                <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
+                <div class="item-detail">
+                    <span class="item-label">現在の残高:</span>
+                    <span class="item-value expense">¥${item.loanDetails.currentBalance.toLocaleString()}</span>
+                </div>
+                <div class="item-detail">
+                    <span class="item-label">年利率:</span>
+                    <span class="item-value">${item.loanDetails.interestRate}%</span>
+                </div>
+            `;
     }
     // ▲▲▲ ここまで ▲▲▲
 
     itemCard.innerHTML = `
             <div class="item-card-header"><span class="item-icon">${icon}</span><h4 class="item-name">${item.name}</h4><span class="item-status ${statusClass}">${statusText}</span></div>
             <div class="item-card-body">
-                <div class="item-detail"><span class="item-label">金額:</span><span class="item-value ${amountColor}">${amountText}</span></div>
-                <div class="item-detail"><span class="item-label">支払/入金日:</span><span class="item-value">${item.paymentDay ? item.paymentDay + '日' : '未設定'}</span></div>
+                <div class="item-detail"><span class="item-label">月々の返済額:</span><span class="item-value ${amountColor}">${amountText}</span></div>
+                <div class="item-detail"><span class="item-label">支払日:</span><span class="item-value">${item.paymentDay ? item.paymentDay + '日' : '未設定'}</span></div>
                 ${bankInfo}
+                ${loanDetailsHtml}
             </div>
             <div class="item-card-actions"><button class="btn-action edit" onclick="showEditForm(${item.id})">✏️ 編集</button><button class="btn-action delete" onclick="deleteItem(${item.id})">🗑️ 削除</button></div>`;
     itemsGrid.appendChild(itemCard);
   });
 }
+
 
 // ===================================================================================
 // フォーム関連の処理 (★今回のメイン機能★)
@@ -125,6 +141,8 @@ function showAddForm() {
   populateBankSelect(); // 銀行プルダウンを生成
 }
 
+// js/master.js
+
 function showEditForm(itemId) {
   const itemToEdit = masterData.find(item => item.id === itemId);
   if (!itemToEdit) return;
@@ -137,23 +155,24 @@ function showEditForm(itemId) {
   document.getElementById('paymentDay').value = itemToEdit.paymentDay || '';
   document.getElementById('isActive').value = itemToEdit.isActive.toString();
 
-  // フォームの表示を更新
   updateFormFields();
-  // 銀行プルダウンを生成
   populateBankSelect();
 
-  // 編集対象の銀行を選択状態にする
   if (itemToEdit.sourceBankId) {
-    document.getElementById('itemSourceBank').value = itemToEdit.sourceBankId;
+    document.getElementById('itemSourceBank').value = itemToToEdit.sourceBankId;
   }
 
-  // 借入詳細の値を設定
+  // ▼▼▼ 修正箇所 ▼▼▼
+  // 借入詳細の値をフォームに設定
   if (itemToEdit.type === 'loan' && itemToEdit.loanDetails) {
-    document.getElementById('loanType').value = itemToEdit.loanDetails.loanType || '消費者金融';
+    document.getElementById('initialAmount').value = itemToEdit.loanDetails.initialAmount || '';
+    document.getElementById('loanDate').value = itemToEdit.loanDetails.loanDate || '';
     document.getElementById('interestRate').value = itemToEdit.loanDetails.interestRate || '';
-    document.getElementById('maxLimit').value = itemToEdit.loanDetails.maxLimit || '';
     document.getElementById('currentBalance').value = itemToEdit.loanDetails.currentBalance || '';
+    document.getElementById('loanType').value = itemToEdit.loanDetails.loanType || '消費者金融';
+    document.getElementById('maxLimit').value = itemToEdit.loanDetails.maxLimit || '';
   }
+  // ▲▲▲ ここまで ▲▲▲
 
   document.getElementById('formTitle').textContent = '✏️ 項目の編集';
   document.getElementById('addForm').style.display = 'block';
@@ -169,64 +188,67 @@ async function saveItem() {
   // 基本情報の取得
   const name = document.getElementById('itemName').value.trim();
   const type = document.getElementById('itemType').value;
-  const amount = parseInt(document.getElementById('amount').value, 10);
+  let amount = parseInt(document.getElementById('amount').value, 10);
   const paymentDay = parseInt(document.getElementById('paymentDay').value, 10) || null;
   const isActive = document.getElementById('isActive').value === 'true';
-
-  // ★★★ 銀行IDを取得 ★★★
   const sourceBankId = document.getElementById('itemSourceBank').value;
 
   if (!name || !type || isNaN(amount)) {
-    showNotification('項目名、種別、金額は必須です。', 'error');
+    showNotification('項目名、種別、金額/残高は必須です。', 'error');
     return;
   }
 
-// 銀行の場合は、金額を常に正の数として扱う
   if (type === 'bank') {
     amount = Math.abs(amount);
   }
 
-  // 借入詳細情報を取得
+  // ▼▼▼ 修正箇所 ▼▼▼
+  // 借入詳細情報を、より詳細に取得する
   let loanDetails = null;
   if (type === 'loan') {
+    const interestRate = parseFloat(document.getElementById('interestRate').value);
+    const currentBalance = parseInt(document.getElementById('currentBalance').value, 10);
+
+    // 借金の場合、必須項目をチェック
+    if (isNaN(interestRate) || isNaN(currentBalance)) {
+      showNotification('借金の場合、年利率と現在の残高は必須です。', 'error');
+      return;
+    }
+
     loanDetails = {
+      initialAmount: parseInt(document.getElementById('initialAmount').value, 10) || 0,
+      loanDate: document.getElementById('loanDate').value || null,
+      interestRate: interestRate,
+      currentBalance: currentBalance,
       loanType: document.getElementById('loanType').value,
-      interestRate: parseFloat(document.getElementById('interestRate').value) || 0,
       maxLimit: parseInt(document.getElementById('maxLimit').value, 10) || 0,
-      currentBalance: parseInt(document.getElementById('currentBalance').value, 10) || 0,
     };
   }
 
   const itemData = { name, type, amount, paymentDay, isActive, loanDetails };
 
-  // 「銀行」以外の全ての項目で、選択されていればsourceBankIdを保存する
   if (type !== 'bank' && sourceBankId) {
     itemData.sourceBankId = parseInt(sourceBankId, 10);
   } else {
-    delete itemData.sourceBankId; // 不要ならプロパティごと削除
+    delete itemData.sourceBankId;
   }
 
   if (editingItemId !== null) {
     const itemIndex = masterData.findIndex(item => item.id === editingItemId);
     if (itemIndex > -1) {
-      // IDは維持しつつ、他のプロパティを更新
       masterData[itemIndex] = { ...masterData[itemIndex], ...itemData };
       showNotification(`✅ 「${name}」を更新しました。`);
     }
   } else {
-    // IDは数値のタイムスタンプにする
     const newItem = { id: Date.now(), ...itemData };
     masterData.push(newItem);
     showNotification(`✅ 「${name}」を新しく追加しました。`);
   }
 
-  // saveDataはcommon.jsにある想定
   await saveData();
   renderAll();
   hideAddForm();
 }
-
-// js/master.js
 
 /**
  * フォームの種別に応じて、表示するフィールドを切り替える
