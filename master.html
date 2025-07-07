@@ -95,54 +95,51 @@
             </div>
 
             <!-- 新規/編集フォーム -->
+            <!-- master.html -->
+
+            <!-- 新規/編集フォーム -->
             <form class="form-container" id="addForm" style="display: none;">
                 <h3 id="formTitle" style="margin-bottom: 20px; color: #2c3e50;">➕ 新規項目追加</h3>
                 <div class="form-grid">
-                    <div class="form-group"><label for="itemName">項目名 *</label><input type="text" id="itemName"
-                                                                                         placeholder="例: 楽天カード"
-                                                                                         required></div>
-                    <div class="form-group"><label for="itemType">種別 *</label><select id="itemType" required
-                                                                                        onchange="updateFormFields()">
-                        <option value="">選択してください</option>
-                        <option value="income">💰 収入</option>
-                        <option value="loan">💸 借入先</option>
-                        <option value="card">💳 カード</option>
-                        <option value="fixed">🏠 固定費</option>
-                        <option value="bank">🏦 銀行</option>
-                        <option value="tax">🏛️ 税金</option>
-                        <option value="variable">🛒 変動費</option>
-                    </select></div>
-                    <div class="form-group"><label for="amount">金額/月々返済額 *</label><input type="number" id="amount"
-                                                                                               step="1"
-                                                                                               placeholder="収入は正数、支出は負数"
-                                                                                               required></div>
-                    <div class="form-group income-field" style="display: none;"><label
-                            for="itemSourceBank">ひも付く銀行</label><select id="itemSourceBank"></select></div>
-                    <div class="form-group"><label for="paymentDay">支払/入金日</label><input type="number"
-                                                                                              id="paymentDay" min="1"
-                                                                                              max="31"
-                                                                                              placeholder="例: 27">
+                    <!-- === 基本項目 === -->
+                    <div class="form-group">
+                        <label for="itemName">項目名 *</label>
+                        <input type="text" id="itemName" placeholder="例: 楽天カード" required>
                     </div>
-                    <div class="form-group"><label for="isActive">状態</label><select id="isActive">
-                        <option value="true">✅ 有効</option>
-                        <option value="false">❌ 無効</option>
-                    </select></div>
-                    <div class="form-group loan-field" style="display: none;"><label
-                            for="loanType">借入種別</label><select id="loanType">
-                        <option value="消費者金融">消費者金融</option>
-                        <option value="銀行カードローン">銀行カードローン</option>
-                        <option value="クレジットカード">クレジットカード</option>
-                        <option value="親族">親族</option>
-                        <option value="友人">友人</option>
-                        <option value="その他">その他</option>
-                    </select></div>
-                    <div class="form-group loan-field" style="display: none;"><label for="interestRate">年利率
-                        (%)</label><input type="number" id="interestRate" step="0.1" placeholder="例: 18.0"></div>
-                    <div class="form-group loan-field" style="display: none;"><label for="maxLimit">限度額</label><input
-                            type="number" id="maxLimit" step="10000" placeholder="例: 500000"></div>
-                    <div class="form-group loan-field" style="display: none;"><label
-                            for="currentBalance">現在残高</label><input type="number" id="currentBalance" step="1"
-                                                                        placeholder="例: 234567"></div>
+                    <div class="form-group">
+                        <label for="itemType">種別 *</label>
+                        <select id="itemType" required onchange="updateFormFields()">
+                            <option value="">選択してください</option>
+                            <option value="income">💰 収入</option>
+                            <option value="loan">💸 借入先</option>
+                            <option value="card">💳 カード</option>
+                            <option value="fixed">🏠 固定費</option>
+                            <option value="bank">🏦 銀行</option>
+                            <option value="tax">🏛️ 税金</option>
+                            <option value="variable">🛒 変動費</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="amount">金額/月々返済額 *</label>
+                        <input type="number" id="amount" step="1" placeholder="収入は正数、支出は負数" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemSourceBank">ひも付く銀行</label>
+                        <select id="itemSourceBank"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="paymentDay">支払/入金日</label>
+                        <input type="number" id="paymentDay" min="1" max="31" placeholder="例: 27">
+                    </div>
+                    <div class="form-group">
+                        <label for="isActive">状態</label>
+                        <select id="isActive">
+                            <option value="true">✅ 有効</option>
+                            <option value="false">❌ 無効</option>
+                        </select>
+                    </div>
+
+                    <!-- === 借金専用項目 (ここが整理された部分) === -->
                     <div class="form-group loan-field" style="display: none;">
                         <label for="initialAmount">当初の借入額</label>
                         <input type="number" id="initialAmount" step="1" placeholder="例: 1000000">

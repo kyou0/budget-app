@@ -19,39 +19,35 @@ let tokenClient;
 /**
  * Googleのライブラリが読み込み完了したときに呼び出される
  */
-function onGoogleLibraryLoad() {
+window.onGoogleLibraryLoad = function () {
   console.log('✅ Googleライブラリの読み込み完了');
 
-  window.onGoogleLibraryLoad = function() {
-    console.log('✅ Googleライブラリの読み込み完了');
+  // 認証クライアントを初期化
+  try {
+    // 1. ログイン（ID取得）用のクライアント
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleGoogleLoginSuccess // ログイン成功時の処理
+    });
 
-    // 認証クライアントを初期化
-    try {
-      // 1. ログイン（ID取得）用のクライアント
-      google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleLoginSuccess // ログイン成功時の処理
-      });
+    // 2. Drive APIアクセス用のトークンクライアント
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/drive.appdata',
+      prompt: '',
+      callback: handleTokenResponse,
+    });
 
-      // 2. Drive APIアクセス用のトークンクライアント
-      tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: 'https://www.googleapis.com/auth/drive.appdata',
-        prompt: '',
-        callback: handleTokenResponse,
-      });
-
-    } catch (e) {
-      console.error("Googleライブラリの初期化に失敗しました。", e);
-      showNotification('Googleライブラリの初期化に失敗しました。ページを再読み込みしてください。', 'error');
-    }
+  } catch (e) {
+    console.error("Googleライブラリの初期化に失敗しました。", e);
+    showNotification('Googleライブラリの初期化に失敗しました。ページを再読み込みしてください。', 'error');
   }
 }
 
 /**
  * DOMの読み込みが完了したら実行 (★ここが最重要修正箇所★)
  */
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   console.log('🚀 家計簿アプリ v2.0 起動');
 
   // ログイン画面とアプリ本体の要素を取得
@@ -110,7 +106,7 @@ function tryGoogleLogin() {
  * ローカルモードでログインする
  */
 function localLogin() {
-  currentUser = { name: 'ローカルユーザー', mode: 'local' };
+  currentUser = {name: 'ローカルユーザー', mode: 'local'};
   loginMode = 'local';
   localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
   showApp();
@@ -145,7 +141,7 @@ function decodeJWT(token) {
   try {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
       return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
     }).join(''));
     return JSON.parse(jsonPayload);
@@ -288,10 +284,10 @@ function updateSummaryCards() {
   const balance = income + totalExpense;
 
   const cards = [
-    { title: '総収入', amount: income, class: 'income' },
-    { title: '総支出', amount: totalExpense, class: 'expense' },
-    { title: '収支', amount: balance, class: balance >= 0 ? 'income' : 'expense' },
-    { title: '固定費', amount: fixedCost, class: 'expense' }
+    {title: '総収入', amount: income, class: 'income'},
+    {title: '総支出', amount: totalExpense, class: 'expense'},
+    {title: '収支', amount: balance, class: balance >= 0 ? 'income' : 'expense'},
+    {title: '固定費', amount: fixedCost, class: 'expense'}
   ];
 
   cards.forEach(card => {
@@ -333,7 +329,7 @@ async function syncWithDrive() {
     const fileId = await findOrCreateFile();
     sessionStorage.setItem('driveFileId', fileId);
     const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-      headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+      headers: {'Authorization': `Bearer ${googleAccessToken}`}
     });
     if (response.ok) {
       const dataText = await response.text();
@@ -354,7 +350,7 @@ async function syncWithDrive() {
 async function findOrCreateFile() {
   const fileName = 'budget-app-data.json';
   const response = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${fileName}' and 'appDataFolder' in parents&spaces=appDataFolder`, {
-    headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+    headers: {'Authorization': `Bearer ${googleAccessToken}`}
   });
   const data = await response.json();
   if (data.files.length > 0) {
