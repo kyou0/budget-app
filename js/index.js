@@ -481,7 +481,7 @@ function generateFinancialForecast() {
 }
 
 /**
- * 返済期間を計算するヘルパー関数 (復活！)
+ * 返済期間を計算するヘルパー関数 (最終完成版)
  * @param {number} balance - 現在の残高
  * @param {number} monthlyPayment - 月々の返済額
  * @param {number} interestRate - 年利率 (%)
@@ -489,9 +489,14 @@ function generateFinancialForecast() {
  */
 function calculateRepaymentPeriod(balance, monthlyPayment, interestRate) {
   const MAX_REPAYMENT_MONTHS = 12 * 100; // 最大返済期間を100年（1200ヶ月）に設定
+
+  // ▼▼▼ この一行を復活させる ▼▼▼
+  const monthlyInterestRate = interestRate / 100 / 12;
+
   if (balance * monthlyInterestRate >= monthlyPayment) {
     return Infinity;
   }
+
   let months = 0;
   let currentBalance = balance;
   while (currentBalance > 0) {
@@ -499,7 +504,6 @@ function calculateRepaymentPeriod(balance, monthlyPayment, interestRate) {
     const principalPaid = monthlyPayment - interest;
     currentBalance -= principalPaid;
     months++;
-    // ▼▼▼ マジックナンバーを定数に置き換える ▼▼▼
     if (months > MAX_REPAYMENT_MONTHS) return Infinity;
   }
   return months;
