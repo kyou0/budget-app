@@ -84,64 +84,86 @@ function showNotification(message, type = 'success') {
 // 共通のデータ保存機能 (★最重要★)
 // ===================================================================================
 
+// js/common.js
+
 /**
- * 現在のマスターデータを適切な場所に保存する（ローカル/Drive両対応）
- * この関数は、呼び出し元のページの `masterData` グローバル変数を参照します。
+ * アプリの全データを保存する統一関数
  */
 async function saveData() {
   const loadingOverlay = document.getElementById('loadingOverlay');
-  // ログインモードは、localStorageのユーザー情報から取得するのが最も安全で確実
-  const user = JSON.parse(localStorage.getItem('budgetAppUser'));
-  const currentLoginMode = user ? user.mode : 'local';
+  loadingOverlay.classList.add('show');
+  try {
+    // 保存するデータを一つのオブジェクトにまとめる
+    const appData = {
+      master: masterData,
+      // index.jsにしか無い変数のため、存在をチェックする
+      events: typeof oneTimeEvents !== 'undefined' ? oneTimeEvents : []
+    };
+    const dataString = JSON.stringify(appData, null, 2);
 
-  if (loadingOverlay) loadingOverlay.classList.add('show');
+    if (loginMode === 'google') {
+      // Google Drive利用時
+      sessionStorage.setItem('budgetAppData', dataString);
+      await saveToDrive(dataString);
+    } else {
+      // ローカル利用時
+      localStorage.setItem('budgetAppData', dataString);
+    }
+    console.log('✅ データが正常に保存されました。');
+
+  } catch (error) {
+    console.error("データの保存に失敗しました:", error);
+    showNotification('データの保存に失敗しました。', 'error');
+  } finally {
+    loadingOverlay.classList.remove('show');
+  }
+}
+
+/**
+ * Google Driveにデータを書き込むヘルパー関数
+ */
+async function saveToDrive(dataString) {
+  if (!googleAccessToken) {
+    showNotification('Google Driveへの保存に失敗しました。再ログインしてください。', 'error');
+    return;
+  }
+  const fileId = sessionStorage.getItem('driveFileId');
+  if (!fileId) {
+    showNotification('Google Driveへの保存に失敗しました (ファイルID不明)。', 'error');
+    return;
+  }
+
+  const boundary = '-------314159265358979323846';
+  const delimiter = "\r\n--" + boundary + "\r\n";
+  const close_delim = "\r\n--" + boundary + "--";
+
+  const metadata = { 'mimeType': 'application/json' };
+
+  const multipartRequestBody =
+    delimiter +
+    'Content-Type: application/json\r\n\r\n' +
+    JSON.stringify(metadata) +
+    delimiter +
+    'Content-Type: application/json\r\n\r\n' +
+    dataString +
+    close_delim;
 
   try {
-    // 1. まず短期記憶（セッションストレージ）に常に保存する
-    // これにより、ページを移動してもデータが維持される
-    sessionStorage.setItem('budgetMasterData', JSON.stringify(masterData));
-
-    if (currentLoginMode === 'google') {
-      // 2. Googleログインの場合、Driveにも保存する
-      const accessToken = sessionStorage.getItem('googleAccessToken');
-      const fileId = sessionStorage.getItem('driveFileId');
-
-      if (!accessToken || !fileId) {
-        throw new Error('Google Driveに接続されていません。再ログインしてください。');
-      }
-
-      const metadata = { mimeType: 'application/json' };
-      const content = JSON.stringify(masterData, null, 2); // 整形して保存
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-      form.append('file', new Blob([content], { type: 'application/json' }));
-
-      const response = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${accessToken}` },
-        body: form
-      });
-
-      if (!response.ok) {
-        // トークン切れ(401)などのエラー
-        throw new Error('Driveへの保存に失敗しました: ' + response.statusText);
-      }
-      console.log('📄 Google Driveにデータを保存しました。');
-      // showNotification('✅ Google Driveに保存しました！'); // 保存成功の通知は各ページで行う場合が多いので、ここではコメントアウトしても良い
-
-    } else {
-      // 3. ローカルモードの場合、ローカルストレージに保存する
-      localStorage.setItem('budgetMasterData', JSON.stringify(masterData));
-      console.log('📄 ローカルストレージにデータを保存しました。');
+    const response = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${googleAccessToken}`,
+        'Content-Type': 'multipart/related; boundary="' + boundary + '"'
+      },
+      body: multipartRequestBody
+    });
+    if (!response.ok) {
+      throw new Error('Google Driveへの書き込みに失敗しました。');
     }
+    console.log('✅ Google Driveにデータを書き込みました。');
   } catch (error) {
-    console.error('データの保存中にエラーが発生しました:', error);
-    showNotification(error.message || 'データの保存に失敗しました。', 'error');
-    // エラーが発生したことを呼び出し元に伝えるために、エラーを再スローする
-    throw error;
-  } finally {
-    // 成功しても失敗しても、必ずローディング画面を非表示にする
-    if (loadingOverlay) loadingOverlay.classList.remove('show');
+    console.error(error);
+    showNotification(error.message, 'error');
   }
 }
 
