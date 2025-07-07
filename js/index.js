@@ -426,7 +426,7 @@ function generateFinancialForecast() {
       if (bankBalances[bankId] < 0) {
         // 既にアラートが出ていない場合のみ追加
         if (!alerts.some(a => a.bankId === bankId)) {
-          const bank = banks.find(b => b.id == bankId);
+          const bank = banks.find(b => b.id === Number(bankId));
           alerts.push({
             day,
             bankId,
