@@ -2,6 +2,7 @@
 // グローバル変数
 // ===================================================================================
 const GOOGLE_CLIENT_ID = '45451544416-9c9vljcaqir137dudhoj0da6ndchlph1.apps.googleusercontent.com';
+
 let masterData = [];
 let currentUser = null;
 let loginMode = 'local';
@@ -18,8 +19,9 @@ let tokenClient;
 
 /**
  * Googleのライブラリが読み込み完了したときに呼び出される
+ * window. を付けることで、グローバルスコープで定義する
  */
-window.onGoogleLibraryLoad = function () {
+window.onGoogleLibraryLoad = function() {
   console.log('✅ Googleライブラリの読み込み完了');
 
   // 認証クライアントを初期化
@@ -45,42 +47,34 @@ window.onGoogleLibraryLoad = function () {
 }
 
 /**
- * DOMの読み込みが完了したら実行 (★ここが最重要修正箇所★)
+ * DOMの読み込みが完了したら実行
  */
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 家計簿アプリ v2.0 起動');
 
-  // ログイン画面とアプリ本体の要素を取得
   const loginScreen = document.getElementById('loginScreen');
   const appContainer = document.getElementById('appContainer');
-
-  // 以前のログイン情報を確認
   const savedUserJSON = localStorage.getItem('budgetAppUser');
 
-  // ★★★ 修正ロジック ★★★
-  // 有効なユーザー情報がローカルストレージに存在する場合のみ、アプリ画面を表示する
   if (savedUserJSON) {
     try {
       const user = JSON.parse(savedUserJSON);
       if (user && user.name && user.mode) {
-        // 有効なユーザーなので、アプリ画面を表示
         currentUser = user;
         loginMode = user.mode;
-        showApp(); // アプリ画面の表示と初期化
-        return; // ここで処理を終了
+        showApp();
+        return;
       }
     } catch (e) {
       console.error("ユーザーデータの解析に失敗しました:", e);
-      localStorage.removeItem('budgetAppUser'); // 壊れたデータは削除
+      localStorage.removeItem('budgetAppUser');
     }
   }
 
-  // ★★★ 修正ロジック ★★★
-  // 上のif文を通過したということは、ログインしていない or ユーザー情報が不正
-  // なので、必ずログイン画面を表示する
   loginScreen.style.display = 'flex';
   appContainer.style.display = 'none';
 });
+
 
 // ===================================================================================
 // 認証 & ユーザー管理 (HTMLから呼ばれる関数)
@@ -106,7 +100,7 @@ function tryGoogleLogin() {
  * ローカルモードでログインする
  */
 function localLogin() {
-  currentUser = {name: 'ローカルユーザー', mode: 'local'};
+  currentUser = { name: 'ローカルユーザー', mode: 'local' };
   loginMode = 'local';
   localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
   showApp();
@@ -141,7 +135,7 @@ function decodeJWT(token) {
   try {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
       return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
     }).join(''));
     return JSON.parse(jsonPayload);
@@ -150,6 +144,7 @@ function decodeJWT(token) {
     return null;
   }
 }
+
 
 // ===================================================================================
 // アプリ本体の初期化と描画
@@ -284,10 +279,10 @@ function updateSummaryCards() {
   const balance = income + totalExpense;
 
   const cards = [
-    {title: '総収入', amount: income, class: 'income'},
-    {title: '総支出', amount: totalExpense, class: 'expense'},
-    {title: '収支', amount: balance, class: balance >= 0 ? 'income' : 'expense'},
-    {title: '固定費', amount: fixedCost, class: 'expense'}
+    { title: '総収入', amount: income, class: 'income' },
+    { title: '総支出', amount: totalExpense, class: 'expense' },
+    { title: '収支', amount: balance, class: balance >= 0 ? 'income' : 'expense' },
+    { title: '固定費', amount: fixedCost, class: 'expense' }
   ];
 
   cards.forEach(card => {
@@ -329,7 +324,7 @@ async function syncWithDrive() {
     const fileId = await findOrCreateFile();
     sessionStorage.setItem('driveFileId', fileId);
     const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-      headers: {'Authorization': `Bearer ${googleAccessToken}`}
+      headers: { 'Authorization': `Bearer ${googleAccessToken}` }
     });
     if (response.ok) {
       const dataText = await response.text();
@@ -350,7 +345,7 @@ async function syncWithDrive() {
 async function findOrCreateFile() {
   const fileName = 'budget-app-data.json';
   const response = await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${fileName}' and 'appDataFolder' in parents&spaces=appDataFolder`, {
-    headers: {'Authorization': `Bearer ${googleAccessToken}`}
+    headers: { 'Authorization': `Bearer ${googleAccessToken}` }
   });
   const data = await response.json();
   if (data.files.length > 0) {
