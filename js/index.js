@@ -18,8 +18,6 @@ let tokenClient;
 
 /**
  * Googleのライブラリが読み込み完了したときに呼び出される
- * HTMLの <script src="https://apis.google.com/js/api.js?onload=onGoogleLibraryLoad" async defer></script>
- * の `onload=onGoogleLibraryLoad` によって自動的に実行される。
  */
 function onGoogleLibraryLoad() {
   console.log('✅ Googleライブラリの読み込み完了');
@@ -36,8 +34,8 @@ function onGoogleLibraryLoad() {
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: 'https://www.googleapis.com/auth/drive.appdata',
-      prompt: '', // 初回以降はプロンプトを表示しない
-      callback: handleTokenResponse, // トークン取得時の処理
+      prompt: '',
+      callback: handleTokenResponse,
     });
 
   } catch (e) {
@@ -47,22 +45,29 @@ function onGoogleLibraryLoad() {
 }
 
 /**
- * DOMの読み込みが完了したら実行
+ * DOMの読み込みが完了したら実行 (★ここが最重要修正箇所★)
  */
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 家計簿アプリ v2.0 起動');
 
+  // ログイン画面とアプリ本体の要素を取得
+  const loginScreen = document.getElementById('loginScreen');
+  const appContainer = document.getElementById('appContainer');
+
   // 以前のログイン情報を確認
   const savedUserJSON = localStorage.getItem('budgetAppUser');
+
+  // ★★★ 修正ロジック ★★★
+  // 有効なユーザー情報がローカルストレージに存在する場合のみ、アプリ画面を表示する
   if (savedUserJSON) {
     try {
       const user = JSON.parse(savedUserJSON);
       if (user && user.name && user.mode) {
+        // 有効なユーザーなので、アプリ画面を表示
         currentUser = user;
         loginMode = user.mode;
-        // ログイン済みなら、すぐにアプリ画面を表示
-        showApp();
-        return;
+        showApp(); // アプリ画面の表示と初期化
+        return; // ここで処理を終了
       }
     } catch (e) {
       console.error("ユーザーデータの解析に失敗しました:", e);
@@ -70,9 +75,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // ログイン情報がなければ、ログイン画面が表示されたままになる
-  const loginScreen = document.getElementById('loginScreen');
-  if(loginScreen) loginScreen.style.display = 'flex';
+  // ★★★ 修正ロジック ★★★
+  // 上のif文を通過したということは、ログインしていない or ユーザー情報が不正
+  // なので、必ずログイン画面を表示する
+  loginScreen.style.display = 'flex';
+  appContainer.style.display = 'none';
 });
 
 // ===================================================================================
@@ -81,7 +88,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /**
  * Googleログインのプロンプトを表示する
- * (HTMLの onclick="tryGoogleLogin()" から呼ばれる)
  */
 function tryGoogleLogin() {
   try {
@@ -89,7 +95,6 @@ function tryGoogleLogin() {
       showNotification('Googleログインの準備ができていません。少し待ってからもう一度お試しください。', 'error');
       return;
     }
-    // Googleのログインポップアップを表示
     google.accounts.id.prompt();
   } catch (e) {
     console.error("Googleログインのプロンプト表示に失敗しました。", e);
@@ -99,7 +104,6 @@ function tryGoogleLogin() {
 
 /**
  * ローカルモードでログインする
- * (HTMLの onclick="localLogin()" から呼ばれる)
  */
 function localLogin() {
   currentUser = { name: 'ローカルユーザー', mode: 'local' };
@@ -110,7 +114,6 @@ function localLogin() {
 
 /**
  * Googleログイン成功後の処理 (コールバック)
- * @param {object} response - Googleからの認証情報
  */
 function handleGoogleLoginSuccess(response) {
   console.log("Googleから認証情報を受け取りました:", response);
@@ -133,8 +136,6 @@ function handleGoogleLoginSuccess(response) {
 
 /**
  * JWTをデコードしてユーザー情報を取得するヘルパー関数
- * @param {string} token - JWT
- * @returns {object|null}
  */
 function decodeJWT(token) {
   try {
