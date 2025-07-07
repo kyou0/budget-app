@@ -488,7 +488,7 @@ function generateFinancialForecast() {
  * @returns {number} - 完済までの月数 (終わらない場合は Infinity)
  */
 function calculateRepaymentPeriod(balance, monthlyPayment, interestRate) {
-  const monthlyInterestRate = interestRate / 100 / 12;
+  const MAX_REPAYMENT_MONTHS = 12 * 100; // 最大返済期間を100年（1200ヶ月）に設定
   if (balance * monthlyInterestRate >= monthlyPayment) {
     return Infinity;
   }
@@ -499,7 +499,8 @@ function calculateRepaymentPeriod(balance, monthlyPayment, interestRate) {
     const principalPaid = monthlyPayment - interest;
     currentBalance -= principalPaid;
     months++;
-    if (months > 1200) return Infinity; // 100年で計算打ち切り
+    // ▼▼▼ マジックナンバーを定数に置き換える ▼▼▼
+    if (months > MAX_REPAYMENT_MONTHS) return Infinity;
   }
   return months;
 }
