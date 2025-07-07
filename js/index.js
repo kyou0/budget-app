@@ -12,7 +12,7 @@ let currentMonth = new Date().getMonth() + 1;
 // Google Drive連携用の変数
 let googleAccessToken = null;
 let tokenClient;
-let oneTimeEvents = [] ;
+let oneTimeEvents = [];
 
 // ===================================================================================
 // 初期化処理
@@ -20,7 +20,6 @@ let oneTimeEvents = [] ;
 
 /**
  * Googleのライブラリが読み込み完了したときに呼び出される
- * window. を付けることで、グローバルスコープで定義する
  */
 window.onGoogleLibraryLoad = function() {
   console.log('✅ Googleライブラリの読み込み完了');
@@ -261,11 +260,8 @@ function generateCalendar() {
   const daysInMonth = lastDay.getDate();
   const startDayOfWeek = firstDay.getDay();
 
-  // スポットイベントもカレンダーに表示
-  const spotEventsThisMonth = oneTimeEvents.filter(event => {
-    const eventDate = new Date(event.date);
-    return eventDate.getFullYear() === currentYear && eventDate.getMonth() + 1 === currentMonth;
-  });
+  // ★修正：ヘルパー関数を利用
+  const spotEventsThisMonth = getSpotEventsThisMonth();
 
   for (let i = 0; i < startDayOfWeek; i++) {
     const emptyDay = document.createElement('div');
@@ -317,11 +313,8 @@ function updateSummaryCards() {
   const recurringIncome = activeItems.filter(i => i.type === 'income').reduce((sum, i) => sum + i.amount, 0);
   const recurringExpense = activeItems.filter(i => i.amount < 0).reduce((sum, i) => sum + i.amount, 0);
 
-  // スポット収支
-  const spotEventsThisMonth = oneTimeEvents.filter(event => {
-    const eventDate = new Date(event.date);
-    return eventDate.getFullYear() === currentYear && eventDate.getMonth() + 1 === currentMonth;
-  });
+  // ★修正：ヘルパー関数を利用
+  const spotEventsThisMonth = getSpotEventsThisMonth();
   const spotIncome = spotEventsThisMonth.filter(e => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
   const spotExpense = spotEventsThisMonth.filter(e => e.amount < 0).reduce((sum, e) => sum + e.amount, 0);
 
@@ -330,7 +323,6 @@ function updateSummaryCards() {
   const totalExpense = recurringExpense + spotExpense;
   const balance = totalIncome + totalExpense;
   const fixedCost = activeItems.filter(i => ['fixed', 'tax', 'loan'].includes(i.type)).reduce((sum, i) => sum + i.amount, 0);
-
 
   const cards = [
     { title: '総収入', amount: totalIncome, class: 'income' },
@@ -383,15 +375,12 @@ async function syncWithDrive() {
     if (response.ok) {
       const dataText = await response.text();
       if (dataText) {
-        // 新しいデータ構造を解析
         const parsedData = JSON.parse(dataText);
         masterData = parsedData.master || [];
         oneTimeEvents = parsedData.events || [];
-        // 新しい統一キーでセッションストレージに保存
         sessionStorage.setItem('budgetAppData', dataText);
       }
     }
-    // renderAllはfinallyの外に移動し、成功時のみ実行
     renderAll();
   } catch (error) {
     console.error("Driveとの同期に失敗:", error);
@@ -427,13 +416,6 @@ async function findOrCreateFile() {
   }
 }
 
-
-// ===================================================================================
-// 統合版：未来予測＆借金分析エンジン
-// ===================================================================================
-
-// js/index.js
-
 // ===================================================================================
 // 統合版：未来予測＆借金分析エンジン
 // ===================================================================================
@@ -449,12 +431,7 @@ function generateFinancialForecast() {
   const banks = masterData.filter(item => item.type === 'bank' && item.isActive);
   const recurringTransactions = masterData.filter(item => item.type !== 'bank' && item.isActive && item.paymentDay);
   const loans = masterData.filter(item => item.type === 'loan' && item.isActive && item.loanDetails);
-
-  // ★追加：今月のスポットイベントを取得
-  const spotEvents = oneTimeEvents.filter(event => {
-    const eventDate = new Date(event.date);
-    return eventDate.getFullYear() === currentYear && eventDate.getMonth() + 1 === currentMonth;
-  });
+  const spotEvents = getSpotEventsThisMonth(); // ★修正：ヘルパー関数を利用
 
   // 分析対象が何もなければ、セクションごと非表示にする
   if (banks.length === 0 && loans.length === 0) {
@@ -469,20 +446,12 @@ function generateFinancialForecast() {
     const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
     let dailyEvents = [];
     for (let day = 1; day <= daysInMonth; day++) {
-      // その日の定期的な取引
       const recurringOnDay = recurringTransactions.filter(t => t.paymentDay === day);
-      // ★追加：その日のスポットイベント
       const spotOnDay = spotEvents.filter(e => new Date(e.date).getDate() === day);
-
-      // ★変更：定期とスポットを合算
       const allEventsOnDay = [
         ...recurringOnDay,
-        ...spotOnDay.map(e => ({ // 予測エンジンが扱える形式に変換
-          amount: e.amount,
-          sourceBankId: e.bankId
-        }))
+        ...spotOnDay.map(e => ({ amount: e.amount, sourceBankId: e.bankId }))
       ];
-
       if (allEventsOnDay.length > 0) {
         dailyEvents.push({ day, events: allEventsOnDay });
       }
@@ -519,7 +488,6 @@ function generateFinancialForecast() {
       }
     }
 
-    // ▼▼▼ ここからが前回途切れていた部分の完全版 ▼▼▼
     if (alerts.length > 0) {
       forecastHtml += '<div class="forecast-section">';
       forecastHtml += '<h4>🚨 残高不足警告</h4>';
@@ -534,7 +502,6 @@ function generateFinancialForecast() {
     } else {
       forecastHtml += '<div class="forecast-section"><p class="forecast-ok">✅ 今月のキャッシュフローは正常です。</p></div>';
     }
-    // ▲▲▲ ここまで ▲▲▲
   }
 
   // --- Part 2: 借金返済の見通し ---
@@ -565,11 +532,7 @@ function generateFinancialForecast() {
 }
 
 /**
- * 返済期間を計算するヘルパー関数 (最終完成版)
- * @param {number} balance - 現在の残高
- * @param {number} monthlyPayment - 月々の返済額
- * @param {number} interestRate - 年利率 (%)
- * @returns {number} - 完済までの月数 (終わらない場合は Infinity)
+ * 返済期間を計算するヘルパー関数
  */
 function calculateRepaymentPeriod(balance, monthlyPayment, interestRate) {
   const MAX_REPAYMENT_MONTHS = 12 * 100; // 最大返済期間を100年（1200ヶ月）に設定
@@ -598,7 +561,7 @@ function calculateRepaymentPeriod(balance, monthlyPayment, interestRate) {
 /**
  * スポットイベントを追加する
  */
-async function addOneTimeEvent() {
+window.addOneTimeEvent = async function() {
   const date = document.getElementById('eventDate').value;
   const description = document.getElementById('eventDescription').value.trim();
   const amount = parseInt(document.getElementById('eventAmount').value, 10);
@@ -631,7 +594,7 @@ async function addOneTimeEvent() {
 /**
  * スポットイベントを削除する
  */
-async function deleteOneTimeEvent(eventId) {
+window.deleteOneTimeEvent = async function(eventId) {
   oneTimeEvents = oneTimeEvents.filter(event => event.id !== eventId);
   await saveData(); // データを保存
   renderAll(); // 全てを再描画
@@ -641,18 +604,25 @@ async function deleteOneTimeEvent(eventId) {
 /**
  * スポットイベントのリストと、フォームの銀行プルダウンを描画する
  */
-
 function renderOneTimeEvents() {
   const listEl = document.getElementById('oneTimeEventsList');
   const bankSelectEl = document.getElementById('eventBankId');
   if (!listEl || !bankSelectEl) return;
 
-  // ... (銀行プルダウンの生成ロジックは変更なし)
+  // --- ▼▼▼ ここが最終完成版のプルダウン生成ロジックです ▼▼▼ ---
+  const banks = masterData.filter(item => item.type === 'bank' && item.isActive);
 
-  const eventsThisMonth = getSpotEventsThisMonth(); // ヘルパー関数を利用
+  // HTMLの断片を配列に格納し、最後に一度だけDOMを更新する（高速化）
+  const bankOptionsHtml = banks
+    .map(bank => `<option value="${bank.id}">${bank.name}</option>`)
+    .join('');
+
+  bankSelectEl.innerHTML = '<option value="">選択してください</option>' + bankOptionsHtml;
+  // --- ▲▲▲ ここまで ▲▲▲ ---
+
+  const eventsThisMonth = getSpotEventsThisMonth();
 
   if (eventsThisMonth.length > 0) {
-    // HTMLの断片を配列に格納していく
     const eventItemsHtml = eventsThisMonth
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .map(event => {
@@ -666,7 +636,6 @@ function renderOneTimeEvents() {
         `;
       });
 
-    // 最後に一度だけinnerHTMLを更新する
     listEl.innerHTML = '<h4>今月のスポットイベント</h4>' + eventItemsHtml.join('');
   } else {
     listEl.innerHTML = '';
