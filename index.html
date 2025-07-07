@@ -7,7 +7,11 @@
     <link rel="stylesheet" href="css/style.css">
     <!-- PWA対応 -->
     <link rel="manifest" href="manifest.json">
+    <!-- ▼▼▼ 修正箇所 ▼▼▼ -->
+    <link rel="icon" href="data:,"> <!-- favicon.icoの404エラーを一旦抑制 -->
     <meta name="theme-color" content="#667eea">
+    <meta name="mobile-web-app-capable" content="yes"> <!-- 推奨されるタグを追加 -->
+    <!-- ▲▲▲ ここまで ▲▲▲ -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="家計簿アプリ">
@@ -70,7 +74,8 @@
 
 </div>
 
-<script src="https://apis.google.com/js/api.js?onload=onGoogleLibraryLoad" async defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer onload="onGoogleLibraryLoad()"></script>
+<script src="https://apis.google.com/js/api.js" async defer></script>
 
 <script src="js/common.js"></script>
 <script src="js/index.js"></script>
