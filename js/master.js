@@ -61,6 +61,8 @@ function renderAll() {
   updateCategoryCounts();
 }
 
+// js/master.js
+
 function renderMasterList() {
   const itemsGrid = document.getElementById('itemsGrid');
   itemsGrid.innerHTML = '';
@@ -81,13 +83,18 @@ function renderMasterList() {
     const statusClass = item.isActive ? 'active' : '';
     const statusText = item.isActive ? '✅ 有効' : '❌ 無効';
 
+    // ▼▼▼ 修正箇所 ▼▼▼
     let bankInfo = '';
-    if (item.type === 'income' && item.sourceBankId) {
+    // 項目にsourceBankIdが存在する場合
+    if (item.sourceBankId) {
       const bank = masterData.find(b => b.id === item.sourceBankId);
       if (bank) {
-        bankInfo = `<div class="item-detail"><span class="item-label">振込先:</span><span class="item-value">${bank.name}</span></div>`;
+        // 収入か支出かでラベルを切り替える
+        const label = item.type === 'income' ? '振込先:' : '支払元:';
+        bankInfo = `<div class="item-detail"><span class="item-label">${label}</span><span class="item-value">${bank.name}</span></div>`;
       }
     }
+    // ▲▲▲ ここまで ▲▲▲
 
     itemCard.innerHTML = `
             <div class="item-card-header"><span class="item-icon">${icon}</span><h4 class="item-name">${item.name}</h4><span class="item-status ${statusClass}">${statusText}</span></div>
@@ -136,7 +143,7 @@ function showEditForm(itemId) {
   populateBankSelect();
 
   // 編集対象の銀行を選択状態にする
-  if (itemToEdit.type === 'income' && itemToEdit.sourceBankId) {
+  if (itemToEdit.sourceBankId) {
     document.getElementById('itemSourceBank').value = itemToEdit.sourceBankId;
   }
 
