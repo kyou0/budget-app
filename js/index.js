@@ -22,25 +22,29 @@ let tokenClient;
 function onGoogleLibraryLoad() {
   console.log('✅ Googleライブラリの読み込み完了');
 
-  // 認証クライアントを初期化
-  try {
-    // 1. ログイン（ID取得）用のクライアント
-    google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: handleGoogleLoginSuccess // ログイン成功時の処理
-    });
+  window.onGoogleLibraryLoad = function() {
+    console.log('✅ Googleライブラリの読み込み完了');
 
-    // 2. Drive APIアクセス用のトークンクライアント
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/drive.appdata',
-      prompt: '',
-      callback: handleTokenResponse,
-    });
+    // 認証クライアントを初期化
+    try {
+      // 1. ログイン（ID取得）用のクライアント
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleLoginSuccess // ログイン成功時の処理
+      });
 
-  } catch (e) {
-    console.error("Googleライブラリの初期化に失敗しました。", e);
-    showNotification('Googleライブラリの初期化に失敗しました。ページを再読み込みしてください。', 'error');
+      // 2. Drive APIアクセス用のトークンクライアント
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: 'https://www.googleapis.com/auth/drive.appdata',
+        prompt: '',
+        callback: handleTokenResponse,
+      });
+
+    } catch (e) {
+      console.error("Googleライブラリの初期化に失敗しました。", e);
+      showNotification('Googleライブラリの初期化に失敗しました。ページを再読み込みしてください。', 'error');
+    }
   }
 }
 
