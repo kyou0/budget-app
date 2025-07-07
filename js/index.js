@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
 /**
  * Googleログインのプロンプトを表示する
  */
-function tryGoogleLogin() {
+window.tryGoogleLogin = function() {
   try {
     if (typeof google === 'undefined' || !google.accounts) {
       showNotification('Googleログインの準備ができていません。少し待ってからもう一度お試しください。', 'error');
@@ -99,7 +99,7 @@ function tryGoogleLogin() {
 /**
  * ローカルモードでログインする
  */
-function localLogin() {
+window.localLogin = function() {
   currentUser = { name: 'ローカルユーザー', mode: 'local' };
   loginMode = 'local';
   localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
@@ -211,7 +211,7 @@ function updateCurrentMonthDisplay() {
   document.getElementById('currentMonth').textContent = `${currentYear}年 ${currentMonth}月`;
 }
 
-function changeMonth(delta) {
+window.changeMonth = function(delta) {
   currentMonth += delta;
   if (currentMonth > 12) {
     currentMonth = 1;
