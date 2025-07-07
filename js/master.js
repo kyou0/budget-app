@@ -220,16 +220,40 @@ async function saveItem() {
  */
 function updateFormFields() {
   const itemType = document.getElementById('itemType').value;
-  const loanFields = document.querySelectorAll('.loan-field');
-  const incomeFields = document.querySelectorAll('.income-field');
+  const amountLabel = document.querySelector('label[for="amount"]');
+  const amountInput = document.getElementById('amount');
+  const paymentDayGroup = document.getElementById('paymentDay').parentElement;
+  const sourceBankGroup = document.getElementById('itemSourceBank').parentElement;
 
-  loanFields.forEach(field => {
-    field.style.display = itemType === 'loan' ? 'block' : 'none';
-  });
+  // まず全ての特別フィールドを非表示にする
+  document.querySelectorAll('.loan-field, .income-field').forEach(el => el.style.display = 'none');
 
-  incomeFields.forEach(field => {
-    field.style.display = itemType === 'income' ? 'block' : 'none';
-  });
+  // ★★★ ここからが修正箇所 ★★★
+
+  if (itemType === 'bank') {
+    // 「銀行」が選択された場合の特別処理
+    amountLabel.textContent = '現在の預金残高 *'; // ラベルを変更
+    amountInput.placeholder = '例: 1234567'; // プレースホルダーを変更
+    amountInput.value = Math.abs(Number(amountInput.value)); // 常に正の数にする
+    paymentDayGroup.style.display = 'none'; // 支払日を隠す
+    sourceBankGroup.style.display = 'none'; // ひも付く銀行を隠す
+
+  } else {
+    // 銀行以外が選択された場合は、元の状態に戻す
+    amountLabel.textContent = '金額/月々返済額 *';
+    amountInput.placeholder = '収入は正数、支出は負数';
+    paymentDayGroup.style.display = 'flex'; // 支払日を再表示
+
+    // 収入の場合のみ「ひも付く銀行」を表示
+    if (itemType === 'income') {
+      sourceBankGroup.style.display = 'flex';
+    }
+    // 借入の場合のみ「借入詳細」を表示
+    if (itemType === 'loan') {
+      document.querySelectorAll('.loan-field').forEach(el => el.style.display = 'flex');
+    }
+  }
+  // ★★★ ここまで ★★★
 }
 
 /**
