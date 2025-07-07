@@ -141,8 +141,6 @@ function showAddForm() {
   populateBankSelect(); // 銀行プルダウンを生成
 }
 
-// js/master.js
-
 function showEditForm(itemId) {
   const itemToEdit = masterData.find(item => item.id === itemId);
   if (!itemToEdit) return;
@@ -159,10 +157,9 @@ function showEditForm(itemId) {
   populateBankSelect();
 
   if (itemToEdit.sourceBankId) {
-    document.getElementById('itemSourceBank').value = itemToToEdit.sourceBankId;
+    document.getElementById('itemSourceBank').value = itemToEdit.sourceBankId;
   }
 
-  // ▼▼▼ 修正箇所 ▼▼▼
   // 借入詳細の値をフォームに設定
   if (itemToEdit.type === 'loan' && itemToEdit.loanDetails) {
     document.getElementById('initialAmount').value = itemToEdit.loanDetails.initialAmount || '';
@@ -172,7 +169,6 @@ function showEditForm(itemId) {
     document.getElementById('loanType').value = itemToEdit.loanDetails.loanType || '消費者金融';
     document.getElementById('maxLimit').value = itemToEdit.loanDetails.maxLimit || '';
   }
-  // ▲▲▲ ここまで ▲▲▲
 
   document.getElementById('formTitle').textContent = '✏️ 項目の編集';
   document.getElementById('addForm').style.display = 'block';
