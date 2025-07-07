@@ -473,8 +473,8 @@ function generateFinancialForecast() {
 
       for (const bankId in bankBalances) {
         if (bankBalances[bankId] < 0) {
-          if (!alerts.some(a => a.bankId == bankId)) {
-            const bank = banks.find(b => b.id == bankId);
+          if (!alerts.some(a => a.bankId === Number(bankId))) {
+            const bank = banks.find(b => b.id === Number(bankId));
             if (bank) {
               alerts.push({
                 day,
