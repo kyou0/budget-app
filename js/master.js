@@ -257,10 +257,8 @@ function updateFormFields() {
   const sourceBankGroup = document.getElementById('itemSourceBank').parentElement;
 
   // まず全ての特別フィールドを非表示にする
-  document.querySelectorAll('.loan-field, .income-field').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.loan-field').forEach(el => el.style.display = 'none');
   sourceBankGroup.style.display = 'none'; // 銀行プルダウンも一旦隠す
-
-  // ★★★ ここからが修正箇所 ★★★
 
   // 表示するラベルを定義
   const labels = {
@@ -270,29 +268,35 @@ function updateFormFields() {
     tax: '税金額 *',
     loan: '月々返済額 *',
     variable: '想定予算額 *',
-    bank: '現在の預金残高 *'
+    bank: '現在の預金残高 *' // ★銀行用のラベル
   };
   amountLabel.textContent = labels[itemType] || '金額 *';
 
+  // ▼▼▼ ここからが最重要修正箇所 ▼▼▼
   if (itemType === 'bank') {
-    // 「銀行」が選択された場合
+    // 「銀行」が選択された場合、不要な項目を全て隠す
     amountInput.placeholder = '例: 1234567';
     amountInput.value = Math.abs(Number(amountInput.value)); // 常に正の数
     paymentDayGroup.style.display = 'none'; // 支払日を隠す
+    sourceBankGroup.style.display = 'none'; // ひも付く銀行を隠す
   } else {
     // 「銀行」以外が選択された場合
     amountInput.placeholder = '収入は正数、支出は負数';
     paymentDayGroup.style.display = 'flex'; // 支払日を表示
 
-    // 「ひも付く銀行」プルダウンを表示する
-    sourceBankGroup.style.display = 'flex';
+    // 「ひも付く銀行」プルダウンを表示する（借入も含む全ての項目で）
+    if (itemType) { // 何かしらの種別が選ばれていれば
+      sourceBankGroup.style.display = 'flex';
+    }
 
     // 借入の場合のみ「借入詳細」を表示
     if (itemType === 'loan') {
       document.querySelectorAll('.loan-field').forEach(el => el.style.display = 'flex');
     }
   }
+  // ▲▲▲ ここまで ▲▲▲
 }
+
 
 /**
  * 銀行選択プルダウンに選択肢を設定する
