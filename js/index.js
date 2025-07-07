@@ -181,6 +181,7 @@ function renderAll() {
   updateCurrentMonthDisplay();
   generateCalendar();
   updateSummaryCards();
+  renderLoanAnalysis();
 }
 
 // ===================================================================================
@@ -368,93 +369,83 @@ async function findOrCreateFile() {
   }
 }
 
-// js/index.js の一番下に追加
+
+// js/index.js
 
 // ===================================================================================
-// 返済シミュレーション
+// 借金返済の自動分析ダッシュボード
 // ===================================================================================
 
 /**
- * 返済シミュレーションを実行する
- * (HTMLの onclick="runSimulation()" から呼ばれる)
+ * 借金データを分析し、ダッシュボードに結果を描画する
  */
-window.runSimulation = function() {
-  const extraPayment = parseInt(document.getElementById('extraPayment').value, 10) || 0;
-  const resultArea = document.getElementById('simulationResult');
+function renderLoanAnalysis() {
+  const container = document.getElementById('loanAnalysisContainer');
+  if (!container) return; // 要素がなければ何もしない
 
   // 有効な借金データのみを抽出
-  const loans = masterData.filter(item => item.type === 'loan' && item.isActive);
+  const loans = masterData.filter(item => item.type === 'loan' && item.isActive && item.loanDetails);
 
   if (loans.length === 0) {
-    resultArea.innerHTML = "<p>シミュレーション対象となる有効な借金がありません。</p>";
+    container.style.display = 'none'; // 借金がなければセクションごと非表示
     return;
   }
 
-  let resultsHtml = '<h4>シミュレーション結果</h4>';
-  let maxMonths = 0; // 全ての借金が終わるまでの最長月数
+  // 借金があればセクションを表示
+  container.style.display = 'block';
+
+  let resultsHtml = '<h3>💸 返済状況の見通し</h3>';
 
   loans.forEach(loan => {
-    // 月々の返済額 = マスターで設定した返済額 + 今回の追加返済額
-    const monthlyPayment = Math.abs(loan.amount) + extraPayment;
-    const months = calculateRepaymentPeriod(loan.loanDetails.currentBalance, monthlyPayment, loan.loanDetails.interestRate);
+    // calculateRepaymentPeriodは以前のものをそのまま再利用
+    const months = calculateRepaymentPeriod(loan.loanDetails.currentBalance, Math.abs(loan.amount), loan.loanDetails.interestRate);
 
     if (months === Infinity) {
-      resultsHtml += `<p><strong>${loan.name}:</strong> <span class="expense">返済が終わりません。返済額を増やしてください。</span></p>`;
+      //【警告】返済が非現実的な場合の表示
+      resultsHtml += `
+        <div class="analysis-item problematic">
+          <h4>🚨 ${loan.name}</h4>
+          <p><strong>このままでは返済が終わりません。</strong></p>
+          <p class="recommendation">月々の返済額を増やすか、より利率の低いローンへの借り換えを強く推奨します。</p>
+        </div>
+      `;
     } else {
+      //【正常】返済見通しが立つ場合の表示
       const years = Math.floor(months / 12);
       const remainingMonths = months % 12;
-      resultsHtml += `<p><strong>${loan.name}:</strong> 約${years}年${remainingMonths}ヶ月で完済予定です。</p>`;
-    }
-
-    // 最も完済が遅い月数を記録
-    if (months > maxMonths) {
-      maxMonths = months;
+      resultsHtml += `
+        <div class="analysis-item">
+          <h4>${loan.name}</h4>
+          <p>現在のペースで返済を続けると、完済まで</p>
+          <div class="timeline">約 <strong>${years}</strong> 年 <strong>${remainingMonths}</strong> ヶ月</div>
+        </div>
+      `;
     }
   });
 
-  // 全ての借金が終わる時期を表示
-  if (maxMonths !== Infinity && maxMonths > 0) {
-    const totalYears = Math.floor(maxMonths / 12);
-    const totalRemainingMonths = maxMonths % 12;
-    resultsHtml += `<hr><p><strong>全ての借金が終わるのは、約${totalYears}年${totalRemainingMonths}ヶ月後です。</strong></p>`;
-  }
-
-  resultArea.innerHTML = resultsHtml;
-  resultArea.style.display = 'block';
+  container.innerHTML = resultsHtml;
 }
 
 /**
- * 返済期間を計算する（元利均等返済の簡易シミュレーション）
+ * 返済期間を計算する（この関数は変更なしで再利用）
  * @param {number} balance - 現在の残高
  * @param {number} monthlyPayment - 月々の返済額
  * @param {number} interestRate - 年利率 (%)
  * @returns {number} - 完済までの月数 (終わらない場合は Infinity)
  */
 function calculateRepaymentPeriod(balance, monthlyPayment, interestRate) {
-  // 月利に変換
   const monthlyInterestRate = interestRate / 100 / 12;
-
-  // そもそも月々の利息が返済額を上回る場合は、永遠に終わらない
   if (balance * monthlyInterestRate >= monthlyPayment) {
     return Infinity;
   }
-
   let months = 0;
   let currentBalance = balance;
-
-  // 残高が0になるまでループ
   while (currentBalance > 0) {
-    // その月の利息を計算
     const interest = currentBalance * monthlyInterestRate;
-    // 返済額から利息を引いた分が、元金の返済に充てられる
     const principalPaid = monthlyPayment - interest;
-    // 元金を減らす
     currentBalance -= principalPaid;
     months++;
-
-    // 100年（1200ヶ月）以上かかる場合は、計算を打ち切る（無限ループ防止）
     if (months > 1200) return Infinity;
   }
-
   return months;
 }

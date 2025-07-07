@@ -64,18 +64,8 @@
         <div class="summary-cards" id="summaryCards">
             <!-- サマリーカードがここに表示されます -->
         </div>
-
-        <div class="simulation-container card-style">
-            <h3>📈 返済シミュレーション</h3>
-            <p>追加で返済する金額を入力すると、完済までの期間がどう変わるか計算します。</p>
-            <div class="form-group">
-                <label for="extraPayment">追加返済額（月々）</label>
-                <input type="number" id="extraPayment" placeholder="例: 10000" step="1000">
-            </div>
-            <button class="btn btn-primary" onclick="runSimulation()">未来を予測する</button>
-            <div id="simulationResult" class="result-area">
-                <!-- 計算結果がここに表示されます -->
-            </div>
+        <div id="loanAnalysisContainer" class="card-style" style="display: none;">
+            <!-- 借金の分析結果がここに自動で表示されます -->
         </div>
 
         <div class="calendar-container">
