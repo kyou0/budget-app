@@ -59,37 +59,8 @@
         <div class="summary-cards" id="summaryCards">
             <!-- サマリーカードがここに表示されます -->
         </div>
-        <div class="card accordion" id="spot-event-accordion">
-            <div class="accordion-header" id="spotEventAccordionHeader">
-                <h3>⚡️ スポットイベント入力</h3>
-                <span class="accordion-icon">▶</span>
-            </div>
-            <div class="accordion-content" id="spotEventAccordionContent">
-                <p>臨時収入や、予定外の大きな支出などをここから登録できます。</p>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="spotDate">日付</label>
-                        <input type="date" id="spotDate">
-                    </div>
-                    <div class="form-group">
-                        <label for="spotType">種別</label>
-                        <select id="spotType">
-                            <option value="expense">支出</option>
-                            <option value="income">収入</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="spotAmount">金額</label>
-                    <input type="number" id="spotAmount" placeholder="例: 10000 (プラスで入力)">
-                </div>
-                <div class="form-group">
-                    <label for="spotDescription">内容</label>
-                    <input type="text" id="spotDescription" placeholder="例: 友人への立替金返済">
-                </div>
-                <button class="btn btn-primary" style="width: 100%;" onclick="addSpotEvent()">追加</button>
-            </div>
-        </div>
+
+        <!-- ▼▼▼ 古いアコーディオンは完全に削除 ▼▼▼ -->
 
         <div class="card-style" id="oneTimeEventsList" style="margin-top: 20px;">
             <!-- 今月のスポットイベントがここに表示されます -->
@@ -105,24 +76,49 @@
             </div>
         </div>
     </div>
-
 </div>
 
-<!--
-  ▼▼▼ THIS IS THE FINAL FIX ▼▼▼
-  All local scripts are now loaded without 'defer' to ensure they execute in the correct order of dependency.
-  1. shared.js (common utilities like showNotification)
-  2. common.js (the communication 'dataChannel' and navigation)
-  3. index.js (the main logic for this page, which depends on the two above)
--->
+<!-- ▼▼▼ ここからが新しい部品 ▼▼▼ -->
+
+<!-- スポットイベント入力用モーダル -->
+<div class="modal-overlay" id="spotEventModal">
+    <div class="modal-content">
+        <button class="modal-close-btn" id="modalCloseBtn">&times;</button>
+        <h3>⚡️ スポットイベント入力</h3>
+        <p>臨時収入や、予定外の大きな支出などを登録します。</p>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="spotDate">日付</label>
+                <input type="date" id="spotDate">
+            </div>
+            <div class="form-group">
+                <label for="spotType">種別</label>
+                <select id="spotType">
+                    <option value="expense">支出</option>
+                    <option value="income">収入</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="spotAmount">金額</label>
+            <input type="number" id="spotAmount" placeholder="例: 10000 (プラスで入力)">
+        </div>
+        <div class="form-group">
+            <label for="spotDescription">内容</label>
+            <input type="text" id="spotDescription" placeholder="例: 友人への立替金返済">
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="addSpotEvent()">この内容で追加</button>
+    </div>
+</div>
+
+<!-- フローティング・アクション・ボタン -->
+<button class="fab" id="showSpotEventModalBtn">+</button>
+
+<!-- ▲▲▲ ここまでが新しい部品 ▲▲▲ -->
+
 <script src="js/shared.js"></script>
 <script src="js/common.js"></script>
 <script src="js/index.js"></script>
-
-<!--
-  Finally, the external Google script is loaded.
-  It can now reliably find the onGoogleLibraryLoad() function defined in index.js.
--->
 <script src="https://accounts.google.com/gsi/client" async defer onload="onGoogleLibraryLoad()"></script>
 </body>
 </html>

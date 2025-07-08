@@ -44,15 +44,31 @@ async function initializeApplication() {
 }
 
 function setupEventListeners() {
-  const accordionHeader = document.getElementById('spotEventAccordionHeader');
-  if(accordionHeader) {
-    accordionHeader.addEventListener('click', () => {
-      const content = document.getElementById('spotEventAccordionContent');
-      accordionHeader.classList.toggle('active');
-      if (content.style.maxHeight) {
-        content.style.maxHeight = null;
-      } else {
-        content.style.maxHeight = content.scrollHeight + "px";
+  // ▼▼▼ 古いアコーディオンのリスナーを削除し、新しいモーダルのリスナーを追加 ▼▼▼
+  const spotEventModal = document.getElementById('spotEventModal');
+  const showBtn = document.getElementById('showSpotEventModalBtn');
+  const closeBtn = document.getElementById('modalCloseBtn');
+
+  // 表示ボタンの処理
+  if(showBtn) {
+    showBtn.addEventListener('click', () => {
+      spotEventModal.style.display = 'flex';
+    });
+  }
+
+  // 閉じるボタンの処理
+  if(closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      spotEventModal.style.display = 'none';
+    });
+  }
+
+  // モーダルの背景クリックで閉じる処理
+  if(spotEventModal) {
+    spotEventModal.addEventListener('click', (event) => {
+      // クリックされたのが背景（overlay）自身の場合のみ閉じる
+      if (event.target === spotEventModal) {
+        spotEventModal.style.display = 'none';
       }
     });
   }
@@ -442,7 +458,11 @@ async function addSpotEvent() {
   document.getElementById('spotDate').value = '';
   document.getElementById('spotAmount').value = '';
   document.getElementById('spotDescription').value = '';
+
+  // ▼▼▼ 追加後、モーダルを自動で閉じる ▼▼▼
+  document.getElementById('spotEventModal').style.display = 'none';
 }
+
 
 async function deleteSpotEvent(eventId) {
   if (confirm('このスポットイベントを削除しますか？')) {
