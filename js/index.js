@@ -31,7 +31,6 @@ async function initializeApplication() {
   if (loginMode === 'google') {
     googleAccessToken = sessionStorage.getItem('googleAccessToken');
     if (!googleAccessToken) {
-      // セッションが切れている場合はログイン画面に戻す
       logout();
       return;
     }
@@ -44,29 +43,22 @@ async function initializeApplication() {
 }
 
 function setupEventListeners() {
-  // ▼▼▼ 古いアコーディオンのリスナーを削除し、新しいモーダルのリスナーを追加 ▼▼▼
   const spotEventModal = document.getElementById('spotEventModal');
   const showBtn = document.getElementById('showSpotEventModalBtn');
   const closeBtn = document.getElementById('modalCloseBtn');
 
-  // 表示ボタンの処理
   if(showBtn) {
     showBtn.addEventListener('click', () => {
       spotEventModal.style.display = 'flex';
     });
   }
-
-  // 閉じるボタンの処理
   if(closeBtn) {
     closeBtn.addEventListener('click', () => {
       spotEventModal.style.display = 'none';
     });
   }
-
-  // モーダルの背景クリックで閉じる処理
   if(spotEventModal) {
     spotEventModal.addEventListener('click', (event) => {
-      // クリックされたのが背景（overlay）自身の場合のみ閉じる
       if (event.target === spotEventModal) {
         spotEventModal.style.display = 'none';
       }
@@ -91,26 +83,15 @@ function hideLoading() {
 // Google認証
 // ===================================================================================
 function onGoogleLibraryLoad() {
-  // ▼▼▼ この関数を丸ごと置き換える ▼▼▼
-
   const googleLoginBtnContainer = document.getElementById('googleLoginBtn');
-
   google.accounts.id.initialize({
     client_id: '45451544416-9c9vljcaqir137dudhoj0da6ndchlph1.apps.googleusercontent.com',
     callback: handleGoogleLogin,
   });
-
-  // Google公式のボタンを描画する命令
   google.accounts.id.renderButton(
-    googleLoginBtnContainer, // 描画する場所 (Step 1で用意したdiv)
-    { theme: "outline", size: "large", text: "signin_with", shape: "rectangular", logo_alignment: "left" } // ボタンのデザイン
+    googleLoginBtnContainer,
+    { theme: "outline", size: "large", text: "signin_with", shape: "rectangular", logo_alignment: "left" }
   );
-  // 自動でポップアップさせたい場合はこの行を有効化
-  // google.accounts.id.prompt();
-
-}
-function tryGoogleLogin() {
-  google.accounts.id.prompt();
 }
 
 async function handleGoogleLogin(response) {
@@ -125,30 +106,24 @@ async function handleGoogleLogin(response) {
   };
   localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
 
-  // トークンクライアントを初期化してアクセストークンを取得
   const client = google.accounts.oauth2.initTokenClient({
     client_id: '45451544416-9c9vljcaqir137dudhoj0da6ndchlph1.apps.googleusercontent.com',
     scope: 'https://www.googleapis.com/auth/drive.file',
     callback: async (tokenResponse) => {
-      hideLoading(); // 先にローディングを隠す
+      hideLoading();
       if (tokenResponse && tokenResponse.access_token) {
         googleAccessToken = tokenResponse.access_token;
         sessionStorage.setItem('googleAccessToken', googleAccessToken);
 
-        // UIをログイン後の状態に切り替える
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('appContainer').style.display = 'block';
         document.getElementById('userName').textContent = currentUser.name;
 
-        // ▼▼▼ ここが修正点 ▼▼▼
-        // 料理長(initializeApplication)を呼ばず、自分で最初の同期を完結させる
         showLoading('☁️ Google Driveと同期中...');
-        await syncWithDrive(); // 初回同期を実行
+        await syncWithDrive();
         hideLoading();
 
-        // イベントリスナーのセットアップはここでも必要
         setupEventListeners();
-
       } else {
         showNotification('Google Driveへのアクセス許可に失敗しました。', 'error');
       }
@@ -171,7 +146,6 @@ function localLogin() {
   initializeApplication();
 }
 
-// (これ以降のコードは変更ありません)
 // ===================================================================================
 // データ管理 (司令塔)
 // ===================================================================================
@@ -184,27 +158,41 @@ async function syncWithDrive() {
   showLoading('☁️ Google Driveと同期中...');
 
   try {
-    const fileId = await findOrCreateFile();
-    sessionStorage.setItem('driveFileId', fileId);
-    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-      headers: { 'Authorization': `Bearer ${googleAccessToken}` }
-    });
+    // ▼▼▼ ここからが新しいロジック ▼▼▼
+    const result = await findOrCreateFile();
+    sessionStorage.setItem('driveFileId', result.fileId);
 
-    if (response.ok) {
-      const text = await response.text();
-      if (text) {
-        const data = JSON.parse(text);
-        masterData = data.master || [];
-        oneTimeEvents = data.events || [];
-        localStorage.setItem('budgetAppData', JSON.stringify({ master: masterData, events: oneTimeEvents }));
-        showNotification('✅ Driveからデータを同期しました。', 'success');
-      } else {
-        console.log("Driveにファイルはありますが、データは空です。ローカルデータを使用します。");
-        await loadData(); // ローカルデータがあればそれを正とする
-      }
+    // 【重要】ファイルが「新品」だった場合の特別処理
+    if (result.wasCreated) {
+      console.log("✅ 新しいデータファイルがDriveに作成されました。初期状態を設定します。");
+      masterData = [];
+      oneTimeEvents = [];
+      // 新品の空っぽの状態で、最初の保存を行う
+      await saveData();
+      showNotification('ようこそ！Google Driveとの連携準備が完了しました。', 'success');
     } else {
-      console.log("Driveにファイルが見つかりません。ローカルデータを使用します。");
-      await loadData(); // ローカルデータがあればそれを正とする
+      // 既存ファイルの場合、今まで通りの読み込み処理
+      const response = await fetch(`https://www.googleapis.com/drive/v3/files/${result.fileId}?alt=media`, {
+        headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+      });
+
+      if (response.ok) {
+        const text = await response.text();
+        if (text) {
+          const data = JSON.parse(text);
+          masterData = data.master || [];
+          oneTimeEvents = data.events || [];
+          localStorage.setItem('budgetAppData', JSON.stringify({ master: masterData, events: oneTimeEvents }));
+          showNotification('✅ Driveからデータを同期しました。', 'success');
+        } else {
+          // 既存ファイルが何らかの理由で空だった場合
+          console.log("Driveのファイルは存在しますが空です。ローカルデータで上書きを試みます。");
+          await loadData();
+          await saveData(); // ローカルデータをDriveに書き込む
+        }
+      } else {
+        throw new Error(`Driveからのファイル読み込みに失敗しました: ${response.statusText}`);
+      }
     }
   } catch (error) {
     console.error("Driveとの同期中にエラー:", error);
@@ -259,6 +247,9 @@ async function saveData() {
   }
 }
 
+/**
+ * @returns {Promise<{fileId: string, wasCreated: boolean}>}
+ */
 async function findOrCreateFile() {
   const fileName = 'budget-app-data.json';
   let response = await fetch('https://www.googleapis.com/drive/v3/files?q=name="' + fileName + '" and trashed=false&spaces=drive', {
@@ -268,7 +259,7 @@ async function findOrCreateFile() {
 
   if (data.files.length > 0) {
     console.log("既存のファイルを発見:", data.files[0].id);
-    return data.files[0].id;
+    return { fileId: data.files[0].id, wasCreated: false }; // ★★★ 既存ファイル
   } else {
     console.log("ファイルが見つからないため、新規作成します。");
     const fileMetadata = {
@@ -286,7 +277,7 @@ async function findOrCreateFile() {
     });
     data = await response.json();
     console.log("新規ファイルを作成しました:", data.id);
-    return data.id;
+    return { fileId: data.id, wasCreated: true }; // ★★★ 新規ファイル
   }
 }
 
@@ -358,10 +349,8 @@ function renderCalendar() {
   const eventsByDate = {};
   const activeMasterData = masterData.filter(item => item.isActive);
 
-  // ここにカレンダーイベントを計算するロジックが入ります
-  // (この部分は長いため、主要な構造のみ示します)
+  // (カレンダーイベント計算ロジック)
 
-  // 1日から最終日までループ
   for (let i = 1; i <= lastDay.getDate(); i++) {
     const dayCell = document.createElement('div');
     dayCell.className = 'calendar-day';
@@ -372,13 +361,10 @@ function renderCalendar() {
       dayCell.classList.add('today');
     }
     dayCell.appendChild(dayNumber);
-
-    // その日のイベントをdayCellに追加する処理...
-
+    // (イベント描画ロジック)
     calendarEl.appendChild(dayCell);
   }
 
-  // 月初の空白を追加
   for (let i = 0; i < firstDay.getDay(); i++) {
     const emptyCell = document.createElement('div');
     emptyCell.className = 'calendar-day other-month';
@@ -387,7 +373,7 @@ function renderCalendar() {
 }
 
 function renderSummary() {
-  // サマリーカードの描画ロジック（プレースホルダー）
+  // (プレースホルダー)
 }
 
 function renderOneTimeEvents() {
@@ -404,24 +390,24 @@ function renderOneTimeEvents() {
     return;
   }
 
+  eventsThisMonth.sort((a, b) => new Date(a.date) - new Date(b.date));
+
   eventsThisMonth.forEach(event => {
     const itemEl = document.createElement('div');
-    itemEl.className = 'spot-event-item'; // CSSでスタイルを定義する必要あり
+    itemEl.className = 'spot-event-item';
     itemEl.innerHTML = `
-          <span>${event.date}: ${event.description}</span>
-          <span style="color: ${event.type === 'income' ? 'green' : 'red'};">
-            ${event.type === 'income' ? '+' : '-'} ¥${event.amount.toLocaleString()}
-          </span>
-          <button onclick="deleteSpotEvent(${event.id})">削除</button>
-      `;
+      <div class="spot-event-date">${new Date(event.date).toLocaleDateString('ja-JP', { day: '2-digit', weekday: 'short' })}</div>
+      <div class="spot-event-desc">${event.description}</div>
+      <div class="spot-event-amount ${event.type}">${event.type === 'income' ? '+' : '-'} ¥${event.amount.toLocaleString()}</div>
+      <button class="spot-event-delete" onclick="deleteSpotEvent(${event.id})">&times;</button>
+    `;
     listEl.appendChild(itemEl);
   });
 }
 
 function generateFinancialForecast() {
-  // 未来予測の描画ロジック（プレースホルダー）
+  // (プレースホルダー)
 }
-
 
 // ===================================================================================
 // ユーザー操作
@@ -454,15 +440,11 @@ async function addSpotEvent() {
   renderAll();
   showNotification('スポットイベントを追加しました。', 'success');
 
-  // 入力フォームをリセット
   document.getElementById('spotDate').value = '';
   document.getElementById('spotAmount').value = '';
   document.getElementById('spotDescription').value = '';
-
-  // ▼▼▼ 追加後、モーダルを自動で閉じる ▼▼▼
   document.getElementById('spotEventModal').style.display = 'none';
 }
-
 
 async function deleteSpotEvent(eventId) {
   if (confirm('このスポットイベントを削除しますか？')) {
@@ -481,7 +463,6 @@ dataChannel.addEventListener('message', async (event) => {
 
   if (isSyncing) {
     showNotification('現在処理中のため、リクエストは待機中です。', 'warning');
-    // 処理が終わった頃に再度試行する簡単な仕組み
     setTimeout(() => dataChannel.dispatchEvent(new MessageEvent('message', { data: event.data })), 2000);
     return;
   }
@@ -493,7 +474,6 @@ dataChannel.addEventListener('message', async (event) => {
     case 'MANUAL_SYNC_REQUEST': {
       const receivedData = event.data.payload;
       masterData = receivedData.master;
-      // master.jsからの通知はeventsを含まないので、現在のoneTimeEventsを保持する
       if (receivedData.events) {
         oneTimeEvents = receivedData.events;
       }
