@@ -190,12 +190,11 @@ function renderAll() {
 // データ管理
 // ===================================================================================
 async function loadData() {
-  const dataKey = 'budgetAppData'; // 新しい統一キー
-  const storage = loginMode === 'google' ? sessionStorage : localStorage;
-  const savedData = storage.getItem(dataKey);
+  const dataKey = 'budgetAppData';
+  // 常にローカルストレージを正とする
+  const savedData = localStorage.getItem(dataKey);
   if (savedData) {
     try {
-      // 新しいデータ構造を解析
       const parsedData = JSON.parse(savedData);
       masterData = parsedData.master || [];
       oneTimeEvents = parsedData.events || [];
@@ -209,6 +208,7 @@ async function loadData() {
     masterData = [];
     oneTimeEvents = [];
     if (loginMode === 'google') {
+      // ローカルにない場合のみDriveと同期
       await syncWithDrive();
     }
   }
@@ -363,25 +363,31 @@ function handleTokenResponse(response) {
   syncWithDrive();
 }
 
+// js/index.js
+
 async function syncWithDrive() {
   const loadingOverlay = document.getElementById('loadingOverlay');
   loadingOverlay.classList.add('show');
   try {
     const fileId = await findOrCreateFile();
-    sessionStorage.setItem('driveFileId', fileId);
+    sessionStorage.setItem('driveFileId', fileId); // fileIdはセッション管理でOK
     const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
       headers: { 'Authorization': `Bearer ${googleAccessToken}` }
     });
+
     if (response.ok) {
       const dataText = await response.text();
       if (dataText) {
         const parsedData = JSON.parse(dataText);
         masterData = parsedData.master || [];
         oneTimeEvents = parsedData.events || [];
-        sessionStorage.setItem('budgetAppData', dataText);
+        // ★最重要：読み込んだデータを「ローカルストレージ」に保存する
+        localStorage.setItem('budgetAppData', dataText);
       }
     }
+    // データの取得と解析が完全に成功した後でのみ、描画を実行する
     renderAll();
+
   } catch (error) {
     console.error("Driveとの同期に失敗:", error);
     showNotification('Google Driveとの同期に失敗しました。', 'error');

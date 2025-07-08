@@ -36,8 +36,10 @@ window.logout = function() {
     // Googleの認証情報をクリア
     sessionStorage.removeItem('googleAccessToken');
     sessionStorage.removeItem('driveFileId');
-    // セッションのマスターデータをクリア
-    sessionStorage.removeItem('budgetMasterData');
+
+    // ★最重要：新しいデータ保管場所をクリアする
+    localStorage.removeItem('budgetAppData');
+
     // ローカルのユーザー情報をクリア
     localStorage.removeItem('budgetAppUser');
 
@@ -83,39 +85,51 @@ function showNotification(message, type = 'success') {
 // ===================================================================================
 // 共通のデータ保存機能 (★最重要★)
 // ===================================================================================
-
-// js/common.js
-
 /**
  * アプリの全データを保存する統一関数
+ * @returns {Promise<void>}
  */
 async function saveData() {
   const loadingOverlay = document.getElementById('loadingOverlay');
-  loadingOverlay.classList.add('show');
+  // master.htmlなどにはloadingOverlayがない可能性を考慮
+  if (loadingOverlay) loadingOverlay.classList.add('show');
+
   try {
-    // 保存するデータを一つのオブジェクトにまとめる
+    // ★重要：他のページでイベントが消えないように、現在のストレージからイベントデータを読み込む
+    let currentEvents = [];
+    if (typeof oneTimeEvents !== 'undefined') {
+      // index.jsにいる場合は、メモリ上の最新のイベントデータを使用
+      currentEvents = oneTimeEvents;
+    } else {
+      // master.jsなど、oneTimeEvents変数が無いページの場合
+      const existingData = localStorage.getItem('budgetAppData');
+      if (existingData) {
+        currentEvents = (JSON.parse(existingData).events || []);
+      }
+    }
+
     const appData = {
-      master: masterData,
-      // index.jsにしか無い変数のため、存在をチェックする
-      events: typeof oneTimeEvents !== 'undefined' ? oneTimeEvents : []
+      master: masterData, // masterDataはどのページでもグローバルに更新されている前提
+      events: currentEvents
     };
     const dataString = JSON.stringify(appData, null, 2);
 
+    // ★最重要：常にローカルストレージに保存する
+    localStorage.setItem('budgetAppData', dataString);
+
     if (loginMode === 'google') {
-      // Google Drive利用時
-      sessionStorage.setItem('budgetAppData', dataString);
+      // GoogleモードではDriveにもアップロード
       await saveToDrive(dataString);
-    } else {
-      // ローカル利用時
-      localStorage.setItem('budgetAppData', dataString);
     }
+
     console.log('✅ データが正常に保存されました。');
+    showNotification('✅ データが保存されました。');
 
   } catch (error) {
     console.error("データの保存に失敗しました:", error);
     showNotification('データの保存に失敗しました。', 'error');
   } finally {
-    loadingOverlay.classList.remove('show');
+    if (loadingOverlay) loadingOverlay.classList.remove('show');
   }
 }
 
