@@ -136,50 +136,49 @@ async function saveData() {
 /**
  * Google Driveにデータを書き込むヘルパー関数
  */
-async function saveToDrive(dataString) {
-  if (!googleAccessToken) {
-    showNotification('Google Driveへの保存に失敗しました。再ログインしてください。', 'error');
-    return;
-  }
+// common.js
+
+/**
+ * Google Driveにデータを保存する
+ * @param {string} dataToSave 保存するJSON文字列
+ */
+async function saveToDrive(dataToSave) {
+  // グローバル変数に頼るのではなく、共通の保管庫(sessionStorage)から直接トークンを取得する
+  const accessToken = sessionStorage.getItem('googleAccessToken');
   const fileId = sessionStorage.getItem('driveFileId');
-  if (!fileId) {
-    showNotification('Google Driveへの保存に失敗しました (ファイルID不明)。', 'error');
-    return;
+
+  // トークンやファイルIDがない場合は、処理を中断してエラーを通知
+  if (!accessToken || !fileId) {
+    console.error('Driveへの保存に必要な情報（トークンまたはファイルID）がありません。');
+    showNotification('Google Driveに保存できませんでした。再ログインしてください。', 'error');
+    // ここでエラーを投げることで、呼び出し元のcatchブロックで補足できるようにする
+    throw new Error('アクセストークンまたはファイルIDがありません。');
+  }
+  // ★★★ここまで★★★
+
+  // Google Drive APIのエンドポイント
+  const url = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`;
+
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      // 保管庫から取り出したaccessToken変数を使用する
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: dataToSave
+  });
+
+  if (!response.ok) {
+    // エラーレスポンスの内容を詳しくログに出力すると、デバッグがしやすくなります
+    const errorBody = await response.text();
+    console.error('Google Drive API Error:', response.status, response.statusText, errorBody);
+    throw new Error(`Google Driveへの保存に失敗しました: ${response.statusText}`);
   }
 
-  const boundary = '-------314159265358979323846';
-  const delimiter = "\r\n--" + boundary + "\r\n";
-  const close_delim = "\r\n--" + boundary + "--";
-
-  const metadata = { 'mimeType': 'application/json' };
-
-  const multipartRequestBody =
-    delimiter +
-    'Content-Type: application/json\r\n\r\n' +
-    JSON.stringify(metadata) +
-    delimiter +
-    'Content-Type: application/json\r\n\r\n' +
-    dataString +
-    close_delim;
-
-  try {
-    const response = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${googleAccessToken}`,
-        'Content-Type': 'multipart/related; boundary="' + boundary + '"'
-      },
-      body: multipartRequestBody
-    });
-    if (!response.ok) {
-      throw new Error('Google Driveへの書き込みに失敗しました。');
-    }
-    console.log('✅ Google Driveにデータを書き込みました。');
-  } catch (error) {
-    console.error(error);
-    showNotification(error.message, 'error');
-  }
+  console.log('📄 Google Driveへのデータ保存が成功しました。');
 }
+
 
 // ===================================================================================
 // 補助機能 (サンプルデータなど)
