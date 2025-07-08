@@ -244,7 +244,6 @@ function hideAddForm() {
   editingItemId = null;
 }
 
-// js/master.js
 
 async function saveItem() {
   const name = document.getElementById('itemName').value.trim();
@@ -322,8 +321,10 @@ async function saveItem() {
     masterData.push(newItem);
     showNotification(`✅ 「${name}」を新しく追加しました。`);
   }
+  // master.jsではスポットイベントを扱わないため、第2引数に空の配列を渡す
+  await saveData(masterData, []);
+  // ▲▲▲
 
-  await saveData();
   renderAll();
   hideAddForm();
 }
