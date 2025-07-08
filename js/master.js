@@ -63,6 +63,8 @@ function renderAll() {
 
 // js/master.js
 
+// js/master.js
+
 function renderMasterList() {
   const itemsGrid = document.getElementById('itemsGrid');
   itemsGrid.innerHTML = '';
@@ -79,9 +81,21 @@ function renderMasterList() {
     itemCard.dataset.id = item.id;
     const icon = { income: '💰', loan: '💸', card: '💳', fixed: '🏠', bank: '🏦', tax: '🏛️', variable: '🛒' }[item.type] || '📄';
     const amountColor = item.amount >= 0 ? 'income' : 'expense';
-    const amountText = item.type === 'bank' ? '---' : `¥${Math.abs(item.amount).toLocaleString()}`;
     const statusClass = item.isActive ? 'active' : '';
     const statusText = item.isActive ? '✅ 有効' : '❌ 無効';
+    // カードに表示するラベルと金額テキストを動的に生成する
+    const amountLabels = {
+      income: '収入額:',
+      card: '想定利用額:',
+      fixed: '固定費額:',
+      tax: '税金額:',
+      loan: '月々返済額:',
+      variable: '想定予算額:',
+      bank: '現在の残高:'
+    };
+    const amountLabelText = amountLabels[item.type] || '金額:';
+    // 銀行も残高を表示するように統一し、UIの一貫性を保つ
+    const amountText = `¥${Math.abs(item.amount).toLocaleString()}`;
 
     let bankInfo = '';
     if (item.sourceBankId) {
@@ -92,8 +106,6 @@ function renderMasterList() {
       }
     }
 
-    // ▼▼▼ 修正箇所 ▼▼▼
-    // 借金の場合、詳細情報を生成する
     let loanDetailsHtml = '';
     if (item.type === 'loan' && item.loanDetails) {
       loanDetailsHtml = `
@@ -108,12 +120,11 @@ function renderMasterList() {
                 </div>
             `;
     }
-    // ▲▲▲ ここまで ▲▲▲
 
     itemCard.innerHTML = `
             <div class="item-card-header"><span class="item-icon">${icon}</span><h4 class="item-name">${item.name}</h4><span class="item-status ${statusClass}">${statusText}</span></div>
             <div class="item-card-body">
-                <div class="item-detail"><span class="item-label">月々の返済額:</span><span class="item-value ${amountColor}">${amountText}</span></div>
+                <div class="item-detail"><span class="item-label">${amountLabelText}</span><span class="item-value ${amountColor}">${amountText}</span></div>
                 <div class="item-detail"><span class="item-label">支払日:</span><span class="item-value">${item.paymentDay ? item.paymentDay + '日' : '未設定'}</span></div>
                 ${bankInfo}
                 ${loanDetailsHtml}
@@ -149,7 +160,9 @@ function showEditForm(itemId) {
 
   document.getElementById('itemName').value = itemToEdit.name;
   document.getElementById('itemType').value = itemToEdit.type;
-  document.getElementById('amount').value = itemToEdit.amount;
+
+  document.getElementById('amount').value = Math.abs(itemToEdit.amount);
+
   document.getElementById('paymentDay').value = itemToEdit.paymentDay || '';
   document.getElementById('isActive').value = itemToEdit.isActive.toString();
 
@@ -272,33 +285,26 @@ function updateFormFields() {
     tax: '税金額 *',
     loan: '月々返済額 *',
     variable: '想定予算額 *',
-    bank: '現在の預金残高 *' // ★銀行用のラベル
+    bank: '現在の預金残高 *'
   };
   amountLabel.textContent = labels[itemType] || '金額 *';
 
-  // ▼▼▼ ここからが最重要修正箇所 ▼▼▼
+  amountInput.placeholder = '例: 50000 (数字のみ入力)';
+
   if (itemType === 'bank') {
-    // 「銀行」が選択された場合、不要な項目を全て隠す
-    amountInput.placeholder = '例: 1234567';
-    amountInput.value = Math.abs(Number(amountInput.value)); // 常に正の数
-    paymentDayGroup.style.display = 'none'; // 支払日を隠す
-    sourceBankGroup.style.display = 'none'; // ひも付く銀行を隠す
+    // 「銀行」が選択された場合、不要な項目を隠す
+    paymentDayGroup.style.display = 'none';
+    sourceBankGroup.style.display = 'none';
   } else {
     // 「銀行」以外が選択された場合
-    amountInput.placeholder = '収入は正数、支出は負数';
-    paymentDayGroup.style.display = 'flex'; // 支払日を表示
-
-    // 「ひも付く銀行」プルダウンを表示する（借入も含む全ての項目で）
+    paymentDayGroup.style.display = 'flex';
     if (itemType) { // 何かしらの種別が選ばれていれば
       sourceBankGroup.style.display = 'flex';
     }
-
-    // 借入の場合のみ「借入詳細」を表示
     if (itemType === 'loan') {
       document.querySelectorAll('.loan-field').forEach(el => el.style.display = 'flex');
     }
   }
-  // ▲▲▲ ここまで ▲▲▲
 }
 
 
