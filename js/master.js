@@ -35,12 +35,12 @@ document.addEventListener('DOMContentLoaded', function() {
 // データ管理
 // ===================================================================================
 function loadData() {
-  const dataKey = 'budgetMasterData';
-  const storage = loginMode === 'google' ? sessionStorage : localStorage;
-  const savedData = storage.getItem(dataKey);
+  const dataKey = 'budgetAppData'; // ★修正：アプリ共通のデータキーを使用
+  const savedData = localStorage.getItem(dataKey); // ★修正：常にローカルストレージから読み込む
   if (savedData) {
     try {
-      masterData = JSON.parse(savedData);
+      const parsedData = JSON.parse(savedData);
+      masterData = parsedData.master || []; // ★修正：統一データ構造のmasterプロパティから取得
       console.log(`📂 [${loginMode}モード] ストレージからデータを読み込みました。`);
     } catch (e) {
       console.error("データの解析に失敗:", e);
