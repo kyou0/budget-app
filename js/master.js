@@ -101,6 +101,8 @@ function renderAll() {
   updateCategoryCounts();
 }
 
+// js/master.js
+
 function renderMasterList() {
   const itemsGrid = document.getElementById('itemsGrid');
   itemsGrid.innerHTML = '';
@@ -115,21 +117,27 @@ function renderMasterList() {
     const itemCard = document.createElement('div');
     itemCard.className = 'item-card';
     itemCard.dataset.id = item.id;
-    const icon = { income: '💰', loan: '💸', card: '💳', fixed: '🏠', bank: '🏦', tax: '🏛️', variable: '🛒' }[item.type] || '📄';
+
+    const icon = {
+      [ITEM_TYPES.INCOME]: '💰', [ITEM_TYPES.LOAN]: '💸', [ITEM_TYPES.CARD]: '💳',
+      [ITEM_TYPES.FIXED]: '🏠', [ITEM_TYPES.BANK]: '🏦', [ITEM_TYPES.TAX]: '🏛️',
+      [ITEM_TYPES.VARIABLE]: '🛒'
+    }[item.type] || '📄';
+
     const amountColor = item.amount >= 0 ? 'income' : 'expense';
     const statusClass = item.isActive ? 'active' : '';
     const statusText = item.isActive ? '✅ 有効' : '❌ 無効';
+
     const amountLabels = {
-      income: '収入額:', card: '想定利用額:', fixed: '固定費額:', tax: '税金額:',
-      loan: '月々返済額:', variable: '想定予算額:', bank: '現在の残高:'
+      [ITEM_TYPES.INCOME]: '収入額:', [ITEM_TYPES.CARD]: '想定利用額:', [ITEM_TYPES.FIXED]: '固定費額:',
+      [ITEM_TYPES.TAX]: '税金額:', [ITEM_TYPES.LOAN]: '月々返済額:', [ITEM_TYPES.VARIABLE]: '想定予算額:',
+      [ITEM_TYPES.BANK]: '現在の残高:'
     };
     const amountLabelText = amountLabels[item.type] || '金額:';
     const amountText = `¥${Math.abs(item.amount).toLocaleString()}`;
 
-    // ★修正：支払日の表示を新しいルールに対応させる
     let paymentDayText = '未設定';
     if (item.paymentDay) {
-      // ▼▼▼ 定数を使用 ▼▼▼
       if (item.paymentDay === PAYMENT_DAY_RULES.END_OF_MONTH_WEEKDAY) {
         paymentDayText = '月末の平日';
       } else {
@@ -141,13 +149,13 @@ function renderMasterList() {
     if (item.sourceBankId) {
       const bank = masterData.find(b => b.id === item.sourceBankId);
       if (bank) {
-        const label = item.type === 'income' ? '振込先:' : '支払元:';
+        const label = item.type === ITEM_TYPES.INCOME ? '振込先:' : '支払元:';
         bankInfo = `<div class="item-detail"><span class="item-label">${label}</span><span class="item-value">${bank.name}</span></div>`;
       }
     }
 
     let loanDetailsHtml = '';
-    if (item.type === 'loan' && item.loanDetails) {
+    if (item.type === ITEM_TYPES.LOAN && item.loanDetails) {
       loanDetailsHtml = `
         <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
         <div class="item-detail"><span class="item-label">現在の残高:</span><span class="item-value expense">¥${item.loanDetails.currentBalance.toLocaleString()}</span></div>
@@ -332,7 +340,6 @@ function populateBankSelect() {
   });
 }
 
-// ★★★ 新規追加 ★★★
 /**
  * 支払日のセレクトボックスに選択肢を生成する
  */
@@ -369,19 +376,24 @@ function updateStats() {
   document.getElementById('statMonthlyRepayment').textContent = `¥${monthlyRepayment.toLocaleString()}`;
 }
 
+// js/master.js
+
 function updateCategoryCounts() {
   const counts = {
     all: masterData.length,
-    income: masterData.filter(i => i.type === 'income').length,
-    loan: masterData.filter(i => i.type === 'loan').length,
-    card: masterData.filter(i => i.type === 'card').length,
-    fixed: masterData.filter(i => i.type === 'fixed').length,
-    bank: masterData.filter(i => i.type === 'bank').length,
-    tax: masterData.filter(i => i.type === 'tax').length,
-    variable: masterData.filter(i => i.type === 'variable').length,
+    [ITEM_TYPES.INCOME]: masterData.filter(i => i.type === ITEM_TYPES.INCOME).length,
+    [ITEM_TYPES.LOAN]: masterData.filter(i => i.type === ITEM_TYPES.LOAN).length,
+    [ITEM_TYPES.CARD]: masterData.filter(i => i.type === ITEM_TYPES.CARD).length,
+    [ITEM_TYPES.FIXED]: masterData.filter(i => i.type === ITEM_TYPES.FIXED).length,
+    [ITEM_TYPES.BANK]: masterData.filter(i => i.type === ITEM_TYPES.BANK).length,
+    [ITEM_TYPES.TAX]: masterData.filter(i => i.type === ITEM_TYPES.TAX).length,
+    [ITEM_TYPES.VARIABLE]: masterData.filter(i => i.type === ITEM_TYPES.VARIABLE).length,
   };
+
+  // HTMLのIDと合わせるため、キーをキャピタライズするロジックはそのまま
   for (const key in counts) {
-    const el = document.getElementById(`count${key.charAt(0).toUpperCase() + key.slice(1)}`);
+    const idSuffix = key === 'all' ? 'All' : key.charAt(0).toUpperCase() + key.slice(1);
+    const el = document.getElementById(`count${idSuffix}`);
     if (el) {
       el.textContent = counts[key];
     }
