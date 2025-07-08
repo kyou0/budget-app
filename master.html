@@ -79,12 +79,12 @@
                     <div class="category-info"><span>🛒 変動費</span></div>
                     <span class="category-count" id="countVariable">0</span></li>
             </ul>
-
             <h3 class="section-title" style="margin-top: 30px;">🔧 データ管理</h3>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button class="btn btn-primary" style="width: 100%;" onclick="showAddForm()">➕ 新規項目追加</button>
-                <button class="btn btn-secondary" style="width: 100%;" onclick="loadSampleData()">📋 サンプルデータ読込
-                </button>
+            <div class="data-management-actions">
+                <button class="btn btn-primary" onclick="showAddForm()">➕ 新規項目追加</button>
+                <button class="btn btn-secondary" onclick="loadSampleData()">📋 サンプルデータ読込</button>
+                <button class="btn btn-info" onclick="exportData()">📤 データエクスポート</button>
+                <button class="btn btn-danger" onclick="resetAllData()">⚠️ 全データリセット</button>
             </div>
         </div>
 

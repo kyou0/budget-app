@@ -10,8 +10,6 @@ let editingItemId = null;
 // ===================================================================================
 // 初期化処理
 // ===================================================================================
-// js/master.js
-
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 マスター管理ページ起動');
   const appContainer = document.getElementById('appContainer');
@@ -30,25 +28,25 @@ document.addEventListener('DOMContentLoaded', function() {
   loadData();
   renderAll();
 
+  // --- イベントリスナー ---
   document.getElementById('itemType')?.addEventListener('change', updateFormFields);
+
   // イベント委任：itemsGrid内のクリックを全てここで処理する
-  document.getElementById('itemsGrid').addEventListener('click', function(event) {
+  document.getElementById('itemsGrid').addEventListener('click', async function(event) {
     const button = event.target.closest('button.btn-action');
     if (!button) {
-      return; // クリックされたのがボタンでなければ何もしない
+      return;
     }
-
     const card = button.closest('.item-card');
     if (!card) {
       return;
     }
-
     const itemId = parseInt(card.dataset.id, 10);
 
     if (button.classList.contains('edit')) {
       showEditForm(itemId);
     } else if (button.classList.contains('delete')) {
-      deleteItem(itemId);
+      await deleteItem(itemId);
     }
   });
 });
@@ -57,12 +55,12 @@ document.addEventListener('DOMContentLoaded', function() {
 // データ管理
 // ===================================================================================
 function loadData() {
-  const dataKey = 'budgetAppData'; // ★修正：アプリ共通のデータキーを使用
-  const savedData = localStorage.getItem(dataKey); // ★修正：常にローカルストレージから読み込む
+  const dataKey = 'budgetAppData';
+  const savedData = localStorage.getItem(dataKey);
   if (savedData) {
     try {
       const parsedData = JSON.parse(savedData);
-      masterData = parsedData.master || []; // ★修正：統一データ構造のmasterプロパティから取得
+      masterData = parsedData.master || [];
       console.log(`📂 [${loginMode}モード] ストレージからデータを読み込みました。`);
     } catch (e) {
       console.error("データの解析に失敗:", e);
@@ -83,10 +81,6 @@ function renderAll() {
   updateCategoryCounts();
 }
 
-// js/master.js
-
-// js/master.js
-
 function renderMasterList() {
   const itemsGrid = document.getElementById('itemsGrid');
   itemsGrid.innerHTML = '';
@@ -105,7 +99,6 @@ function renderMasterList() {
     const amountColor = item.amount >= 0 ? 'income' : 'expense';
     const statusClass = item.isActive ? 'active' : '';
     const statusText = item.isActive ? '✅ 有効' : '❌ 無効';
-    // カードに表示するラベルと金額テキストを動的に生成する
     const amountLabels = {
       income: '収入額:',
       card: '想定利用額:',
@@ -116,7 +109,6 @@ function renderMasterList() {
       bank: '現在の残高:'
     };
     const amountLabelText = amountLabels[item.type] || '金額:';
-    // 銀行も残高を表示するように統一し、UIの一貫性を保つ
     const amountText = `¥${Math.abs(item.amount).toLocaleString()}`;
 
     let bankInfo = '';
@@ -131,47 +123,49 @@ function renderMasterList() {
     let loanDetailsHtml = '';
     if (item.type === 'loan' && item.loanDetails) {
       loanDetailsHtml = `
-                <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
-                <div class="item-detail">
-                    <span class="item-label">現在の残高:</span>
-                    <span class="item-value expense">¥${item.loanDetails.currentBalance.toLocaleString()}</span>
-                </div>
-                <div class="item-detail">
-                    <span class="item-label">年利率:</span>
-                    <span class="item-value">${item.loanDetails.interestRate}%</span>
-                </div>
-            `;
+        <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
+        <div class="item-detail">
+            <span class="item-label">現在の残高:</span>
+            <span class="item-value expense">¥${item.loanDetails.currentBalance.toLocaleString()}</span>
+        </div>
+        <div class="item-detail">
+            <span class="item-label">年利率:</span>
+            <span class="item-value">${item.loanDetails.interestRate}%</span>
+        </div>
+      `;
     }
 
+    // ★修正：onclick属性を完全に削除し、イベント委任に一本化
     itemCard.innerHTML = `
-            <div class="item-card-header"><span class="item-icon">${icon}</span><h4 class="item-name">${item.name}</h4><span class="item-status ${statusClass}">${statusText}</span></div>
-            <div class="item-card-body">
-                <div class="item-detail"><span class="item-label">${amountLabelText}</span><span class="item-value ${amountColor}">${amountText}</span></div>
-                <div class="item-detail"><span class="item-label">支払日:</span><span class="item-value">${item.paymentDay ? item.paymentDay + '日' : '未設定'}</span></div>
-                ${bankInfo}
-                ${loanDetailsHtml}
-            </div>
-            <div class="item-card-actions"><button class="btn-action edit" onclick="showEditForm(${item.id})">✏️ 編集</button><button class="btn-action delete" onclick="deleteItem(${item.id})">🗑️ 削除</button></div>`;
+      <div class="item-card-header"><span class="item-icon">${icon}</span><h4 class="item-name">${item.name}</h4><span class="item-status ${statusClass}">${statusText}</span></div>
+      <div class="item-card-body">
+          <div class="item-detail"><span class="item-label">${amountLabelText}</span><span class="item-value ${amountColor}">${amountText}</span></div>
+          <div class="item-detail"><span class="item-label">支払日:</span><span class="item-value">${item.paymentDay ? item.paymentDay + '日' : '未設定'}</span></div>
+          ${bankInfo}
+          ${loanDetailsHtml}
+      </div>
+      <div class="item-card-actions">
+          <button class="btn-action edit">✏️ 編集</button>
+          <button class="btn-action delete">🗑️ 削除</button>
+      </div>`;
     itemsGrid.appendChild(itemCard);
   });
 }
 
-
 // ===================================================================================
-// フォーム関連の処理 (★今回のメイン機能★)
+// フォーム関連の処理
 // ===================================================================================
-
 function showAddForm() {
   editingItemId = null;
   const form = document.getElementById('addForm');
   form.style.display = 'block';
   form.reset();
   document.getElementById('formTitle').textContent = '➕ 新規項目追加';
-  document.getElementById('isActive').value = 'true'; // デフォルトを有効に
+  document.getElementById('isActive').value = 'true';
   form.scrollIntoView({ behavior: 'smooth' });
 
-  updateFormFields(); // フォームの表示を更新
-  populateBankSelect(); // 銀行プルダウンを生成
+  updateFormFields();
+  populateBankSelect();
 }
 
 function showEditForm(itemId) {
@@ -182,27 +176,29 @@ function showEditForm(itemId) {
 
   document.getElementById('itemName').value = itemToEdit.name;
   document.getElementById('itemType').value = itemToEdit.type;
-
-  document.getElementById('amount').value = Math.abs(itemToEdit.amount);
-
-  document.getElementById('paymentDay').value = itemToEdit.paymentDay || '';
-  document.getElementById('isActive').value = itemToEdit.isActive.toString();
+  // ▼▼▼ String()で囲み、型を明示的に変換 ▼▼▼
+  document.getElementById('itemAmount').value = String(Math.abs(itemToEdit.amount));
+  document.getElementById('paymentDay').value = String(itemToEdit.paymentDay || '');
+  document.getElementById('isActive').value = String(itemToEdit.isActive);
+  // ▲▲▲
 
   updateFormFields();
   populateBankSelect();
 
   if (itemToEdit.sourceBankId) {
-    document.getElementById('itemSourceBank').value = itemToEdit.sourceBankId;
+    // ▼▼▼ String()で囲み、型を明示的に変換 ▼▼▼
+    document.getElementById('itemSourceBank').value = String(itemToEdit.sourceBankId);
   }
 
-  // 借入詳細の値をフォームに設定
   if (itemToEdit.type === 'loan' && itemToEdit.loanDetails) {
-    document.getElementById('initialAmount').value = itemToEdit.loanDetails.initialAmount || '';
+    // ▼▼▼ String()で囲み、型を明示的に変換 ▼▼▼
+    document.getElementById('initialAmount').value = String(itemToEdit.loanDetails.initialAmount || '');
     document.getElementById('loanDate').value = itemToEdit.loanDetails.loanDate || '';
-    document.getElementById('interestRate').value = itemToEdit.loanDetails.interestRate || '';
-    document.getElementById('currentBalance').value = itemToEdit.loanDetails.currentBalance || '';
+    document.getElementById('interestRate').value = String(itemToEdit.loanDetails.interestRate || '');
+    document.getElementById('currentBalance').value = String(itemToEdit.loanDetails.currentBalance || '');
     document.getElementById('loanType').value = itemToEdit.loanDetails.loanType || '消費者金融';
-    document.getElementById('maxLimit').value = itemToEdit.loanDetails.maxLimit || '';
+    document.getElementById('maxLimit').value = String(itemToEdit.loanDetails.maxLimit || '');
+    // ▲▲▲
   }
 
   document.getElementById('formTitle').textContent = '✏️ 項目の編集';
@@ -215,15 +211,11 @@ function hideAddForm() {
   editingItemId = null;
 }
 
-// js/master.js
-
-// js/master.js
-
 async function saveItem() {
-  // 基本情報の取得
   const name = document.getElementById('itemName').value.trim();
   const type = document.getElementById('itemType').value;
-  let amount = parseInt(document.getElementById('amount').value, 10);
+  // ★修正：IDを 'amount' から 'itemAmount' に変更
+  let amount = parseInt(document.getElementById('itemAmount').value, 10);
   const paymentDay = parseInt(document.getElementById('paymentDay').value, 10) || null;
   const isActive = document.getElementById('isActive').value === 'true';
   const sourceBankId = document.getElementById('itemSourceBank').value;
@@ -233,7 +225,6 @@ async function saveItem() {
     return;
   }
 
-  // ユーザーは常にプラスの数字を入力すればOK。コードが裏で符号を自動調整する。
   if (['expense', 'fixed', 'tax', 'loan', 'card', 'variable'].includes(type)) {
     amount = -Math.abs(amount);
   } else {
@@ -260,14 +251,8 @@ async function saveItem() {
     };
   }
 
-  // スプレッド構文を使い、より宣言的にオブジェクトを構築する
   const itemData = {
-    name,
-    type,
-    amount,
-    paymentDay,
-    isActive,
-    loanDetails,
+    name, type, amount, paymentDay, isActive, loanDetails,
     ...(type !== 'bank' && sourceBankId && { sourceBankId: parseInt(sourceBankId, 10) })
   };
 
@@ -288,42 +273,31 @@ async function saveItem() {
   hideAddForm();
 }
 
-/**
- * フォームの種別に応じて、表示するフィールドを切り替える
- */
 function updateFormFields() {
   const itemType = document.getElementById('itemType').value;
-  const amountLabel = document.querySelector('label[for="amount"]');
-  const amountInput = document.getElementById('amount');
+  // ★修正：セレクタを 'label[for="amount"]' から 'label[for="itemAmount"]' に変更
+  const amountLabel = document.querySelector('label[for="itemAmount"]');
+  // ★修正：IDを 'amount' から 'itemAmount' に変更
+  const amountInput = document.getElementById('itemAmount');
   const paymentDayGroup = document.getElementById('paymentDay').parentElement;
   const sourceBankGroup = document.getElementById('itemSourceBank').parentElement;
 
-  // まず全ての特別フィールドを非表示にする
   document.querySelectorAll('.loan-field').forEach(el => el.style.display = 'none');
-  sourceBankGroup.style.display = 'none'; // 銀行プルダウンも一旦隠す
+  sourceBankGroup.style.display = 'none';
 
-  // 表示するラベルを定義
   const labels = {
-    income: '収入額 *',
-    card: '想定利用額 *',
-    fixed: '固定費額 *',
-    tax: '税金額 *',
-    loan: '月々返済額 *',
-    variable: '想定予算額 *',
-    bank: '現在の預金残高 *'
+    income: '収入額 *', card: '想定利用額 *', fixed: '固定費額 *', tax: '税金額 *',
+    loan: '月々返済額 *', variable: '想定予算額 *', bank: '現在の預金残高 *'
   };
   amountLabel.textContent = labels[itemType] || '金額 *';
-
   amountInput.placeholder = '例: 50000 (数字のみ入力)';
 
   if (itemType === 'bank') {
-    // 「銀行」が選択された場合、不要な項目を隠す
     paymentDayGroup.style.display = 'none';
     sourceBankGroup.style.display = 'none';
   } else {
-    // 「銀行」以外が選択された場合
     paymentDayGroup.style.display = 'flex';
-    if (itemType) { // 何かしらの種別が選ばれていれば
+    if (itemType) {
       sourceBankGroup.style.display = 'flex';
     }
     if (itemType === 'loan') {
@@ -332,13 +306,9 @@ function updateFormFields() {
   }
 }
 
-
-/**
- * 銀行選択プルダウンに選択肢を設定する
- */
 function populateBankSelect() {
   const bankSelect = document.getElementById('itemSourceBank');
-  bankSelect.innerHTML = '<option value="">-- 銀行を選択 --</option>'; // デフォルト
+  bankSelect.innerHTML = '<option value="">-- 銀行を選択 --</option>';
   const banks = masterData.filter(item => item.type === 'bank' && item.isActive);
 
   banks.forEach(bank => {
@@ -352,10 +322,6 @@ function populateBankSelect() {
 // ===================================================================================
 // UI補助機能 (統計、カテゴリ、データ操作など)
 // ===================================================================================
-
-/**
- * 統計カードの数値を更新する
- */
 function updateStats() {
   const totalItems = masterData.length;
   const activeItems = masterData.filter(item => item.isActive).length;
@@ -372,9 +338,6 @@ function updateStats() {
   document.getElementById('statMonthlyRepayment').textContent = `¥${monthlyRepayment.toLocaleString()}`;
 }
 
-/**
- * サイドバーのカテゴリ別項目数を更新する
- */
 function updateCategoryCounts() {
   const counts = {
     all: masterData.length,
@@ -395,30 +358,15 @@ function updateCategoryCounts() {
   }
 }
 
-/**
- * 表示するカテゴリを切り替える
- * @param {string} category - 表示するカテゴリ名
- * @param {HTMLElement} element - クリックされたカテゴリ要素
- */
 function showCategory(category, element) {
   currentCategory = category;
-
-  // タイトル更新
   document.getElementById('categoryTitle').innerHTML = `${element.querySelector('.category-info').innerHTML} の項目`;
-
-  // アクティブなカテゴリのスタイルを更新
   document.querySelectorAll('.category-item').forEach(item => item.classList.remove('active'));
   element.classList.add('active');
-
-  // フォームが開いていれば閉じる
   hideAddForm();
   renderMasterList();
 }
 
-/**
- * 指定されたIDの項目を削除する
- * @param {number} itemId - 削除するアイテムのID
- */
 async function deleteItem(itemId) {
   const item = masterData.find(i => i.id === itemId);
   if (!item) return;
@@ -426,26 +374,20 @@ async function deleteItem(itemId) {
   if (confirm(`「${item.name}」を本当に削除しますか？この操作は元に戻せません。`)) {
     masterData = masterData.filter(i => i.id !== itemId);
     showNotification(`🗑️ 「${item.name}」を削除しました。`);
-    await saveData(); // 変更を保存
-    renderAll(); // 画面を再描画
+    await saveData();
+    renderAll();
   }
 }
 
-/**
- * サンプルデータを読み込む
- */
 async function loadSampleData() {
   if (confirm('現在のデータは上書きされます。サンプルデータを読み込みますか？')) {
-    masterData = getSampleData(); // common.jsにある想定
+    masterData = getSampleData();
     showNotification('📋 サンプルデータを読み込みました。');
     await saveData();
     renderAll();
   }
 }
 
-/**
- * 現在のデータをJSONファイルとしてエクスポートする
- */
 function exportData() {
   if (masterData.length === 0) {
     showNotification('エクスポートするデータがありません。', 'warning');
@@ -465,9 +407,6 @@ function exportData() {
   showNotification('📤 データのエクスポートを開始しました。');
 }
 
-/**
- * 全てのデータをリセットする
- */
 async function resetAllData() {
   if (confirm('本当にすべてのデータをリセットしますか？この操作は元に戻せません。')) {
     masterData = [];
