@@ -19,13 +19,15 @@
             <h1>⚙️ マスター管理</h1>
             <div class="user-info">
                 <span id="userName">ユーザー</span>
-                <button class="logout-btn">ログアウト</button>
+                <!-- ▼▼▼ 他のページと動作を合わせるため、onclickを追加 ▼▼▼ -->
+                <button class="logout-btn" onclick="window.logout()">ログアウト</button>
             </div>
         </div>
         <div class="navigation">
-            <button class="nav-btn">📈 ダッシュボード</button>
+            <!-- ▼▼▼ 他のページと動作を合わせるため、onclickを追加 ▼▼▼ -->
+            <button class="nav-btn" onclick="window.goToDashboard()">📈 ダッシュボード</button>
             <button class="nav-btn active">⚙️ マスター管理</button>
-            <button class="nav-btn">🔧 設定</button>
+            <button class="nav-btn" onclick="window.goToSettings()">🔧 設定</button>
         </div>
     </div>
 
@@ -49,43 +51,45 @@
         </div>
     </div>
 
-    <!-- メインコンテンツ (★ここが重要★) -->
+    <!-- メインコンテンツ -->
     <div class="main-content">
         <!-- サイドバー -->
         <div class="sidebar">
             <h3 class="section-title">📂 カテゴリ</h3>
+            <!-- ▼▼▼ バグの原因だった onclick を全て削除 ▼▼▼ -->
             <ul class="category-list" id="categoryList">
-                <li class="category-item active" onclick="showCategory('all', this)">
+                <li class="category-item active" data-category="all">
                     <div class="category-info"><span>📋 すべて</span></div>
                     <span class="category-count" id="countAll">0</span></li>
-                <li class="category-item" onclick="showCategory('income', this)">
+                <li class="category-item" data-category="income">
                     <div class="category-info"><span>💰 収入</span></div>
                     <span class="category-count" id="countIncome">0</span></li>
-                <li class="category-item" onclick="showCategory('loan', this)">
+                <li class="category-item" data-category="loan">
                     <div class="category-info"><span>💸 借入先</span></div>
                     <span class="category-count" id="countLoan">0</span></li>
-                <li class="category-item" onclick="showCategory('card', this)">
+                <li class="category-item" data-category="card">
                     <div class="category-info"><span>💳 カード</span></div>
                     <span class="category-count" id="countCard">0</span></li>
-                <li class="category-item" onclick="showCategory('fixed', this)">
+                <li class="category-item" data-category="fixed">
                     <div class="category-info"><span>🏠 固定費</span></div>
                     <span class="category-count" id="countFixed">0</span></li>
-                <li class="category-item" onclick="showCategory('bank', this)">
+                <li class="category-item" data-category="bank">
                     <div class="category-info"><span>🏦 銀行</span></div>
                     <span class="category-count" id="countBank">0</span></li>
-                <li class="category-item" onclick="showCategory('tax', this)">
+                <li class="category-item" data-category="tax">
                     <div class="category-info"><span>🏛️ 税金</span></div>
                     <span class="category-count" id="countTax">0</span></li>
-                <li class="category-item" onclick="showCategory('variable', this)">
+                <li class="category-item" data-category="variable">
                     <div class="category-info"><span>🛒 変動費</span></div>
                     <span class="category-count" id="countVariable">0</span></li>
             </ul>
             <h3 class="section-title" style="margin-top: 30px;">🔧 データ管理</h3>
+            <!-- ▼▼▼ バグの原因だった onclick を全て削除 ▼▼▼ -->
             <div class="data-management-actions">
-                <button class="btn btn-primary" onclick="showAddForm()">➕ 新規項目追加</button>
-                <button class="btn btn-secondary" onclick="loadSampleData()">📋 サンプルデータ読込</button>
-                <button class="btn btn-info" onclick="exportData()">📤 データエクスポート</button>
-                <button class="btn btn-danger" onclick="resetAllData()">⚠️ 全データリセット</button>
+                <button class="btn btn-primary">➕ 新規項目追加</button>
+                <button class="btn btn-secondary">📋 サンプルデータ読込</button>
+                <button class="btn btn-info">📤 データエクスポート</button>
+                <button class="btn btn-danger">⚠️ 全データリセット</button>
             </div>
         </div>
 
@@ -94,9 +98,6 @@
             <div class="content-header">
                 <h2 id="categoryTitle" style="color: #2c3e50; font-size: 1.5em;">📋 すべての項目</h2>
             </div>
-
-            <!-- 新規/編集フォーム -->
-            <!-- master.html -->
 
             <!-- 新規/編集フォーム -->
             <form class="form-container" id="addForm" style="display: none;">
@@ -109,7 +110,8 @@
                     </div>
                     <div class="form-group">
                         <label for="itemType">種別 *</label>
-                        <select id="itemType" required onchange="updateFormFields()">
+                        <!-- ▼▼▼ バグの原因だった onchange を削除 ▼▼▼ -->
+                        <select id="itemType" required>
                             <option value="">選択してください</option>
                             <option value="income">💰 収入</option>
                             <option value="loan">💸 借入先</option>
@@ -140,7 +142,6 @@
                             </optgroup>
                         </select>
                     </div>
-                    <!-- ... (「状態」のdiv) ... -->
                     <div class="form-group">
                         <label for="isActive">状態</label>
                         <select id="isActive">
@@ -149,6 +150,7 @@
                         </select>
                     </div>
 
+                    <!-- (収入・借金フィールドは変更なし) -->
                     <div class="form-group income-field" style="display: none;">
                         <label for="baseAmount">基準月収 / 契約額</label>
                         <input type="number" id="baseAmount" placeholder="例: 200000">
@@ -169,7 +171,6 @@
                         <label for="closingDay">締め日</label>
                         <select id="closingDay">
                             <option value="EOM">月末</option>
-                            <!-- 他の日付も将来的には追加可能 -->
                         </select>
                     </div>
                     <div class="form-group income-field" style="display: none;">
@@ -185,7 +186,6 @@
                         <label for="paymentDate">支払日</label>
                         <input type="number" id="paymentDate" placeholder="例: 10 (10日払い)">
                     </div>
-                    <!-- === 借金専用項目 (ここが整理された部分) === -->
                     <div class="form-group loan-field" style="display: none;">
                         <label for="initialAmount">当初の借入額</label>
                         <input type="number" id="initialAmount" step="1" placeholder="例: 1000000">
@@ -219,8 +219,8 @@
                     </div>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="hideAddForm()">キャンセル</button>
-                    <button type="button" class="btn btn-primary" onclick="saveItem()">💾 保存</button>
+                    <button type="button" class="btn btn-secondary">キャンセル</button>
+                    <button type="button" class="btn btn-primary">💾 保存</button>
                 </div>
             </form>
 
