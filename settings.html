@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🔧 設定 - 家計簿アプリ v2.0</title>
     <link rel="stylesheet" href="css/style.css">
+    <!-- ▼▼▼ 必須の工具箱を読み込む ▼▼▼ -->
+    <script src="js/shared.js" defer></script>
+    <script src="js/common.js" defer></script>
 </head>
 <body>
 <div id="notification-container"></div>
@@ -23,41 +26,41 @@
         <div class="navigation">
             <button class="nav-btn" onclick="window.goToDashboard()">📈 ダッシュボード</button>
             <button class="nav-btn" onclick="window.goToMaster()">⚙️ マスター管理</button>
-            <button class="nav-btn active" onclick="window.goToSettings()">🔧 設定</button>
+            <button class="nav-btn active">🔧 設定</button>
         </div>
     </div>
 
-    <!-- メインコンテンツ (★ここが重要★) -->
+    <!-- メインコンテンツ -->
     <div class="main-content">
-        <!-- サイドバー -->
-        <div class="sidebar">
-            <h3 class="section-title">データ管理</h3>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button class="btn btn-warning" onclick="exportData()">📤 データエクスポート</button>
-                <button class="btn btn-primary" onclick="importData()">📥 データインポート</button>
-                <button class="btn btn-danger" onclick="resetAllData()">🔄 全データリセット</button>
-            </div>
-        </div>
-
-        <!-- メインエリア -->
-        <div class="content-area">
-            <h2 class="section-title">同期設定</h2>
+        <div class="content-area" style="width: 100%;">
+            <!-- 同期設定カード -->
             <div class="setting-card">
-                <h3>現在の同期モード</h3>
-                <p>
-                    現在のデータは <span id="syncStatus" class="status-badge local">ローカル</span> に保存されています。
-                </p>
-                <button id="manualSyncBtn" class="btn" onclick="manualSync()">💾 今すぐ保存＆同期</button>
-                <p class="note">
-                    Google Driveとの同期は、Googleアカウントでログインした場合にのみ有効になります。
-                </p>
+                <h3 class="section-title">☁️ 同期設定</h3>
+                <p>現在の同期モード: <span id="syncStatus" class="status-badge local">ローカルモード</span></p>
+                <div class="data-management-actions" style="margin-top: 20px; flex-direction: row; gap: 15px;">
+                    <!-- ▼▼▼ onclickを削除し、IDで管理 ▼▼▼ -->
+                    <button id="manualSyncBtn" class="btn btn-info">📤 手動で同期</button>
+                    <button id="forceSyncBtn" class="btn btn-primary">📥 Driveから強制同期</button>
+                </div>
+                <p class="note">「手動で同期」は現在のデータを司令塔に送信します。「Driveから強制同期」は、他の端末での変更をこの端末に反映させたい場合に使用します。</p>
+            </div>
+
+            <!-- データ管理カード -->
+            <div class="setting-card">
+                <h3 class="section-title">💾 データ管理</h3>
+                <div class="data-management-actions" style="margin-top: 20px; flex-direction: row; gap: 15px; flex-wrap: wrap;">
+                    <!-- ▼▼▼ onclickを削除し、IDで管理 ▼▼▼ -->
+                    <button id="exportBtn" class="btn btn-secondary">📤 エクスポート</button>
+                    <button id="importBtn" class="btn btn-secondary">📥 インポート</button>
+                    <input type="file" id="importFile" style="display: none;" accept="application/json,.json">
+                    <button id="resetBtn" class="btn btn-danger">⚠️ 全データリセット</button>
+                </div>
+                <p class="note">データをファイルとして書き出したり、バックアップから復元したりできます。リセット操作は元に戻せないのでご注意ください。</p>
             </div>
         </div>
     </div>
 </div>
 
-<script src="js/shared.js" defer></script>
-<script src="js/common.js" defer></script>
 <script src="js/settings.js" defer></script>
 </body>
 </html>

@@ -1,3 +1,5 @@
+// js/settings.js
+
 // ===================================================================================
 // グローバル変数 & 初期設定
 // ===================================================================================
@@ -13,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const savedUserJSON = localStorage.getItem('budgetAppUser');
   if (!savedUserJSON) {
+    // ログイン情報がなければ、強制的にメインページに戻す
     window.location.href = 'index.html';
     return;
   }
@@ -22,8 +25,25 @@ document.addEventListener('DOMContentLoaded', function() {
   loginMode = currentUser.mode;
   document.getElementById('userName').textContent = currentUser.name;
 
-  updateSyncStatus();
+  updateSyncStatusUI();
+  setupEventListeners(); // ★★★ すべてのボタンの動作をここで設定 ★★★
 });
+
+/**
+ * このページのすべてのボタンにイベントリスナーを設定する
+ */
+function setupEventListeners() {
+  document.getElementById('manualSyncBtn').addEventListener('click', manualSync);
+  document.getElementById('forceSyncBtn').addEventListener('click', forceSyncFromDrive);
+  document.getElementById('exportBtn').addEventListener('click', exportData);
+  // 「インポート」ボタンは、隠されたファイル入力をクリックさせる
+  document.getElementById('importBtn').addEventListener('click', () => {
+    document.getElementById('importFile').click();
+  });
+  document.getElementById('importFile').addEventListener('change', importData);
+  document.getElementById('resetBtn').addEventListener('click', resetAllData);
+}
+
 
 // ===================================================================================
 // データ管理 (司令塔への通知役)
@@ -50,22 +70,22 @@ async function notifyDataChange(data) {
 // ===================================================================================
 // UI更新
 // ===================================================================================
-function updateSyncStatus() {
+function updateSyncStatusUI() {
   const statusBadge = document.getElementById('syncStatus');
-  const syncButton = document.getElementById('manualSyncBtn');
-  const forceSyncButton = document.getElementById('forceSyncBtn'); // 強制同期ボタン
+  const manualSyncButton = document.getElementById('manualSyncBtn');
+  const forceSyncButton = document.getElementById('forceSyncBtn');
 
-  if (!statusBadge || !syncButton || !forceSyncButton) return;
+  if (!statusBadge || !manualSyncButton || !forceSyncButton) return;
 
   if (loginMode === 'google') {
     statusBadge.textContent = 'Google Drive';
     statusBadge.className = 'status-badge google';
-    syncButton.disabled = false;
+    manualSyncButton.disabled = false;
     forceSyncButton.disabled = false;
   } else {
     statusBadge.textContent = 'ローカルモード';
     statusBadge.className = 'status-badge local';
-    syncButton.disabled = true;
+    manualSyncButton.disabled = true;
     forceSyncButton.disabled = true;
   }
 }
@@ -79,7 +99,7 @@ function updateSyncStatus() {
  */
 async function manualSync() {
   console.log('📡 [settings.js] 司令塔に手動同期をリクエストします...');
-  showNotification('メインページにデータ同期をリクエストしています...', 'info');
+  showNotification('司令塔にデータ同期をリクエストしました。', 'info');
 
   const dataString = localStorage.getItem('budgetAppData');
   if (!dataString) {
@@ -103,7 +123,7 @@ async function forceSyncFromDrive() {
     return;
   }
   console.log('📡 [settings.js] 司令塔に強制同期をリクエストします...');
-  showNotification('メインページにDriveからの強制同期をリクエストしています...', 'info');
+  showNotification('司令塔にDriveからの強制同期をリクエストしました。ダッシュボード画面で進捗を確認してください。', 'info');
 
   dataChannel.postMessage({
     type: 'FORCE_SYNC_FROM_DRIVE_REQUEST'
@@ -132,64 +152,56 @@ function exportData() {
 
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'budget-app-data.json';
+  link.download = `budget-app-data-${new Date().toISOString().slice(0,10)}.json`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
-  showNotification('📤 データのエクスポートを開始しました。');
+  showNotification('📤 データのエクスポートを開始しました。', 'success');
 }
 
 /**
  * JSONファイルをインポートしてデータを復元する
  */
-async function importData() {
+async function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
   if (!confirm('現在のデータは上書きされます。バックアップファイルからデータを復元しますか？')) {
+    // ファイル選択をリセット
+    event.target.value = '';
     return;
   }
 
-  try {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/json,.json';
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const importedData = JSON.parse(e.target.result);
 
-    input.onchange = e => {
-      const file = e.target.files[0];
-      if (!file) return;
+      // ★★★ 安全性を高める「門番」チェック ★★★
+      const isValid = typeof importedData === 'object' &&
+        importedData !== null &&
+        Array.isArray(importedData.master) &&
+        Array.isArray(importedData.events);
 
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        try {
-          const importedData = JSON.parse(event.target.result);
+      if (!isValid) {
+        throw new Error('無効なデータ形式です。このアプリのバックアップファイルではありません。');
+      }
 
-          // ★★★ 安全性を高める「門番」チェック ★★★
-          const isValid = typeof importedData === 'object' &&
-            importedData !== null &&
-            Array.isArray(importedData.master) &&
-            Array.isArray(importedData.events);
+      // 司令塔にデータの変更を通知
+      await notifyDataChange(importedData);
 
-          if (!isValid) {
-            throw new Error('無効なデータ形式です。このアプリのバックアップファイルではありません。');
-          }
+      showNotification('✅ データのインポートが完了しました。司令塔が同期を開始します。', 'success');
 
-          // 司令塔にデータの変更を通知
-          await notifyDataChange(importedData);
-
-          showNotification('✅ データのインポートが完了しました。司令塔が同期を開始します。');
-
-        } catch (err) {
-          console.error('インポートエラー:', err);
-          showNotification(`インポートに失敗しました: ${err.message}`, 'error');
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
-
-  } catch (error) {
-    console.error('インポート処理の開始に失敗:', error);
-    showNotification('インポート処理を開始できませんでした。', 'error');
-  }
+    } catch (err) {
+      console.error('インポートエラー:', err);
+      showNotification(`インポートに失敗しました: ${err.message}`, 'error');
+    } finally {
+      // ファイル選択をリセット
+      event.target.value = '';
+    }
+  };
+  reader.readAsText(file);
 }
 
 /**
