@@ -312,11 +312,15 @@ function generateCalendar() {
     }
     const dayNumber = document.createElement('div');
     dayNumber.className = 'day-number';
-    // ▼▼▼ 修正: 数値を文字列に明示的に変換して、型の警告を解決 ▼▼▼
     dayNumber.textContent = String(day);
     dayEl.appendChild(dayNumber);
 
-    const recurringItems = masterData.filter(item => item.paymentDay === day && item.isActive);
+    const recurringItems = masterData.filter(item => {
+      if (!item.isActive) return false;
+      const paymentDate = getActualPaymentDate(item, currentYear, currentMonth);
+      return paymentDate && paymentDate.getDate() === day;
+    });
+
     recurringItems.forEach(item => {
       const itemEl = document.createElement('div');
       const typeClass = item.amount >= 0 ? 'income' : (item.type === 'loan' ? 'loan' : 'expense');
@@ -330,7 +334,7 @@ function generateCalendar() {
       const itemEl = document.createElement('div');
       const typeClass = item.amount >= 0 ? 'income' : 'expense';
       itemEl.className = `calendar-item ${typeClass}`;
-      const icon = item.amount < 0 ? '🛒' : '⚡️'; // 支出と収入でアイコンを分ける
+      const icon = item.amount < 0 ? '🛒' : '⚡️';
       itemEl.textContent = `${icon} ${item.description}`;
       dayEl.appendChild(itemEl);
     });
@@ -338,6 +342,7 @@ function generateCalendar() {
     calendarEl.appendChild(dayEl);
   }
 }
+
 
 function updateSummaryCards() {
   const summaryCardsEl = document.getElementById('summaryCards');
@@ -671,4 +676,37 @@ function renderSpotEvents() {
   } else {
     listEl.innerHTML = '';
   }
+}
+
+/**
+ * マスターデータの項目から、その月の実際の支払日をDateオブジェクトとして計算する
+ * @param {object} item - マスターデータの項目
+ * @param {number} year - 対象年
+ * @param {number} month - 対象月 (1-12)
+ * @returns {Date|null} - 計算された支払日のDateオブジェクト、または該当日がない場合はnull
+ */
+function getActualPaymentDate(item, year, month) {
+  if (!item.paymentDay) {
+    return null;
+  }
+
+  if (typeof item.paymentDay === 'number') {
+    // 通常の日付指定
+    return new Date(year, month - 1, item.paymentDay);
+  }
+
+  if (item.paymentDay === 'EOM') {
+    // 月末平日ルール
+    let date = new Date(year, month, 0); // その月の最終日を取得
+    let dayOfWeek = date.getDay();
+
+    if (dayOfWeek === 6) { // 土曜日
+      date.setDate(date.getDate() - 1);
+    } else if (dayOfWeek === 0) { // 日曜日
+      date.setDate(date.getDate() - 2);
+    }
+    return date;
+  }
+
+  return null;
 }
