@@ -111,20 +111,37 @@ async function handleGoogleLogin(response) {
 
   // トークンクライアントを初期化してアクセストークンを取得
   const client = google.accounts.oauth2.initTokenClient({
-    // ▼▼▼ ここにもあなたのクライアントIDを設定 ▼▼▼
     client_id: '45451544416-9c9vljcaqir137dudhoj0da6ndchlph1.apps.googleusercontent.com',
     scope: 'https://www.googleapis.com/auth/drive.file',
     callback: async (tokenResponse) => {
+      hideLoading(); // 先にローディングを隠す
       if (tokenResponse && tokenResponse.access_token) {
         googleAccessToken = tokenResponse.access_token;
         sessionStorage.setItem('googleAccessToken', googleAccessToken);
+
+        // UIをログイン後の状態に切り替える
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('appContainer').style.display = 'block';
         document.getElementById('userName').textContent = currentUser.name;
-        await initializeApplication();
+
+        // ▼▼▼ ここが修正点 ▼▼▼
+        // 料理長(initializeApplication)を呼ばず、自分で最初の同期を完結させる
+        showLoading('☁️ Google Driveと同期中...');
+        await syncWithDrive(); // 初回同期を実行
+        hideLoading();
+
+        // イベントリスナーのセットアップはここでも必要
+        setupEventListeners();
+
+      } else {
+        showNotification('Google Driveへのアクセス許可に失敗しました。', 'error');
       }
-      hideLoading();
     },
+    error_callback: (error) => {
+      hideLoading();
+      console.error('Token client error:', error);
+      showNotification(`認証中にエラーが発生しました: ${error.type}`, 'error');
+    }
   });
   client.requestAccessToken();
 }

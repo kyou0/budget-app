@@ -13,7 +13,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="家計簿アプリ">
-    <script src="js/shared.js" defer></script>
 </head>
 <body>
 <div id="notification-container"></div>
@@ -108,8 +107,22 @@
     </div>
 
 </div>
-<script src="js/common.js" defer></script>
-<script src="js/index.js"></script> <!-- deferを削除して、Googleのスクリプトより先に読み込ませる -->
+
+<!--
+  ▼▼▼ THIS IS THE FINAL FIX ▼▼▼
+  All local scripts are now loaded without 'defer' to ensure they execute in the correct order of dependency.
+  1. shared.js (common utilities like showNotification)
+  2. common.js (the communication 'dataChannel' and navigation)
+  3. index.js (the main logic for this page, which depends on the two above)
+-->
+<script src="js/shared.js"></script>
+<script src="js/common.js"></script>
+<script src="js/index.js"></script>
+
+<!--
+  Finally, the external Google script is loaded.
+  It can now reliably find the onGoogleLibraryLoad() function defined in index.js.
+-->
 <script src="https://accounts.google.com/gsi/client" async defer onload="onGoogleLibraryLoad()"></script>
 </body>
 </html>
