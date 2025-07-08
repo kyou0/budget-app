@@ -23,7 +23,11 @@
         <h1>財務司令塔</h1>
         <p>あなたの家計の羅針盤</p>
         <div class="login-actions">
-            <div id="googleLoginBtn" class="gsi-material-button"></div>
+            <!-- ▼▼▼ ここをシンプルなボタンに変更 ▼▼▼ -->
+            <button class="btn btn-primary" onclick="redirectToGoogleLogin()">
+                <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google logo" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 10px;">
+                Googleでログイン
+            </button>
             <button class="btn btn-secondary" onclick="localLogin()">ローカルモードで続ける</button>
         </div>
     </div>
@@ -60,8 +64,6 @@
             <!-- サマリーカードがここに表示されます -->
         </div>
 
-        <!-- ▼▼▼ 古いアコーディオンは完全に削除 ▼▼▼ -->
-
         <div class="card-style" id="oneTimeEventsList" style="margin-top: 20px;">
             <!-- 今月のスポットイベントがここに表示されます -->
         </div>
@@ -77,8 +79,6 @@
         </div>
     </div>
 </div>
-
-<!-- ▼▼▼ ここからが新しい部品 ▼▼▼ -->
 
 <!-- スポットイベント入力用モーダル -->
 <div class="modal-overlay" id="spotEventModal">
@@ -113,12 +113,8 @@
 
 <!-- フローティング・アクション・ボタン -->
 <button class="fab" id="showSpotEventModalBtn">+</button>
-
-<!-- ▲▲▲ ここまでが新しい部品 ▲▲▲ -->
-
 <script src="js/shared.js"></script>
 <script src="js/common.js"></script>
 <script src="js/index.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer onload="onGoogleLibraryLoad()"></script>
 </body>
 </html>

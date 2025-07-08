@@ -1,60 +1,159 @@
-// js/index.js
-
 // ===================================================================================
 // グローバル変数 & 状態管理
 // ===================================================================================
+const GOOGLE_CLIENT_ID = '45451544416-9c9vljcaqir137dudhoj0da6ndchlph1.apps.googleusercontent.com';
+const GOOGLE_REDIRECT_URI = 'https://kyou0.github.io';
+
 let googleAccessToken = null;
 let masterData = [];
 let oneTimeEvents = [];
 let currentUser = null;
 let loginMode = 'local';
 let currentMonth = new Date();
-let isSyncing = false; // 同期処理中のロックフラグ
+let isSyncing = false;
 
 // ===================================================================================
 // 初期化処理
 // ===================================================================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   console.log('🚀 アプリケーション起動');
-  const savedUser = localStorage.getItem('budgetAppUser');
-  if (savedUser) {
-    currentUser = JSON.parse(savedUser);
-    loginMode = currentUser.mode;
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('appContainer').style.display = 'block';
-    document.getElementById('userName').textContent = currentUser.name;
-    initializeApplication();
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const authCode = urlParams.get('code');
+
+  if (authCode) {
+    // Googleからのリダイレクト直後の場合
+    await handleGoogleRedirect(authCode);
+  } else {
+    // 通常の起動の場合
+    const savedUser = localStorage.getItem('budgetAppUser');
+    if (savedUser) {
+      currentUser = JSON.parse(savedUser);
+      loginMode = currentUser.mode;
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('appContainer').style.display = 'block';
+      document.getElementById('userName').textContent = currentUser.name;
+      await initializeApplication();
+    }
   }
+  // イベントリスナーは最後に一度だけ設定
+  setupEventListeners();
 });
+
 
 async function initializeApplication() {
   if (loginMode === 'google') {
     googleAccessToken = sessionStorage.getItem('googleAccessToken');
     if (!googleAccessToken) {
+      // アクセストークンがない場合はログアウトさせる
       logout();
       return;
     }
-
-    // ▼▼▼ ここからが新しいロジック ▼▼▼
+    // ページ遷移時のデータ再読み込みロジック
     const lastSync = parseInt(sessionStorage.getItem('lastSyncTime') || '0', 10);
     const now = Date.now();
-
-    // 最後の同期から5秒以内なら、Driveからの読み込みをスキップし、ローカルを信じる
     if (now - lastSync < 5000) {
       console.log("✅ 短時間内の再読み込みのため、ローカルデータを優先します。");
       await loadData();
       renderAll();
     } else {
-      // 5秒以上経過していれば、通常通りDriveと同期する
       await syncWithDrive();
     }
-    // ▲▲▲ ここまでが新しいロジック ▲▲▲
-
   } else {
+    // ローカルモードの場合
     await loadData();
     renderAll();
   }
-  setupEventListeners();
+}
+
+// ===================================================================================
+// Google認証 (リダイレクト方式)
+// ===================================================================================
+
+/**
+ * ユーザーをGoogleの認証ページにリダイレクトさせる
+ */
+function redirectToGoogleLogin() {
+  const oauth2Endpoint = 'https://accounts.google.com/o/oauth2/v2/auth';
+
+  const params = {
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: GOOGLE_REDIRECT_URI,
+    response_type: 'code',
+    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+    access_type: 'offline',
+    prompt: 'consent'
+  };
+
+  const url = `${oauth2Endpoint}?${new URLSearchParams(params)}`;
+  window.location.href = url;
+}
+
+/**
+ * Googleからのリダイレクト後、認証コードを使ってトークンを取得し、ログインを完了させる
+ * @param {string} code - URLから取得した認証コード
+ */
+async function handleGoogleRedirect(code) {
+  showLoading('🔐 Googleと通信中...');
+
+  // URLから認証コードを削除して、リロード時に再実行されるのを防ぐ
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  try {
+    // 1. 認証コードをアクセストークンに交換する
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code: code,
+        client_id: GOOGLE_CLIENT_ID,
+        redirect_uri: GOOGLE_REDIRECT_URI,
+        grant_type: 'authorization_code'
+      })
+    });
+
+    if (!tokenResponse.ok) {
+      throw new Error('トークンの取得に失敗しました。');
+    }
+
+    const tokenData = await tokenResponse.json();
+    googleAccessToken = tokenData.access_token;
+    sessionStorage.setItem('googleAccessToken', googleAccessToken);
+
+    // 2. アクセストークンを使ってユーザー情報を取得する
+    const profileResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+    });
+
+    if (!profileResponse.ok) {
+      throw new Error('ユーザー情報の取得に失敗しました。');
+    }
+    const profileData = await profileResponse.json();
+
+    // 3. ログイン処理を完了させる
+    currentUser = {
+      name: profileData.name,
+      email: profileData.email,
+      mode: 'google'
+    };
+    localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
+
+    // UIを更新
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'block';
+    document.getElementById('userName').textContent = currentUser.name;
+
+    // 最初の同期を実行
+    await syncWithDrive();
+
+  } catch (error) {
+    console.error("Google認証エラー:", error);
+    showNotification('Google認証に失敗しました。ログイン画面に戻ります。', 'error');
+    // エラーが起きたらログイン情報をクリアしてやり直せるようにする
+    logout();
+  } finally {
+    hideLoading();
+  }
 }
 
 function setupEventListeners() {
