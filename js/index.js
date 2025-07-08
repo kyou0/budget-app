@@ -281,10 +281,14 @@ window.changeMonth = function(delta) {
   renderAll();
 }
 
+// js/index.js
+
 function generateCalendar() {
   const calendarEl = document.getElementById('calendar');
   calendarEl.innerHTML = '';
-  const headers = ['日', '月', '火', '水', '木', '金', '土'];
+
+  // ▼▼▼ 修正: 週の始まりを月曜日に変更 ▼▼▼
+  const headers = ['月', '火', '水', '木', '金', '土', '日'];
   headers.forEach(header => {
     const headerEl = document.createElement('div');
     headerEl.className = 'calendar-day-header';
@@ -295,7 +299,9 @@ function generateCalendar() {
   const firstDay = new Date(currentYear, currentMonth - 1, 1);
   const lastDay = new Date(currentYear, currentMonth, 0);
   const daysInMonth = lastDay.getDate();
-  const startDayOfWeek = firstDay.getDay();
+  // ▼▼▼ 修正: 月曜始まりの場合の、最初の日の位置を計算 ▼▼▼
+  // (日曜日(0)を週の最後(6)として扱う)
+  const startDayOfWeek = (firstDay.getDay() + 6) % 7;
   const spotEventsThisMonth = getSpotEventsThisMonth();
 
   for (let i = 0; i < startDayOfWeek; i++) {
@@ -315,11 +321,26 @@ function generateCalendar() {
     dayNumber.textContent = String(day);
     dayEl.appendChild(dayNumber);
 
+    // ▼▼▼ 修正: 契約期間を考慮したフィルタリング ▼▼▼
     const recurringItems = masterData.filter(item => {
       if (!item.isActive) return false;
+
       const paymentDate = getActualPaymentDate(item, currentYear, currentMonth);
-      return paymentDate && paymentDate.getDate() === day;
+      if (!paymentDate || paymentDate.getMonth() !== currentMonth - 1) {
+        // 月末日計算などで月がずれた場合は除外
+        return false;
+      }
+
+      // 契約期間のチェック (収入項目の場合のみ)
+      if (item.type === 'income' && (item.contractStartDate || item.contractEndDate)) {
+        if (!isDateInRange(paymentDate, item.contractStartDate, item.contractEndDate)) {
+          return false; // 契約期間外なら表示しない
+        }
+      }
+
+      return paymentDate.getDate() === day;
     });
+    // ▲▲▲
 
     recurringItems.forEach(item => {
       const itemEl = document.createElement('div');
@@ -709,4 +730,40 @@ function getActualPaymentDate(item, year, month) {
   }
 
   return null;
+}
+
+// js/index.js
+
+// ▼▼▼ 新規追加 ▼▼▼
+/**
+ * 指定された日付が、契約期間内にあるかどうかを判定する
+ * @param {Date} date - チェック対象の日付
+ * @param {string | null} startDateStr - 契約開始日 (YYYY-MM-DD形式の文字列)
+ * @param {string | null} endDateStr - 契約終了日 (YYYY-MM-DD形式の文字列)
+ * @returns {boolean} 期間内であればtrue
+ */
+function isDateInRange(date, startDateStr, endDateStr) {
+  // Dateオブジェクトの時刻部分をリセットして、日付のみで比較する
+  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  // 開始日のチェック
+  if (startDateStr) {
+    const startDate = new Date(startDateStr);
+    // タイムゾーンの問題を避けるため、UTC基準で日付を調整
+    startDate.setMinutes(startDate.getMinutes() + startDate.getTimezoneOffset());
+    if (targetDate < startDate) {
+      return false; // 開始日より前は範囲外
+    }
+  }
+
+  // 終了日のチェック
+  if (endDateStr) {
+    const endDate = new Date(endDateStr);
+    endDate.setMinutes(endDate.getMinutes() + endDate.getTimezoneOffset());
+    if (targetDate > endDate) {
+      return false; // 終了日より後は範囲外
+    }
+  }
+
+  return true; // すべてのチェックをパス
 }
