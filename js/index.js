@@ -183,7 +183,6 @@ async function finalizeLogin(user) {
   await showApp();
 }
 
-
 // ===================================================================================
 // アプリ本体の初期化と描画
 // ===================================================================================
@@ -191,90 +190,53 @@ async function finalizeLogin(user) {
 /**
  * ログイン後のアプリ画面を表示・初期化する
  */
-// js/index.js
-
 async function showApp() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appContainer').style.display = 'block';
   document.getElementById('userName').textContent = currentUser.name;
 
+  // データの読み込み
   const dataKey = 'budgetAppData';
   const savedData = localStorage.getItem(dataKey);
   if (savedData) {
     try {
       const parsedData = JSON.parse(savedData);
       masterData = parsedData.master || [];
-      spotEvents = parsedData.spotEvents || [];
+      // 互換性のため、古いキー(spotEvents)も見るようにする
+      oneTimeEvents = parsedData.events || parsedData.spotEvents || [];
     } catch (e) {
       console.error("データの解析に失敗:", e);
       masterData = [];
-      spotEvents = [];
+      oneTimeEvents = [];
     }
   }
 
-  // ▼▼▼ 自動無効化機能をここで呼び出す ▼▼▼
+  // 契約ステータスの自動チェック（データ読み込み後に行う）
   await checkContractStatus();
-  // ▲▲▲
 
+  // 現在の日付を設定
   currentYear = new Date().getFullYear();
   currentMonth = new Date().getMonth() + 1;
 
-  updateHeader();
-  generateCalendar();
-  updateSummary();
-}
-
-/**
- * アプリのデータ読み込みと描画を開始する
- */
-async function initializeApp() {
-  if (loginMode === 'google' && !sessionStorage.getItem('googleAccessToken')) {
-    requestDriveAccess();
-    return;
-  }
-  await loadData();
+  // 全てのUIを再描画
   renderAll();
+
+  // ログイン直後のみ通知を表示
   if (sessionStorage.getItem('justLoggedIn')) {
     showNotification(`✅ ${currentUser.name}としてログインしました`);
     sessionStorage.removeItem('justLoggedIn');
   }
 }
 
-// ===================================================================================
-// 全てのUIコンポーネントを再描画する
-// ===================================================================================
+/**
+ * 全てのUIコンポーネントを再描画する
+ */
 function renderAll() {
   updateCurrentMonthDisplay();
-  renderSpotEvents(); // ★修正：関数名をより分かりやすく変更
+  renderSpotEvents();
   generateCalendar();
   updateSummaryCards();
   generateFinancialForecast();
-}
-
-
-// ===================================================================================
-// データ管理
-// ===================================================================================
-async function loadData() {
-  const dataKey = 'budgetAppData';
-  const savedData = localStorage.getItem(dataKey);
-  if (savedData) {
-    try {
-      const parsedData = JSON.parse(savedData);
-      masterData = parsedData.master || [];
-      oneTimeEvents = parsedData.events || [];
-    } catch (e) {
-      console.error("ローカルデータの解析に失敗", e);
-      masterData = [];
-      oneTimeEvents = [];
-    }
-  } else {
-    masterData = [];
-    oneTimeEvents = [];
-    if (loginMode === 'google') {
-      await syncWithDrive();
-    }
-  }
 }
 
 // ===================================================================================
@@ -405,26 +367,42 @@ function generateCalendar() {
   }
 }
 
-
 function updateSummaryCards() {
   const summaryCardsEl = document.getElementById('summaryCards');
   summaryCardsEl.innerHTML = '';
 
-  const activeItems = masterData.filter(item => item.isActive);
-  const recurringIncome = activeItems.filter(i => i.type === 'income').reduce((sum, i) => sum + i.amount, 0);
-  const recurringExpense = activeItems.filter(i => i.amount < 0).reduce((sum, i) => sum + i.amount, 0);
+  // ▼▼▼ 収入計算ロジックを、新しい計算エンジンに置き換え ▼▼▼
+  let actualRecurringIncome = 0;
+  masterData
+    .filter(item => item.type === ITEM_TYPES.INCOME && item.isActive && item.incomeDetails)
+    .forEach(item => {
+      // 当月の稼働に対する入金額を計算
+      const event = calculateIncomeEvent(item, currentYear, currentMonth);
+      if (event) {
+        // 注：この計算は「当月稼働分」の収入。支払いが翌々月なら、カレンダー上の収入とは異なる。
+        // サマリーとしては「今月発生した収入」として計上するのが一般的。
+        actualRecurringIncome += event.amount;
+      }
+    });
+  // ▲▲▲
+
+  const recurringExpense = masterData
+    .filter(item => item.isActive && item.amount < 0 && item.type !== ITEM_TYPES.INCOME)
+    .reduce((sum, i) => sum + i.amount, 0);
 
   const spotEventsThisMonth = getSpotEventsThisMonth();
   const spotIncome = spotEventsThisMonth.filter(e => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
   const spotExpense = spotEventsThisMonth.filter(e => e.amount < 0).reduce((sum, e) => sum + e.amount, 0);
 
-  const totalIncome = recurringIncome + spotIncome;
+  const totalIncome = actualRecurringIncome + spotIncome;
   const totalExpense = recurringExpense + spotExpense;
   const balance = totalIncome + totalExpense;
-  const fixedCost = activeItems.filter(i => ['fixed', 'tax', 'loan'].includes(i.type)).reduce((sum, i) => sum + i.amount, 0);
+  const fixedCost = masterData
+    .filter(item => item.isActive && ['fixed', 'tax', 'loan'].includes(item.type))
+    .reduce((sum, i) => sum + i.amount, 0);
 
   const cards = [
-    { title: '総収入', amount: totalIncome, class: 'income' },
+    { title: '総収入 (今月発生分)', amount: totalIncome, class: 'income' },
     { title: '総支出', amount: totalExpense, class: 'expense' },
     { title: '収支', amount: balance, class: balance >= 0 ? 'income' : 'expense' },
     { title: '固定費', amount: fixedCost, class: 'expense' }
@@ -435,8 +413,7 @@ function updateSummaryCards() {
     cardEl.className = 'summary-card';
     cardEl.innerHTML = `
             <h3>${card.title}</h3>
-            <div class="amount ${card.class}">¥${card.amount.toLocaleString()}</div>
-        `;
+            <div class="amount ${card.class}">¥${card.amount.toLocaleString()}</div>`;
     summaryCardsEl.appendChild(cardEl);
   });
 }
@@ -771,58 +748,6 @@ function getActualPaymentDate(item, year, month) {
   }
 
   return null;
-}
-
-// js/index.js
-
-// ▼▼▼ 新規追加 ▼▼▼
-/**
- * 指定された日付が、契約期間内にあるかどうかを判定する
- * @param {Date} date - チェック対象の日付
- * @param {string | null} startDateStr - 契約開始日 (YYYY-MM-DD形式の文字列)
- * @param {string | null} endDateStr - 契約終了日 (YYYY-MM-DD形式の文字列)
- * @returns {boolean} 期間内であればtrue
- */
-function isDateInRange(date, startDateStr, endDateStr) {
-  // Dateオブジェクトの時刻部分をリセットして、日付のみで比較する
-  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-  // 開始日のチェック
-  if (startDateStr) {
-    const startDate = new Date(startDateStr);
-    // タイムゾーンの問題を避けるため、UTC基準で日付を調整
-    startDate.setMinutes(startDate.getMinutes() + startDate.getTimezoneOffset());
-    if (targetDate < startDate) {
-      return false; // 開始日より前は範囲外
-    }
-  }
-
-  // 終了日のチェック
-  if (endDateStr) {
-    const endDate = new Date(endDateStr);
-    endDate.setMinutes(endDate.getMinutes() + endDate.getTimezoneOffset());
-    if (targetDate > endDate) {
-      return false; // 終了日より後は範囲外
-    }
-  }
-
-  return true; // すべてのチェックをパス
-}
-
-// js/index.js
-
-// ▼▼▼ ここからが、今回追加する新しい「頭脳」と「機能」です ▼▼▼
-
-/**
- * データをローカルストレージに保存する (master.jsから移植)
- */
-async function saveData() {
-  const dataToSave = {
-    master: masterData,
-    spotEvents: spotEvents,
-  };
-  localStorage.setItem('budgetAppData', JSON.stringify(dataToSave));
-  console.log('💾 [localモード] データをストレージに保存しました。');
 }
 
 /**

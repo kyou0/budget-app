@@ -1,28 +1,4 @@
 // ===================================================================================
-// グローバル変数 & 初期設定
-// ===================================================================================
-
-const PAYMENT_DAY_RULES = {
-  END_OF_MONTH_WEEKDAY: 'EOM', // 月末平日
-};
-
-const ITEM_TYPES = {
-  INCOME: 'income',
-  LOAN: 'loan',
-  CARD: 'card',
-  FIXED: 'fixed',
-  BANK: 'bank',
-  TAX: 'tax',
-  VARIABLE: 'variable',
-};
-
-let currentUser = null;
-let masterData = [];
-let loginMode = 'local';
-let currentCategory = 'all';
-let editingItemId = null;
-
-// ===================================================================================
 // 初期化処理
 // ===================================================================================
 // js/master.js
