@@ -103,6 +103,7 @@ window.localLogin = function() {
   currentUser = { name: 'ローカルユーザー', mode: 'local' };
   loginMode = 'local';
   localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
+  sessionStorage.setItem('justLoggedIn', 'true');
   showApp();
 }
 
@@ -124,6 +125,7 @@ function handleGoogleLoginSuccess(response) {
   };
   loginMode = 'google';
   localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
+  sessionStorage.setItem('justLoggedIn', 'true');
 
   showApp();
 }
@@ -171,7 +173,11 @@ async function initializeApp() {
   }
   await loadData();
   renderAll();
-  showNotification(`✅ ${currentUser.name}としてログインしました`);
+  if (sessionStorage.getItem('justLoggedIn')) {
+    showNotification(`✅ ${currentUser.name}としてログインしました`);
+    // 一度表示したら、印を消す
+    sessionStorage.removeItem('justLoggedIn');
+  }
 }
 
 // ===================================================================================

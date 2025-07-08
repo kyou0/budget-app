@@ -180,6 +180,8 @@ function hideAddForm() {
   editingItemId = null;
 }
 
+// js/master.js
+
 async function saveItem() {
   // 基本情報の取得
   const name = document.getElementById('itemName').value.trim();
@@ -194,18 +196,20 @@ async function saveItem() {
     return;
   }
 
-  if (type === 'bank') {
+  // ユーザーは常にプラスの数字を入力すればOK。コードが裏で符号を自動調整する。
+  if (['expense', 'fixed', 'tax', 'loan', 'card', 'variable'].includes(type)) {
+    // 支出に関連するタイプは、必ず「負の数」として保存する
+    amount = -Math.abs(amount);
+  } else {
+    // 収入(income)や銀行(bank)は、必ず「正の数」として保存する
     amount = Math.abs(amount);
   }
 
-  // ▼▼▼ 修正箇所 ▼▼▼
-  // 借入詳細情報を、より詳細に取得する
   let loanDetails = null;
   if (type === 'loan') {
     const interestRate = parseFloat(document.getElementById('interestRate').value);
     const currentBalance = parseInt(document.getElementById('currentBalance').value, 10);
 
-    // 借金の場合、必須項目をチェック
     if (isNaN(interestRate) || isNaN(currentBalance)) {
       showNotification('借金の場合、年利率と現在の残高は必須です。', 'error');
       return;
@@ -215,7 +219,7 @@ async function saveItem() {
       initialAmount: parseInt(document.getElementById('initialAmount').value, 10) || 0,
       loanDate: document.getElementById('loanDate').value || null,
       interestRate: interestRate,
-      currentBalance: currentBalance,
+      currentBalance: Math.abs(currentBalance), // 残高も念のため正の数で統一
       loanType: document.getElementById('loanType').value,
       maxLimit: parseInt(document.getElementById('maxLimit').value, 10) || 0,
     };
