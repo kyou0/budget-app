@@ -17,12 +17,14 @@ let oneTimeEvents = [];
 // ===================================================================================
 // 初期化処理
 // ===================================================================================
+// js/index.js
 
 /**
  * Googleのライブラリが読み込み完了したときに呼び出される
  */
 window.onGoogleLibraryLoad = function() {
   console.log('✅ Googleライブラリの読み込み完了');
+  const googleLoginBtn = document.getElementById('googleLoginBtn');
 
   // 認証クライアントを初期化
   try {
@@ -40,9 +42,24 @@ window.onGoogleLibraryLoad = function() {
       callback: handleTokenResponse,
     });
 
+    // ★★★ ここが最重要修正箇所 ★★★
+    // Googleの初期化が完了したので、ログインボタンを有効化する
+    if (googleLoginBtn) {
+      googleLoginBtn.disabled = false;
+      // ボタンのテキストとアイコンを元に戻す
+      googleLoginBtn.innerHTML = `
+            <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" style="width: 20px; vertical-align: middle; margin-right: 10px;">
+            Googleでログイン
+        `;
+    }
+
   } catch (e) {
     console.error("Googleライブラリの初期化に失敗しました。", e);
     showNotification('Googleライブラリの初期化に失敗しました。ページを再読み込みしてください。', 'error');
+    // エラーが起きた場合も、ボタンのテキストを分かりやすく変更
+    if (googleLoginBtn) {
+      googleLoginBtn.textContent = 'Googleログインでエラー';
+    }
   }
 }
 
