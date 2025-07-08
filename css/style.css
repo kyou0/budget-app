@@ -579,3 +579,40 @@ body {
     grid-template-columns: 1fr 1fr; /* 2列グリッド */
     gap: 10px;
 }
+
+/* =================================================================================== */
+/* 7. アコーディオン (スポットイベント入力用)                                       */
+/* =================================================================================== */
+
+.accordion .accordion-header {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    /* ヘッダー部分にはcardのpaddingを適用しないように調整 */
+    margin: -15px -20px;
+    padding: 15px 20px;
+}
+
+.accordion .accordion-header:hover {
+    background-color: #f9f9f9;
+}
+
+.accordion .accordion-header .accordion-icon {
+    font-size: 1em;
+    font-weight: bold;
+    color: #3498db;
+    transition: transform 0.3s ease-in-out;
+}
+
+.accordion .accordion-header.active .accordion-icon {
+    transform: rotate(90deg);
+}
+
+.accordion .accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease-out, padding-top 0.4s ease-out, padding-bottom 0.4s ease-out;
+    padding-left: 0;
+    padding-right: 0;
+}

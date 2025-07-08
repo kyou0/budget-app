@@ -64,32 +64,35 @@
         <div class="summary-cards" id="summaryCards">
             <!-- サマリーカードがここに表示されます -->
         </div>
-
-        <div id="quickEntryContainer" class="card-style">
-            <h3>⚡️ スポットイベント入力</h3>
-            <p>臨時収入や、予定外の大きな支出などをここから登録できます。</p>
-            <div class="form-grid-4col">
-                <div class="form-group">
-                    <label for="eventDate">日付</label>
-                    <input type="date" id="eventDate">
-                </div>
-                <div class="form-group">
-                    <label for="eventDescription">内容</label>
-                    <input type="text" id="eventDescription" placeholder="例: A社 新規案件">
-                </div>
-                <div class="form-group">
-                    <label for="eventAmount">金額</label>
-                    <input type="number" id="eventAmount" placeholder="収入は正、支出は負">
-                </div>
-                <div class="form-group">
-                    <label for="eventBankId">対象銀行</label>
-                    <select id="eventBankId"></select>
-                </div>
+        <div class="card accordion" id="spot-event-accordion">
+            <div class="accordion-header" id="spotEventAccordionHeader">
+                <h3>⚡️ スポットイベント入力</h3>
+                <span class="accordion-icon">▶</span>
             </div>
-            <button class="btn btn-primary" onclick="addOneTimeEvent()">イベントを追加</button>
-
-            <div id="oneTimeEventsList" class="events-list">
-                <!-- 今月のスポットイベントがここに表示されます -->
+            <div class="accordion-content" id="spotEventAccordionContent">
+                <p>臨時収入や、予定外の大きな支出などをここから登録できます。</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="spotDate">日付</label>
+                        <input type="date" id="spotDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="spotType">種別</label>
+                        <select id="spotType">
+                            <option value="expense">支出</option>
+                            <option value="income">収入</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="spotAmount">金額</label>
+                    <input type="number" id="spotAmount" placeholder="例: 10000 (プラスで入力)">
+                </div>
+                <div class="form-group">
+                    <label for="spotDescription">内容</label>
+                    <input type="text" id="spotDescription" placeholder="例: 友人への立替金返済">
+                </div>
+                <button class="btn btn-primary" style="width: 100%;" onclick="addSpotEvent()">追加</button>
             </div>
         </div>
 
