@@ -78,7 +78,8 @@ function hideLoading() {
 function onGoogleLibraryLoad() {
   const googleLoginBtn = document.getElementById('googleLoginBtn');
   google.accounts.id.initialize({
-    client_id: 'YOUR_CLIENT_ID.apps.googleusercontent.com', // あなたのクライアントIDに置き換えてください
+    // ▼▼▼ ここにあなたのクライアントIDを設定 ▼▼▼
+    client_id: 'https://kyou0.github.io',
     callback: handleGoogleLogin,
   });
   googleLoginBtn.textContent = 'Googleでログイン';
@@ -103,7 +104,8 @@ async function handleGoogleLogin(response) {
 
   // トークンクライアントを初期化してアクセストークンを取得
   const client = google.accounts.oauth2.initTokenClient({
-    client_id: 'YOUR_CLIENT_ID.apps.googleusercontent.com', // あなたのクライアントIDに置き換えてください
+    // ▼▼▼ ここにもあなたのクライアントIDを設定 ▼▼▼
+    client_id: 'あなたのクライアントIDをここに貼り付け.apps.googleusercontent.com',
     scope: 'https://www.googleapis.com/auth/drive.file',
     callback: async (tokenResponse) => {
       if (tokenResponse && tokenResponse.access_token) {
@@ -129,6 +131,7 @@ function localLogin() {
   initializeApplication();
 }
 
+// (これ以降のコードは変更ありません)
 // ===================================================================================
 // データ管理 (司令塔)
 // ===================================================================================
