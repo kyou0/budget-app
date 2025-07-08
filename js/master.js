@@ -1,3 +1,5 @@
+// js/master.js
+
 // ===================================================================================
 // グローバル変数
 // ===================================================================================
@@ -6,13 +8,12 @@ let currentUser = null;
 let loginMode = 'local';
 let editingItemId = null;
 let currentCategory = 'all';
+
 // ===================================================================================
 // 初期化処理
 // ===================================================================================
-
-document.addEventListener('DOMContentLoaded', async function() { // <-- asyncを追加
+document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 マスター管理ページ起動');
-  const appContainer = document.getElementById('appContainer');
 
   const savedUserJSON = localStorage.getItem('budgetAppUser');
   if (!savedUserJSON) {
@@ -20,30 +21,45 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- asyncを
     return;
   }
 
-  appContainer.style.display = 'block';
+  document.getElementById('appContainer').style.display = 'block';
   currentUser = JSON.parse(savedUserJSON);
   loginMode = currentUser.mode;
-
   document.getElementById('userName').textContent = currentUser.name;
 
-  populatePaymentDaySelect();
+  loadData();
+  renderAll();
+  // イベントリスナーはここに集約すると管理しやすい
+  setupEventListeners();
+});
 
-  try {
-    await loadData();
-    renderAll();
-  } catch (error) {
-    console.error("初期化処理中にエラーが発生しました:", error);
-    showNotification('データの読み込みに失敗しました。', 'error');
-  }
+function setupEventListeners() {
+  // カテゴリ選択
+  document.getElementById('categoryList').addEventListener('click', (e) => {
+    const target = e.target.closest('.category-item');
+    if (target) {
+      showCategory(target.dataset.category, target);
+    }
+  });
 
-  // --- イベントリスナー ---
-  document.getElementById('itemType')?.addEventListener('change', updateFormFields);
+  // フォームの種別変更
+  document.getElementById('itemType').addEventListener('change', updateFormFields);
 
-  document.getElementById('itemsGrid').addEventListener('click', async function(event) {
-    const button = event.target.closest('button.btn-action');
+  // フォームの保存・キャンセル
+  document.querySelector('.form-actions .btn-primary').addEventListener('click', saveItem);
+  document.querySelector('.form-actions .btn-secondary').addEventListener('click', hideAddForm);
+
+  // データ管理ボタン
+  document.querySelector('.data-management-actions .btn-primary').addEventListener('click', showAddForm);
+  document.querySelector('.data-management-actions .btn-secondary').addEventListener('click', loadSampleData);
+  document.querySelector('.data-management-actions .btn-info').addEventListener('click', exportData);
+  document.querySelector('.data-management-actions .btn-danger').addEventListener('click', resetAllData);
+
+  // 項目リストの編集・削除（イベント委任）
+  document.getElementById('itemsGrid').addEventListener('click', async (e) => {
+    const button = e.target.closest('button.btn-action');
     if (!button) return;
+
     const card = button.closest('.item-card');
-    if (!card) return;
     const itemId = parseInt(card.dataset.id, 10);
 
     if (button.classList.contains('edit')) {
@@ -52,26 +68,24 @@ document.addEventListener('DOMContentLoaded', async function() { // <-- asyncを
       await deleteItem(itemId);
     }
   });
-});
+}
+
 
 // ===================================================================================
-// データ管理
+// データ管理 (司令塔への通知役)
 // ===================================================================================
-async function loadData() {
-  const dataKey = 'budgetAppData';
-  const savedData = localStorage.getItem(dataKey);
+function loadData() {
+  const savedData = localStorage.getItem('budgetAppData');
   if (savedData) {
     try {
       const parsedData = JSON.parse(savedData);
       masterData = parsedData.master || [];
-      console.log(`📂 [${loginMode}モード] ストレージからデータを読み込みました。`);
     } catch (e) {
-      console.error("データの解析に失敗:", e);
+      console.error("ローカルデータの解析に失敗:", e);
       masterData = [];
     }
   } else {
-    console.log('ストレージにデータがありません。');
-    masterData = [];
+    console.log("ストレージにデータがありません。");
   }
 }
 
@@ -97,181 +111,189 @@ async function saveData() {
 }
 
 // ===================================================================================
-// メイン描画処理
+// UI描画
 // ===================================================================================
 function renderAll() {
   renderMasterList();
   updateStats();
   updateCategoryCounts();
+  populatePaymentDaySelect();
 }
 
 function renderMasterList() {
   const itemsGrid = document.getElementById('itemsGrid');
   itemsGrid.innerHTML = '';
-  const filteredData = currentCategory === 'all' ? masterData : masterData.filter(item => item.type === currentCategory);
+
+  const filteredData = masterData.filter(item =>
+    currentCategory === 'all' || item.type === currentCategory
+  );
 
   if (filteredData.length === 0) {
-    itemsGrid.innerHTML = `<div class="empty-list-message">表示する項目がありません。</div>`;
+    itemsGrid.innerHTML = '<p class="no-data-message">このカテゴリには項目がありません。</p>';
     return;
   }
 
-  filteredData.sort((a, b) => a.name.localeCompare(b.name, 'ja')).forEach(item => {
-    const itemCard = document.createElement('div');
-    itemCard.className = 'item-card';
-    itemCard.dataset.id = item.id;
+  filteredData.forEach(item => {
+    const card = document.createElement('div');
+    card.className = `item-card ${item.type} ${item.isActive ? '' : 'inactive'}`;
+    card.dataset.id = item.id;
 
-    const icon = {
-      [ITEM_TYPES.INCOME]: '💰', [ITEM_TYPES.LOAN]: '💸', [ITEM_TYPES.CARD]: '💳',
-      [ITEM_TYPES.FIXED]: '🏠', [ITEM_TYPES.BANK]: '🏦', [ITEM_TYPES.TAX]: '🏛️',
-      [ITEM_TYPES.VARIABLE]: '🛒'
-    }[item.type] || '📄';
-
-    const amountColor = item.amount >= 0 ? 'income' : 'expense';
-    const statusClass = item.isActive ? 'active' : '';
-    const statusText = item.isActive ? '✅ 有効' : '❌ 無効';
-
-    // ▼▼▼ 表示ロジックを大幅にアップグレード ▼▼▼
-    let amountLabelText = '金額:';
-    let amountText = `¥${Math.abs(item.amount).toLocaleString()}`;
-    let detailsHtml = '';
-
-    if (item.type === ITEM_TYPES.INCOME && item.incomeDetails) {
-      const details = item.incomeDetails;
-      amountLabelText = '基準月収:';
-      amountText = `¥${details.baseAmount.toLocaleString()}`;
-
-      const start = details.contractStartDate ? new Date(details.contractStartDate).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }) : '未設定';
-      const end = details.contractEndDate ? new Date(details.contractEndDate).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }) : '継続中';
-      const offsetOptions = { 0: '当月', 1: '翌月', 2: '翌々月', 3: '3ヶ月後' };
-      const paymentCycle = `${offsetOptions[details.paymentMonthOffset] || ''} ${details.paymentDate || ''}日払い`;
-
-      detailsHtml += `<div class="item-detail"><span class="item-label">契約期間:</span><span class="item-value">${start} 〜 ${end}</span></div>`;
-      detailsHtml += `<div class="item-detail"><span class="item-label">支払いサイクル:</span><span class="item-value">${paymentCycle}</span></div>`;
-
-    } else if (item.type === ITEM_TYPES.LOAN && item.loanDetails) {
-      amountLabelText = '月々返済額:';
-      detailsHtml += `<hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">`;
-      detailsHtml += `<div class="item-detail"><span class="item-label">現在の残高:</span><span class="item-value expense">¥${item.loanDetails.currentBalance.toLocaleString()}</span></div>`;
-      detailsHtml += `<div class="item-detail"><span class="item-label">年利率:</span><span class="item-value">${item.loanDetails.interestRate}%</span></div>`;
-
-    } else if (item.type !== ITEM_TYPES.BANK) {
-      const labels = {
-        [ITEM_TYPES.CARD]: '想定利用額:', [ITEM_TYPES.FIXED]: '固定費額:',
-        [ITEM_TYPES.TAX]: '税金額:', [ITEM_TYPES.VARIABLE]: '想定予算額:',
-      };
-      amountLabelText = labels[item.type] || '金額:';
-
-      let paymentDayText = '未設定';
-      if (item.paymentDay) {
-        if (item.paymentDay === PAYMENT_DAY_RULES.END_OF_MONTH_WEEKDAY) {
-          paymentDayText = '月末の平日';
-        } else {
-          paymentDayText = `${item.paymentDay}日`;
-        }
-      }
-      detailsHtml += `<div class="item-detail"><span class="item-label">支払日:</span><span class="item-value">${paymentDayText}</span></div>`;
-    } else {
-      amountLabelText = '現在の残高:';
+    let amountDisplay = '';
+    if (item.amount) {
+      amountDisplay = `<div class="item-amount">¥${Math.abs(item.amount).toLocaleString()}</div>`;
     }
 
-    if (item.sourceBankId) {
-      const bank = masterData.find(b => b.id === item.sourceBankId);
-      if (bank) {
-        const label = item.type === ITEM_TYPES.INCOME ? '振込先:' : '支払元:';
-        detailsHtml += `<div class="item-detail"><span class="item-label">${label}</span><span class="item-value">${bank.name}</span></div>`;
-      }
-    }
-    // ▲▲▲
-
-    itemCard.innerHTML = `
-      <div class="item-card-header"><span class="item-icon">${icon}</span><h4 class="item-name">${item.name}</h4><span class="item-status ${statusClass}">${statusText}</span></div>
-      <div class="item-card-body">
-          <div class="item-detail"><span class="item-label">${amountLabelText}</span><span class="item-value ${amountColor}">${amountText}</span></div>
-          ${detailsHtml}
-      </div>
-      <div class="item-card-actions">
-          <button class="btn-action edit">✏️ 編集</button>
-          <button class="btn-action delete">🗑️ 削除</button>
-      </div>`;
-    itemsGrid.appendChild(itemCard);
+    card.innerHTML = `
+            <div class="item-card-header">
+                <span class="item-name">${item.name}</span>
+                <span class="item-status ${item.isActive ? 'active' : ''}">${item.isActive ? '✅ 有効' : '❌ 無効'}</span>
+            </div>
+            ${amountDisplay}
+            <div class="item-actions">
+                <button class="btn-small btn-action edit">編集</button>
+                <button class="btn-small btn-action delete">削除</button>
+            </div>
+        `;
+    itemsGrid.appendChild(card);
   });
 }
 
+function updateStats() {
+  const activeItems = masterData.filter(item => item.isActive);
+  const loans = activeItems.filter(item => item.type === 'loan' && item.loanDetails);
+  const totalDebt = loans.reduce((sum, item) => sum + item.loanDetails.currentBalance, 0);
+  const monthlyRepayment = loans.reduce((sum, item) => sum + Math.abs(item.amount), 0);
+
+  document.getElementById('statTotalItems').textContent = masterData.length;
+  document.getElementById('statActiveItems').textContent = activeItems.length;
+  document.getElementById('statTotalDebt').textContent = `¥${totalDebt.toLocaleString()}`;
+  document.getElementById('statMonthlyRepayment').textContent = `¥${monthlyRepayment.toLocaleString()}`;
+}
+
+function updateCategoryCounts() {
+  const counts = { all: masterData.length };
+  Object.values(ITEM_TYPES).forEach(type => {
+    counts[type] = masterData.filter(item => item.type === type).length;
+    const countEl = document.getElementById(`count${type.charAt(0).toUpperCase() + type.slice(1)}`);
+    if (countEl) {
+      countEl.textContent = counts[type];
+    }
+  });
+  document.getElementById('countAll').textContent = counts.all;
+}
+
+function populatePaymentDaySelect() {
+  const paymentDaySelect = document.getElementById('paymentDay');
+  const specificDaysGroup = paymentDaySelect.querySelector('optgroup[label="特定の日付"]');
+  specificDaysGroup.innerHTML = ''; // Clear existing options
+  for (let i = 1; i <= 31; i++) {
+    const option = document.createElement('option');
+    option.value = i;
+    option.textContent = `${i}日`;
+    specificDaysGroup.appendChild(option);
+  }
+}
+
 // ===================================================================================
-// フォーム関連の処理
+// フォームと項目管理
 // ===================================================================================
+function showCategory(category, element) {
+  currentCategory = category;
+  document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
+  element.classList.add('active');
+  const categoryName = element.querySelector('.category-info span').textContent;
+  document.getElementById('categoryTitle').textContent = `${categoryName}の項目`;
+  renderMasterList();
+}
+
 function showAddForm() {
   editingItemId = null;
-  const form = document.getElementById('addForm');
-  form.style.display = 'block';
-  form.reset();
+  document.getElementById('addForm').reset();
   document.getElementById('formTitle').textContent = '➕ 新規項目追加';
-  document.getElementById('isActive').value = 'true';
-  form.scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('addForm').style.display = 'block';
   updateFormFields();
   populateBankSelect();
 }
 
-// js/master.js
-
 function showEditForm(itemId) {
-  const itemToEdit = masterData.find(item => item.id === itemId);
-  if (!itemToEdit) return;
+  const item = masterData.find(i => i.id === itemId);
+  if (!item) return;
+
   editingItemId = itemId;
+  document.getElementById('addForm').reset();
+  document.getElementById('formTitle').textContent = `✏️ 「${item.name}」を編集`;
 
-  document.getElementById('itemName').value = itemToEdit.name;
-  document.getElementById('itemType').value = itemToEdit.type;
-  document.getElementById('isActive').value = String(itemToEdit.isActive);
+  document.getElementById('itemName').value = item.name;
+  document.getElementById('itemType').value = item.type;
+  document.getElementById('isActive').value = String(item.isActive);
 
-  // フォームを一旦リセット
-  document.getElementById('baseAmount').value = '';
-  document.getElementById('workingDaysPerMonth').value = '';
-  document.getElementById('contractStartDate').value = '';
-  document.getElementById('contractEndDate').value = '';
-  document.getElementById('paymentDate').value = '';
-  document.getElementById('itemAmount').value = String(Math.abs(itemToEdit.amount));
+  populateBankSelect(); // 先に銀行リストを生成
+  document.getElementById('itemSourceBank').value = item.sourceBankId || '';
 
-  if (itemToEdit.type === ITEM_TYPES.INCOME && itemToEdit.incomeDetails) {
-    // ▼▼▼ 新しい収入詳細をフォームに反映 ▼▼▼
-    const details = itemToEdit.incomeDetails;
-    document.getElementById('baseAmount').value = details.baseAmount || '';
+  if (item.type === ITEM_TYPES.INCOME && item.incomeDetails) {
+    const details = item.incomeDetails;
+    document.getElementById('itemAmount').value = details.baseAmount;
+    document.getElementById('baseAmount').value = details.baseAmount;
     document.getElementById('workingDaysPerMonth').value = details.workingDaysPerMonth || '';
     document.getElementById('contractStartDate').value = details.contractStartDate || '';
     document.getElementById('contractEndDate').value = details.contractEndDate || '';
     document.getElementById('closingDay').value = details.closingDay || 'EOM';
-    document.getElementById('paymentMonthOffset').value = details.paymentMonthOffset !== undefined ? String(details.paymentMonthOffset) : '2';
+    document.getElementById('paymentMonthOffset').value = details.paymentMonthOffset;
     document.getElementById('paymentDate').value = details.paymentDate || '';
   } else {
-    // 収入以外、または古いデータの場合
-    document.getElementById('paymentDay').value = itemToEdit.paymentDay ? String(itemToEdit.paymentDay) : '';
+    document.getElementById('itemAmount').value = Math.abs(item.amount) || '';
+    document.getElementById('paymentDay').value = item.paymentDay || '';
+  }
+
+  if (item.type === ITEM_TYPES.LOAN && item.loanDetails) {
+    const details = item.loanDetails;
+    document.getElementById('initialAmount').value = details.initialAmount || '';
+    document.getElementById('loanDate').value = details.loanDate || '';
+    document.getElementById('interestRate').value = details.interestRate || '';
+    document.getElementById('currentBalance').value = details.currentBalance || '';
+    document.getElementById('loanType').value = details.loanType || '消費者金融';
+    document.getElementById('maxLimit').value = details.maxLimit || '';
   }
 
   updateFormFields();
-  populateBankSelect();
-
-  if (itemToEdit.sourceBankId) {
-    document.getElementById('itemSourceBank').value = String(itemToEdit.sourceBankId);
-  }
-
-  if (itemToEdit.type === ITEM_TYPES.LOAN && itemToEdit.loanDetails) {
-    document.getElementById('initialAmount').value = String(itemToEdit.loanDetails.initialAmount || '');
-    document.getElementById('loanDate').value = itemToEdit.loanDetails.loanDate || '';
-    document.getElementById('interestRate').value = String(itemToEdit.loanDetails.interestRate || '');
-    document.getElementById('currentBalance').value = String(itemToEdit.loanDetails.currentBalance || '');
-    document.getElementById('loanType').value = itemToEdit.loanDetails.loanType || '消費者金融';
-    document.getElementById('maxLimit').value = String(itemToEdit.loanDetails.maxLimit || '');
-  }
-
-  document.getElementById('formTitle').textContent = '✏️ 項目の編集';
   document.getElementById('addForm').style.display = 'block';
-  document.getElementById('addForm').scrollIntoView({ behavior: 'smooth' });
+  window.scrollTo(0, document.getElementById('addForm').offsetTop);
 }
 
 function hideAddForm() {
   document.getElementById('addForm').style.display = 'none';
-  editingItemId = null;
 }
 
+function updateFormFields() {
+  const type = document.getElementById('itemType').value;
+  document.querySelectorAll('.income-field, .loan-field').forEach(el => el.style.display = 'none');
+  document.getElementById('itemAmount').parentElement.style.display = 'flex';
+  document.getElementById('paymentDay').parentElement.style.display = 'flex';
+  document.getElementById('itemSourceBank').parentElement.style.display = 'flex';
+
+  if (type === 'income') {
+    document.querySelectorAll('.income-field').forEach(el => el.style.display = 'flex');
+    document.getElementById('itemAmount').parentElement.style.display = 'none';
+    document.getElementById('paymentDay').parentElement.style.display = 'none';
+  } else if (type === 'loan') {
+    document.querySelectorAll('.loan-field').forEach(el => el.style.display = 'flex');
+  } else if (type === 'bank') {
+    document.getElementById('paymentDay').parentElement.style.display = 'none';
+    document.getElementById('itemSourceBank').parentElement.style.display = 'none';
+  }
+}
+
+function populateBankSelect() {
+  const bankSelect = document.getElementById('itemSourceBank');
+  bankSelect.innerHTML = '<option value="">-- 銀行を選択 --</option>';
+  const banks = masterData.filter(item => item.type === 'bank');
+  banks.forEach(bank => {
+    const option = document.createElement('option');
+    option.value = bank.id;
+    option.textContent = bank.name;
+    bankSelect.appendChild(option);
+  });
+}
 
 async function saveItem() {
   const name = document.getElementById('itemName').value.trim();
@@ -285,13 +307,12 @@ async function saveItem() {
   }
 
   if (type === ITEM_TYPES.INCOME) {
-    // ▼▼▼ 新しい収入詳細をオブジェクトに集約 ▼▼▼
     const baseAmount = parseInt(document.getElementById('baseAmount').value, 10);
     if (isNaN(baseAmount)) {
       showNotification('収入の場合、基準月収は必須です。', 'error');
       return;
     }
-    itemData.amount = baseAmount; // amountには基準額を保存
+    itemData.amount = baseAmount;
     itemData.incomeDetails = {
       baseAmount: baseAmount,
       workingDaysPerMonth: parseInt(document.getElementById('workingDaysPerMonth').value, 10) || 20,
@@ -302,7 +323,6 @@ async function saveItem() {
       paymentDate: parseInt(document.getElementById('paymentDate').value, 10) || null,
     };
   } else {
-    // 収入以外の項目の処理
     let amount = parseInt(document.getElementById('itemAmount').value, 10);
     if (!name || !type || isNaN(amount)) {
       showNotification('項目名、種別、金額は必須です。', 'error');
@@ -355,137 +375,6 @@ async function saveItem() {
   hideAddForm();
 }
 
-// js/master.js
-
-function updateFormFields() {
-  const itemType = document.getElementById('itemType').value;
-  const amountLabel = document.querySelector('label[for="itemAmount"]');
-  const amountInput = document.getElementById('itemAmount');
-  const paymentDayGroup = document.getElementById('paymentDay').parentElement;
-  const sourceBankGroup = document.getElementById('itemSourceBank').parentElement;
-  // ▼▼▼ 新しいUI要素を取得 ▼▼▼
-  const incomeFields = document.querySelectorAll('.income-field');
-
-  // 全ての専用フィールドを一旦非表示にする
-  document.querySelectorAll('.loan-field').forEach(el => el.style.display = 'none');
-  sourceBankGroup.style.display = 'none';
-  incomeFields.forEach(el => el.style.display = 'none');
-
-  // amount入力欄はデフォルトで表示
-  amountLabel.parentElement.style.display = 'flex';
-
-  const labels = {
-    [ITEM_TYPES.CARD]: '想定利用額 *',
-    [ITEM_TYPES.FIXED]: '固定費額 *',
-    [ITEM_TYPES.TAX]: '税金額 *',
-    [ITEM_TYPES.LOAN]: '月々返済額 *',
-    [ITEM_TYPES.VARIABLE]: '想定予算額 *',
-    [ITEM_TYPES.BANK]: '現在の預金残高 *'
-  };
-  amountLabel.textContent = labels[itemType] || '金額 *';
-  amountInput.placeholder = '例: 50000 (数字のみ入力)';
-
-  if (itemType === ITEM_TYPES.BANK) {
-    paymentDayGroup.style.display = 'none';
-  } else if (itemType === ITEM_TYPES.INCOME) {
-    // ▼▼▼ 収入の場合の特別なUI制御 ▼▼▼
-    paymentDayGroup.style.display = 'none'; // 従来の支払日は使わない
-    amountLabel.parentElement.style.display = 'none'; // 従来のamount入力欄は使わない
-    incomeFields.forEach(el => el.style.display = 'flex');
-  } else {
-    // 収入・銀行以外の項目
-    paymentDayGroup.style.display = 'flex';
-    if (itemType) {
-      sourceBankGroup.style.display = 'flex';
-    }
-    if (itemType === ITEM_TYPES.LOAN) {
-      document.querySelectorAll('.loan-field').forEach(el => el.style.display = 'flex');
-    }
-  }
-}
-
-function populateBankSelect() {
-  const bankSelect = document.getElementById('itemSourceBank');
-  bankSelect.innerHTML = '<option value="">-- 銀行を選択 --</option>';
-  // ▼▼▼ 定数を使用 ▼▼▼
-  const banks = masterData.filter(item => item.type === ITEM_TYPES.BANK && item.isActive);
-  banks.forEach(bank => {
-    const option = document.createElement('option');
-    option.value = bank.id;
-    option.textContent = bank.name;
-    bankSelect.appendChild(option);
-  });
-}
-
-/**
- * 支払日のセレクトボックスに選択肢を生成する
- */
-function populatePaymentDaySelect() {
-  const select = document.getElementById('paymentDay');
-  if (!select) return;
-  const specificDaysGroup = select.querySelector('optgroup[label="特定の日付"]');
-  if (!specificDaysGroup) return;
-
-  let options = '';
-  for (let i = 1; i <= 31; i++) {
-    options += `<option value="${i}">${i}日</option>`;
-  }
-  specificDaysGroup.innerHTML = options;
-}
-
-
-// ===================================================================================
-// UI補助機能 (統計、カテゴリ、データ操作など)
-// ===================================================================================
-function updateStats() {
-  const totalItems = masterData.length;
-  const activeItems = masterData.filter(item => item.isActive).length;
-  const totalDebt = masterData
-    .filter(item => item.type === ITEM_TYPES.LOAN && item.isActive && item.loanDetails)
-    .reduce((sum, item) => sum + (item.loanDetails.currentBalance || 0), 0);
-  const monthlyRepayment = masterData
-    .filter(item => item.type === ITEM_TYPES.LOAN && item.isActive)
-    .reduce((sum, item) => sum + Math.abs(item.amount), 0);
-
-  document.getElementById('statTotalItems').textContent = totalItems;
-  document.getElementById('statActiveItems').textContent = activeItems;
-  document.getElementById('statTotalDebt').textContent = `¥${totalDebt.toLocaleString()}`;
-  document.getElementById('statMonthlyRepayment').textContent = `¥${monthlyRepayment.toLocaleString()}`;
-}
-
-// js/master.js
-
-function updateCategoryCounts() {
-  const counts = {
-    all: masterData.length,
-    [ITEM_TYPES.INCOME]: masterData.filter(i => i.type === ITEM_TYPES.INCOME).length,
-    [ITEM_TYPES.LOAN]: masterData.filter(i => i.type === ITEM_TYPES.LOAN).length,
-    [ITEM_TYPES.CARD]: masterData.filter(i => i.type === ITEM_TYPES.CARD).length,
-    [ITEM_TYPES.FIXED]: masterData.filter(i => i.type === ITEM_TYPES.FIXED).length,
-    [ITEM_TYPES.BANK]: masterData.filter(i => i.type === ITEM_TYPES.BANK).length,
-    [ITEM_TYPES.TAX]: masterData.filter(i => i.type === ITEM_TYPES.TAX).length,
-    [ITEM_TYPES.VARIABLE]: masterData.filter(i => i.type === ITEM_TYPES.VARIABLE).length,
-  };
-
-  // HTMLのIDと合わせるため、キーをキャピタライズするロジックはそのまま
-  for (const key in counts) {
-    const idSuffix = key === 'all' ? 'All' : key.charAt(0).toUpperCase() + key.slice(1);
-    const el = document.getElementById(`count${idSuffix}`);
-    if (el) {
-      el.textContent = counts[key];
-    }
-  }
-}
-
-function showCategory(category, element) {
-  currentCategory = category;
-  document.getElementById('categoryTitle').innerHTML = `${element.querySelector('.category-info').innerHTML} の項目`;
-  document.querySelectorAll('.category-item').forEach(item => item.classList.remove('active'));
-  element.classList.add('active');
-  hideAddForm();
-  renderMasterList();
-}
-
 async function deleteItem(itemId) {
   const item = masterData.find(i => i.id === itemId);
   if (!item) return;
@@ -497,6 +386,19 @@ async function deleteItem(itemId) {
   }
 }
 
+// ===================================================================================
+// データ管理機能 (インポート/エクスポートなど)
+// ===================================================================================
+function getSampleData() {
+  return [
+    { id: 1, name: "A社業務委託", type: "income", isActive: true, amount: 300000, incomeDetails: { baseAmount: 300000, workingDaysPerMonth: 20, contractStartDate: "2023-04-01", contractEndDate: null, closingDay: "EOM", paymentMonthOffset: 1, paymentDate: 15 } },
+    { id: 2, name: "家賃", type: "fixed", isActive: true, amount: -85000, paymentDay: 27 },
+    { id: 3, name: "楽天カード", type: "card", isActive: true, amount: -50000, paymentDay: 27 },
+    { id: 4, name: "消費者金融X", type: "loan", isActive: true, amount: -20000, paymentDay: 5, loanDetails: { initialAmount: 500000, loanDate: "2023-01-10", interestRate: 18.0, currentBalance: 450000, loanType: "消費者金融" } },
+    { id: 5, name: "メインバンク", type: "bank", isActive: true, amount: 100000 },
+  ];
+}
+
 async function loadSampleData() {
   if (confirm('現在のデータは上書きされます。サンプルデータを読み込みますか？')) {
     masterData = getSampleData();
@@ -506,24 +408,6 @@ async function loadSampleData() {
   }
 }
 
-function exportData() {
-  if (masterData.length === 0) {
-    showNotification('エクスポートするデータがありません。', 'warning');
-    return;
-  }
-  const dataStr = JSON.stringify(masterData, null, 2);
-  const dataBlob = new Blob([dataStr], { type: 'application/json' });
-  const url = URL.createObjectURL(dataBlob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'budget-data.json';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-  showNotification('📤 データのエクスポートを開始しました。');
-}
-
 async function resetAllData() {
   if (confirm('本当にすべてのデータをリセットしますか？この操作は元に戻せません。')) {
     masterData = [];
@@ -531,4 +415,22 @@ async function resetAllData() {
     showNotification('🔄 全データをリセットしました。', 'error');
     renderAll();
   }
+}
+
+function exportData() {
+  const dataToExport = {
+    master: masterData,
+    events: JSON.parse(localStorage.getItem('budgetAppData') || '{}').events || []
+  };
+  const dataStr = JSON.stringify(dataToExport, null, 2);
+  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(dataBlob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'budget-app-data.json';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  showNotification('📤 データのエクスポートを開始しました。');
 }
