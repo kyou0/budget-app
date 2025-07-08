@@ -9,7 +9,7 @@ let oneTimeEvents = [];
 let currentUser = null;
 let loginMode = 'local';
 let currentMonth = new Date();
-let isSyncing = false; // ★★★ 同期処理中のロックフラグ ★★★
+let isSyncing = false; // 同期処理中のロックフラグ
 
 // ===================================================================================
 // 初期化処理
@@ -34,7 +34,22 @@ async function initializeApplication() {
       logout();
       return;
     }
-    await syncWithDrive();
+
+    // ▼▼▼ ここからが新しいロジック ▼▼▼
+    const lastSync = parseInt(sessionStorage.getItem('lastSyncTime') || '0', 10);
+    const now = Date.now();
+
+    // 最後の同期から5秒以内なら、Driveからの読み込みをスキップし、ローカルを信じる
+    if (now - lastSync < 5000) {
+      console.log("✅ 短時間内の再読み込みのため、ローカルデータを優先します。");
+      await loadData();
+      renderAll();
+    } else {
+      // 5秒以上経過していれば、通常通りDriveと同期する
+      await syncWithDrive();
+    }
+    // ▲▲▲ ここまでが新しいロジック ▲▲▲
+
   } else {
     await loadData();
     renderAll();
@@ -71,12 +86,16 @@ function setupEventListeners() {
 // ===================================================================================
 function showLoading(message = '🔄 同期中...') {
   const overlay = document.getElementById('loadingOverlay');
+  if (!overlay) return;
   overlay.textContent = message;
   overlay.classList.add('show');
 }
 
 function hideLoading() {
-  document.getElementById('loadingOverlay').classList.remove('show');
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) {
+    overlay.classList.remove('show');
+  }
 }
 
 // ===================================================================================
@@ -158,20 +177,16 @@ async function syncWithDrive() {
   showLoading('☁️ Google Driveと同期中...');
 
   try {
-    // ▼▼▼ ここからが新しいロジック ▼▼▼
     const result = await findOrCreateFile();
     sessionStorage.setItem('driveFileId', result.fileId);
 
-    // 【重要】ファイルが「新品」だった場合の特別処理
     if (result.wasCreated) {
       console.log("✅ 新しいデータファイルがDriveに作成されました。初期状態を設定します。");
       masterData = [];
       oneTimeEvents = [];
-      // 新品の空っぽの状態で、最初の保存を行う
       await saveData();
       showNotification('ようこそ！Google Driveとの連携準備が完了しました。', 'success');
     } else {
-      // 既存ファイルの場合、今まで通りの読み込み処理
       const response = await fetch(`https://www.googleapis.com/drive/v3/files/${result.fileId}?alt=media`, {
         headers: { 'Authorization': `Bearer ${googleAccessToken}` }
       });
@@ -185,10 +200,9 @@ async function syncWithDrive() {
           localStorage.setItem('budgetAppData', JSON.stringify({ master: masterData, events: oneTimeEvents }));
           showNotification('✅ Driveからデータを同期しました。', 'success');
         } else {
-          // 既存ファイルが何らかの理由で空だった場合
           console.log("Driveのファイルは存在しますが空です。ローカルデータで上書きを試みます。");
           await loadData();
-          await saveData(); // ローカルデータをDriveに書き込む
+          await saveData();
         }
       } else {
         throw new Error(`Driveからのファイル読み込みに失敗しました: ${response.statusText}`);
@@ -202,6 +216,8 @@ async function syncWithDrive() {
     renderAll();
     hideLoading();
     isSyncing = false;
+    // ▼▼▼ 同期が成功しても失敗しても、最後に必ず「短期記憶」を更新 ▼▼▼
+    sessionStorage.setItem('lastSyncTime', Date.now().toString());
   }
 }
 
@@ -244,6 +260,8 @@ async function saveData() {
   } finally {
     hideLoading();
     isSyncing = false;
+    // ▼▼▼ 保存（＝同期）が成功しても失敗しても、最後に必ず「短期記憶」を更新 ▼▼▼
+    sessionStorage.setItem('lastSyncTime', Date.now().toString());
   }
 }
 
@@ -259,7 +277,7 @@ async function findOrCreateFile() {
 
   if (data.files.length > 0) {
     console.log("既存のファイルを発見:", data.files[0].id);
-    return { fileId: data.files[0].id, wasCreated: false }; // ★★★ 既存ファイル
+    return { fileId: data.files[0].id, wasCreated: false };
   } else {
     console.log("ファイルが見つからないため、新規作成します。");
     const fileMetadata = {
@@ -277,7 +295,7 @@ async function findOrCreateFile() {
     });
     data = await response.json();
     console.log("新規ファイルを作成しました:", data.id);
-    return { fileId: data.id, wasCreated: true }; // ★★★ 新規ファイル
+    return { fileId: data.id, wasCreated: true };
   }
 }
 
@@ -331,6 +349,7 @@ function renderAll() {
 
 function renderCalendar() {
   const calendarEl = document.getElementById('calendar');
+  if (!calendarEl) return;
   calendarEl.innerHTML = '';
   const days = ['日', '月', '火', '水', '木', '金', '土'];
   days.forEach(day => {
@@ -349,7 +368,7 @@ function renderCalendar() {
   const eventsByDate = {};
   const activeMasterData = masterData.filter(item => item.isActive);
 
-  // (カレンダーイベント計算ロジック)
+  // (カレンダーイベント計算ロジック - プレースホルダー)
 
   for (let i = 1; i <= lastDay.getDate(); i++) {
     const dayCell = document.createElement('div');
@@ -361,7 +380,7 @@ function renderCalendar() {
       dayCell.classList.add('today');
     }
     dayCell.appendChild(dayNumber);
-    // (イベント描画ロジック)
+    // (イベント描画ロジック - プレースホルダー)
     calendarEl.appendChild(dayCell);
   }
 
