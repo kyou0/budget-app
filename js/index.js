@@ -2,7 +2,7 @@
 // グローバル変数 & 状態管理
 // ===================================================================================
 const GOOGLE_CLIENT_ID = '45451544416-9c9vljcaqir137dudhoj0da6ndchlph1.apps.googleusercontent.com';
-const GOOGLE_REDIRECT_URI = 'https://kyou0.github.io';
+const GOOGLE_REDIRECT_URI = 'https://kyou0.github.io/index.html';
 
 let googleAccessToken = null;
 let masterData = [];
@@ -156,6 +156,18 @@ async function handleGoogleRedirect(code) {
   }
 }
 
+function localLogin() {
+  currentUser = { name: 'ローカルユーザー', mode: 'local' };
+  localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appContainer').style.display = 'block';
+  document.getElementById('userName').textContent = currentUser.name;
+  initializeApplication();
+}
+
+// ===================================================================================
+// イベントリスナーとUIヘルパー
+// ===================================================================================
 function setupEventListeners() {
   const spotEventModal = document.getElementById('spotEventModal');
   const showBtn = document.getElementById('showSpotEventModalBtn');
@@ -180,9 +192,6 @@ function setupEventListeners() {
   }
 }
 
-// ===================================================================================
-// UIヘルパー (ローディング表示)
-// ===================================================================================
 function showLoading(message = '🔄 同期中...') {
   const overlay = document.getElementById('loadingOverlay');
   if (!overlay) return;
@@ -195,73 +204,6 @@ function hideLoading() {
   if (overlay) {
     overlay.classList.remove('show');
   }
-}
-
-// ===================================================================================
-// Google認証
-// ===================================================================================
-function onGoogleLibraryLoad() {
-  const googleLoginBtnContainer = document.getElementById('googleLoginBtn');
-  google.accounts.id.initialize({
-    client_id: '45451544416-9c9vljcaqir137dudhoj0da6ndchlph1.apps.googleusercontent.com',
-    callback: handleGoogleLogin,
-  });
-  google.accounts.id.renderButton(
-    googleLoginBtnContainer,
-    { theme: "outline", size: "large", text: "signin_with", shape: "rectangular", logo_alignment: "left" }
-  );
-}
-
-async function handleGoogleLogin(response) {
-  showLoading('🔍 Googleアカウント情報を検証中...');
-  const id_token = response.credential;
-  const decodedToken = JSON.parse(atob(id_token.split('.')[1]));
-
-  currentUser = {
-    name: decodedToken.name,
-    email: decodedToken.email,
-    mode: 'google'
-  };
-  localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
-
-  const client = google.accounts.oauth2.initTokenClient({
-    client_id: '45451544416-9c9vljcaqir137dudhoj0da6ndchlph1.apps.googleusercontent.com',
-    scope: 'https://www.googleapis.com/auth/drive.file',
-    callback: async (tokenResponse) => {
-      hideLoading();
-      if (tokenResponse && tokenResponse.access_token) {
-        googleAccessToken = tokenResponse.access_token;
-        sessionStorage.setItem('googleAccessToken', googleAccessToken);
-
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('appContainer').style.display = 'block';
-        document.getElementById('userName').textContent = currentUser.name;
-
-        showLoading('☁️ Google Driveと同期中...');
-        await syncWithDrive();
-        hideLoading();
-
-        setupEventListeners();
-      } else {
-        showNotification('Google Driveへのアクセス許可に失敗しました。', 'error');
-      }
-    },
-    error_callback: (error) => {
-      hideLoading();
-      console.error('Token client error:', error);
-      showNotification(`認証中にエラーが発生しました: ${error.type}`, 'error');
-    }
-  });
-  client.requestAccessToken();
-}
-
-function localLogin() {
-  currentUser = { name: 'ローカルユーザー', mode: 'local' };
-  localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('appContainer').style.display = 'block';
-  document.getElementById('userName').textContent = currentUser.name;
-  initializeApplication();
 }
 
 // ===================================================================================
