@@ -148,64 +148,41 @@
                         </select>
                     </div>
 
-                    <!-- ▼▼▼ ここからが、今回追加する究極のUI ▼▼▼ -->
-                    <div class="form-group income-type-selector" style="display: none;">
-                        <label for="incomeType">収入モデル</label>
-                        <select id="incomeType">
-                            <option value="fixed">固定月収</option>
-                            <option value="dynamic">変動収入 (稼働ベース)</option>
-                        </select>
+                    <div class="form-group income-field" style="display: none;">
+                        <label for="baseAmount">基準月収 / 契約額</label>
+                        <input type="number" id="baseAmount" placeholder="例: 200000">
                     </div>
-
-                    <!-- --- 固定収入モデル用の項目 --- -->
-                    <div class="form-group income-field fixed-income-fields" style="display: none;">
+                    <div class="form-group income-field" style="display: none;">
+                        <label for="workingDaysPerMonth">月間基準稼働日数</label>
+                        <input type="number" id="workingDaysPerMonth" placeholder="例: 20 (日割り計算の基準)">
+                    </div>
+                    <div class="form-group income-field" style="display: none;">
                         <label for="contractStartDate">契約開始日</label>
                         <input type="date" id="contractStartDate">
                     </div>
-                    <div class="form-group income-field fixed-income-fields" style="display: none;">
+                    <div class="form-group income-field" style="display: none;">
                         <label for="contractEndDate">契約終了日 (任意)</label>
                         <input type="date" id="contractEndDate">
                     </div>
-
-                    <!-- --- 変動収入モデル用の項目 --- -->
-                    <div class="form-group income-field dynamic-income-fields" style="display: none;">
-                        <label for="hourlyRate">時給 / 単価</label>
-                        <input type="number" id="hourlyRate" placeholder="例: 3000">
-                    </div>
-                    <div class="form-group income-field dynamic-income-fields" style="display: none;">
-                        <label for="workingHoursPerDay">1日の標準稼働時間</label>
-                        <input type="number" id="workingHoursPerDay" placeholder="例: 8">
-                    </div>
-                    <div class="form-group income-field dynamic-income-fields" style="display: none;">
-                        <label>稼働曜日</label>
-                        <div id="workingDays" class="checkbox-group">
-                            <label><input type="checkbox" value="1"> 月</label>
-                            <label><input type="checkbox" value="2"> 火</label>
-                            <label><input type="checkbox" value="3"> 水</label>
-                            <label><input type="checkbox" value="4"> 木</label>
-                            <label><input type="checkbox" value="5"> 金</label>
-                            <label><input type="checkbox" value="6"> 土</label>
-                            <label><input type="checkbox" value="0"> 日</label>
-                        </div>
-                    </div>
-                    <div class="form-group income-field dynamic-income-fields" style="display: none;">
+                    <div class="form-group income-field" style="display: none;">
                         <label for="closingDay">締め日</label>
                         <select id="closingDay">
                             <option value="EOM">月末</option>
-                            <!-- 1-28日も選択肢として考えられるが、まずは月末のみで実装 -->
+                            <!-- 他の日付も将来的には追加可能 -->
                         </select>
                     </div>
-                    <div class="form-group income-field dynamic-income-fields" style="display: none;">
+                    <div class="form-group income-field" style="display: none;">
                         <label for="paymentMonthOffset">支払い月</label>
                         <select id="paymentMonthOffset">
+                            <option value="0">当月</option>
                             <option value="1">翌月</option>
-                            <option value="2">翌々月</option>
+                            <option value="2" selected>翌々月</option>
                             <option value="3">3ヶ月後</option>
                         </select>
                     </div>
-                    <div class="form-group income-field dynamic-income-fields" style="display: none;">
-                        <label for="paymentDayRule">支払日</label>
-                        <input type="number" id="paymentDayRule" placeholder="例: 10 (10日払い)">
+                    <div class="form-group income-field" style="display: none;">
+                        <label for="paymentDate">支払日</label>
+                        <input type="number" id="paymentDate" placeholder="例: 10 (10日払い)">
                     </div>
                     <!-- === 借金専用項目 (ここが整理された部分) === -->
                     <div class="form-group loan-field" style="display: none;">
