@@ -191,14 +191,37 @@ async function finalizeLogin(user) {
 /**
  * ログイン後のアプリ画面を表示・初期化する
  */
-// ▼▼▼ async を追加 ▼▼▼
+// js/index.js
+
 async function showApp() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appContainer').style.display = 'block';
   document.getElementById('userName').textContent = currentUser.name;
 
-  // ▼▼▼ await を追加して、初期化が完了するのを待つ ▼▼▼
-  await initializeApp();
+  const dataKey = 'budgetAppData';
+  const savedData = localStorage.getItem(dataKey);
+  if (savedData) {
+    try {
+      const parsedData = JSON.parse(savedData);
+      masterData = parsedData.master || [];
+      spotEvents = parsedData.spotEvents || [];
+    } catch (e) {
+      console.error("データの解析に失敗:", e);
+      masterData = [];
+      spotEvents = [];
+    }
+  }
+
+  // ▼▼▼ 自動無効化機能をここで呼び出す ▼▼▼
+  await checkContractStatus();
+  // ▲▲▲
+
+  currentYear = new Date().getFullYear();
+  currentMonth = new Date().getMonth() + 1;
+
+  updateHeader();
+  generateCalendar();
+  updateSummary();
 }
 
 /**
@@ -281,13 +304,10 @@ window.changeMonth = function(delta) {
   renderAll();
 }
 
-// js/index.js
-
 function generateCalendar() {
   const calendarEl = document.getElementById('calendar');
   calendarEl.innerHTML = '';
 
-  // ▼▼▼ 修正: 週の始まりを月曜日に変更 ▼▼▼
   const headers = ['月', '火', '水', '木', '金', '土', '日'];
   headers.forEach(header => {
     const headerEl = document.createElement('div');
@@ -299,11 +319,36 @@ function generateCalendar() {
   const firstDay = new Date(currentYear, currentMonth - 1, 1);
   const lastDay = new Date(currentYear, currentMonth, 0);
   const daysInMonth = lastDay.getDate();
-  // ▼▼▼ 修正: 月曜始まりの場合の、最初の日の位置を計算 ▼▼▼
-  // (日曜日(0)を週の最後(6)として扱う)
   const startDayOfWeek = (firstDay.getDay() + 6) % 7;
-  const spotEventsThisMonth = getSpotEventsThisMonth();
 
+  // --- 収入イベントを事前に計算 ---
+  const incomeEvents = [];
+  const displayedMonthStart = new Date(currentYear, currentMonth - 1, 1);
+  const displayedMonthEnd = new Date(currentYear, currentMonth, 0);
+
+  masterData
+    .filter(item => item.type === ITEM_TYPES.INCOME && item.isActive && item.incomeDetails)
+    .forEach(item => {
+      // 表示月の支払いサイクルを考慮し、過去12ヶ月分の稼働をチェック
+      for (let offset = -12; offset <= 0; offset++) {
+        const targetDate = new Date(currentYear, currentMonth - 1, 1);
+        targetDate.setMonth(targetDate.getMonth() + offset);
+        const workYear = targetDate.getFullYear();
+        const workMonth = targetDate.getMonth() + 1;
+
+        const event = calculateIncomeEvent(item, workYear, workMonth);
+        // 計算された支払日が、現在表示しているカレンダーの月にあるかチェック
+        if (event && event.paymentDate >= displayedMonthStart && event.paymentDate <= displayedMonthEnd) {
+          incomeEvents.push({
+            ...event,
+            name: item.name,
+            day: event.paymentDate.getDate()
+          });
+        }
+      }
+    });
+
+  // --- カレンダーの日付セルを生成 ---
   for (let i = 0; i < startDayOfWeek; i++) {
     const emptyDay = document.createElement('div');
     emptyDay.className = 'calendar-day other-month';
@@ -321,36 +366,32 @@ function generateCalendar() {
     dayNumber.textContent = String(day);
     dayEl.appendChild(dayNumber);
 
-    // ▼▼▼ 修正: 契約期間を考慮したフィルタリング ▼▼▼
+    // 収入以外の定期項目の描画
     const recurringItems = masterData.filter(item => {
-      if (!item.isActive) return false;
-
+      if (!item.isActive || item.type === ITEM_TYPES.INCOME) return false;
       const paymentDate = getActualPaymentDate(item, currentYear, currentMonth);
-      if (!paymentDate || paymentDate.getMonth() !== currentMonth - 1) {
-        // 月末日計算などで月がずれた場合は除外
-        return false;
-      }
-
-      // 契約期間のチェック (収入項目の場合のみ)
-      if (item.type === 'income' && (item.contractStartDate || item.contractEndDate)) {
-        if (!isDateInRange(paymentDate, item.contractStartDate, item.contractEndDate)) {
-          return false; // 契約期間外なら表示しない
-        }
-      }
-
-      return paymentDate.getDate() === day;
+      return paymentDate && paymentDate.getDate() === day && paymentDate.getMonth() === currentMonth - 1;
     });
-    // ▲▲▲
-
     recurringItems.forEach(item => {
       const itemEl = document.createElement('div');
-      const typeClass = item.amount >= 0 ? 'income' : (item.type === 'loan' ? 'loan' : 'expense');
+      const typeClass = item.type === 'loan' ? 'loan' : 'expense';
       itemEl.className = `calendar-item ${typeClass}`;
       itemEl.textContent = `${item.name}: ${Math.abs(item.amount).toLocaleString()}円`;
       dayEl.appendChild(itemEl);
     });
 
-    const spotItems = spotEventsThisMonth.filter(e => new Date(e.date).getDate() === day);
+    // 収入イベントの描画
+    const incomeItemsForDay = incomeEvents.filter(e => e.day === day);
+    incomeItemsForDay.forEach(item => {
+      const itemEl = document.createElement('div');
+      itemEl.className = 'calendar-item income';
+      itemEl.textContent = `${item.name}: ${item.amount.toLocaleString()}円`;
+      itemEl.title = item.workPeriod; // ツールチップで稼働月を表示
+      dayEl.appendChild(itemEl);
+    });
+
+    // スポットイベントの描画
+    const spotItems = getSpotEventsThisMonth().filter(e => new Date(e.date).getDate() === day);
     spotItems.forEach(item => {
       const itemEl = document.createElement('div');
       const typeClass = item.amount >= 0 ? 'income' : 'expense';
@@ -766,4 +807,122 @@ function isDateInRange(date, startDateStr, endDateStr) {
   }
 
   return true; // すべてのチェックをパス
+}
+
+// js/index.js
+
+// ▼▼▼ ここからが、今回追加する新しい「頭脳」と「機能」です ▼▼▼
+
+/**
+ * データをローカルストレージに保存する (master.jsから移植)
+ */
+async function saveData() {
+  const dataToSave = {
+    master: masterData,
+    spotEvents: spotEvents,
+  };
+  localStorage.setItem('budgetAppData', JSON.stringify(dataToSave));
+  console.log('💾 [localモード] データをストレージに保存しました。');
+}
+
+/**
+ * 指定された期間内の平日（月〜金）の日数を数える
+ * @param {number} year 年
+ * @param {number} month 月 (1-12)
+ * @param {number} startDay 開始日
+ * @param {number} endDay 終了日
+ * @returns {number} 平日の日数
+ */
+function countWeekdays(year, month, startDay, endDay) {
+  let count = 0;
+  for (let day = startDay; day <= endDay; day++) {
+    const date = new Date(year, month - 1, day);
+    const dayOfWeek = date.getDay();
+    // getDay()は日曜日が0、土曜日が6
+    if (dayOfWeek > 0 && dayOfWeek < 6) {
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * 指定された稼働月の収入イベント（支払日と金額）を計算する
+ * @param {object} incomeItem - incomeDetailsを含むマスターデータ項目
+ * @param {number} workYear - 稼働年 (e.g., 2024)
+ * @param {number} workMonth - 稼働月 (1-12)
+ * @returns {{paymentDate: Date, amount: number, workPeriod: string} | null} 計算された収入イベント、またはnull
+ */
+function calculateIncomeEvent(incomeItem, workYear, workMonth) {
+  if (!incomeItem.incomeDetails) return null;
+  const details = incomeItem.incomeDetails;
+
+  // 1. 契約期間のチェック
+  const workDate = new Date(workYear, workMonth - 1, 1);
+  const contractStart = details.contractStartDate ? new Date(details.contractStartDate) : null;
+  const contractEnd = details.contractEndDate ? new Date(details.contractEndDate) : null;
+
+  if (contractStart) {
+    contractStart.setMinutes(contractStart.getMinutes() + contractStart.getTimezoneOffset());
+    const contractStartMonth = new Date(contractStart.getFullYear(), contractStart.getMonth(), 1);
+    if (workDate < contractStartMonth) return null; // 契約開始月より前は対象外
+  }
+  if (contractEnd) {
+    contractEnd.setMinutes(contractEnd.getMinutes() + contractEnd.getTimezoneOffset());
+    const contractEndMonth = new Date(contractEnd.getFullYear(), contractEnd.getMonth(), 1);
+    if (workDate > contractEndMonth) return null; // 契約終了月より後は対象外
+  }
+
+  // 2. 支払日を計算
+  // 締め日は 'EOM' (月末) を想定
+  const closingDate = new Date(workYear, workMonth, 0); // 稼働月の末日
+  const paymentTargetDate = new Date(closingDate);
+  paymentTargetDate.setMonth(paymentTargetDate.getMonth() + details.paymentMonthOffset);
+  const paymentDate = new Date(paymentTargetDate.getFullYear(), paymentTargetDate.getMonth(), details.paymentDate);
+
+  // 3. 金額を計算 (日割り考慮)
+  let amount = details.baseAmount;
+  let workPeriod = `${workYear}年${workMonth}月分`;
+
+  if (contractStart && contractStart.getFullYear() === workYear && contractStart.getMonth() === workMonth - 1) {
+    // 契約開始月の場合、日割り計算を行う
+    const daysInMonth = new Date(workYear, workMonth, 0).getDate();
+    const startDay = contractStart.getDate();
+
+    const actualWorkingDays = countWeekdays(workYear, workMonth, startDay, daysInMonth);
+    const baseWorkingDays = details.workingDaysPerMonth;
+
+    amount = Math.round(details.baseAmount * (actualWorkingDays / baseWorkingDays));
+    workPeriod += ` (稼働${actualWorkingDays}日/${baseWorkingDays}日で日割り)`;
+  }
+
+  return { paymentDate, amount, workPeriod };
+}
+
+
+/**
+ * 契約期間が終了した項目を自動で「無効」にする
+ */
+async function checkContractStatus() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // 時刻をリセットして日付のみで比較
+
+  let updated = false;
+  masterData.forEach(item => {
+    if (item.isActive && item.type === ITEM_TYPES.INCOME && item.incomeDetails && item.incomeDetails.contractEndDate) {
+      const endDate = new Date(item.incomeDetails.contractEndDate);
+      endDate.setMinutes(endDate.getMinutes() + endDate.getTimezoneOffset()); // タイムゾーン補正
+
+      if (endDate < today) {
+        item.isActive = false;
+        updated = true;
+        console.log(`[自動更新] 案件「${item.name}」の契約期間が終了したため、無効にしました。`);
+        showNotification(`[自動更新] 案件「${item.name}」を無効化しました`, 'info');
+      }
+    }
+  });
+
+  if (updated) {
+    await saveData();
+  }
 }
