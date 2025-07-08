@@ -105,6 +105,8 @@ function renderAll() {
 
 // js/master.js
 
+// js/master.js
+
 function renderMasterList() {
   const itemsGrid = document.getElementById('itemsGrid');
   itemsGrid.innerHTML = '';
@@ -156,21 +158,18 @@ function renderMasterList() {
       }
     }
 
-    // ▼▼▼ 契約期間の表示情報を生成 ▼▼▼
     let contractInfo = '';
     if (item.type === ITEM_TYPES.INCOME && item.contractStartDate) {
-      // toLocaleDateStringを使って、日付を 'YYYY/MM/DD' のような読みやすい形式に変換
       const start = new Date(item.contractStartDate).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
       const end = item.contractEndDate ? new Date(item.contractEndDate).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }) : '継続中';
       contractInfo = `<div class="item-detail"><span class="item-label">契約期間:</span><span class="item-value">${start} 〜 ${end}</span></div>`;
     }
-    // ▲▲▲
 
     let loanDetailsHtml = '';
     if (item.type === ITEM_TYPES.LOAN && item.loanDetails) {
       loanDetailsHtml = `
         <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
-        <div class="item-detail"><span class="item-label">現在の残高:</span><span class="item-value expense">¥${item.loanDetais.currentBalance.toLocaleString()}</span></div>
+        <div class="item-detail"><span class="item-label">現在の残高:</span><span class="item-value expense">¥${item.loanDetails.currentBalance.toLocaleString()}</span></div>
         <div class="item-detail"><span class="item-label">年利率:</span><span class="item-value">${item.loanDetails.interestRate}%</span></div>
       `;
     }
@@ -181,7 +180,7 @@ function renderMasterList() {
           <div class="item-detail"><span class="item-label">${amountLabelText}</span><span class="item-value ${amountColor}">${amountText}</span></div>
           <div class="item-detail"><span class="item-label">支払日:</span><span class="item-value">${paymentDayText}</span></div>
           ${bankInfo}
-          ${contractInfo} <!-- ← ここに追加 -->
+          ${contractInfo}
           ${loanDetailsHtml}
       </div>
       <div class="item-card-actions">
