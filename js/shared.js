@@ -42,18 +42,3 @@ function showNotification(message, type = 'info') {
     }, 500);
   }, 5000);
 }
-
-// ▼▼▼ ここからが、今回追加する最重要関数です ▼▼▼
-/**
- * データをローカルストレージに保存する
- * @param {Array} masterData - マスターデータ
- * @param {Array} eventsData - スポットイベントデータ
- */
-async function saveData(masterData, eventsData) {
-  const dataToSave = {
-    master: masterData,
-    events: eventsData, // 保存するキーを 'events' に統一
-  };
-  localStorage.setItem('budgetAppData', JSON.stringify(dataToSave));
-  console.log('💾 [localモード] データをストレージに保存しました。');
-}

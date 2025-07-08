@@ -74,6 +74,21 @@ async function loadData() {
     masterData = [];
   }
 }
+/**
+ * [master.js専用] データをローカルストレージにのみ保存する
+ */
+async function saveData() {
+  // master.jsではスポットイベントを扱わないため、既存のイベントデータは維持する
+  const existingData = JSON.parse(localStorage.getItem('budgetAppData') || '{}');
+  const dataToSave = {
+    master: masterData,
+    events: existingData.events || [] // 既存のイベントデータを保持
+  };
+  localStorage.setItem('budgetAppData', JSON.stringify(dataToSave));
+  console.log('💾 [master.js] データをローカルに保存しました。');
+}
+
+// ... renderAll 関数の前 ...
 
 // ===================================================================================
 // メイン描画処理
@@ -328,9 +343,7 @@ async function saveItem() {
     masterData.push(newItem);
     showNotification(`✅ 「${name}」を新しく追加しました。`);
   }
-  // master.jsではスポットイベントを扱わないため、第2引数に空の配列を渡す
-  await saveData(masterData, []);
-  // ▲▲▲
+  await saveData();
 
   renderAll();
   hideAddForm();
