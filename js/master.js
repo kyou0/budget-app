@@ -194,6 +194,8 @@ function showAddForm() {
   populateBankSelect();
 }
 
+// js/master.js
+
 function showEditForm(itemId) {
   const itemToEdit = masterData.find(item => item.id === itemId);
   if (!itemToEdit) return;
@@ -202,9 +204,13 @@ function showEditForm(itemId) {
   document.getElementById('itemName').value = itemToEdit.name;
   document.getElementById('itemType').value = itemToEdit.type;
   document.getElementById('itemAmount').value = String(Math.abs(itemToEdit.amount));
-  // ★修正：数値でも文字列でも対応できるようにする
   document.getElementById('paymentDay').value = itemToEdit.paymentDay ? String(itemToEdit.paymentDay) : '';
   document.getElementById('isActive').value = String(itemToEdit.isActive);
+
+  // ▼▼▼ 契約期間の表示処理を追加 ▼▼▼
+  document.getElementById('contractStartDate').value = itemToEdit.contractStartDate || '';
+  document.getElementById('contractEndDate').value = itemToEdit.contractEndDate || '';
+  // ▲▲▲
 
   updateFormFields();
   populateBankSelect();
@@ -213,7 +219,7 @@ function showEditForm(itemId) {
     document.getElementById('itemSourceBank').value = String(itemToEdit.sourceBankId);
   }
 
-  if (itemToEdit.type === 'loan' && itemToEdit.loanDetails) {
+  if (itemToEdit.type === ITEM_TYPES.LOAN && itemToEdit.loanDetails) {
     document.getElementById('initialAmount').value = String(itemToEdit.loanDetails.initialAmount || '');
     document.getElementById('loanDate').value = itemToEdit.loanDetails.loanDate || '';
     document.getElementById('interestRate').value = String(itemToEdit.loanDetails.interestRate || '');
@@ -232,17 +238,23 @@ function hideAddForm() {
   editingItemId = null;
 }
 
+// js/master.js
+
 async function saveItem() {
   const name = document.getElementById('itemName').value.trim();
   const type = document.getElementById('itemType').value;
   let amount = parseInt(document.getElementById('itemAmount').value, 10);
-  // ★修正：文字列か数値かを判断して保存する
   const paymentDayValue = document.getElementById('paymentDay').value;
   const paymentDay = paymentDayValue === PAYMENT_DAY_RULES.END_OF_MONTH_WEEKDAY
     ? PAYMENT_DAY_RULES.END_OF_MONTH_WEEKDAY
-    : parseInt(paymentDayValue, 10) || null; // 空文字の場合はnullを保存
+    : (parseInt(paymentDayValue, 10) || null);
   const isActive = document.getElementById('isActive').value === 'true';
   const sourceBankId = document.getElementById('itemSourceBank').value;
+
+  // ▼▼▼ 契約期間の保存処理を追加 ▼▼▼
+  const contractStartDate = document.getElementById('contractStartDate').value || null;
+  const contractEndDate = document.getElementById('contractEndDate').value || null;
+  // ▲▲▲
 
   if (!name || !type || isNaN(amount)) {
     showNotification('項目名、種別、金額/残高は必須です。', 'error');
@@ -273,10 +285,13 @@ async function saveItem() {
     };
   }
 
+  // ▼▼▼ 保存するデータに契約期間を追加 ▼▼▼
   const itemData = {
     name, type, amount, paymentDay, isActive, loanDetails,
-    ...(type !== 'bank' && sourceBankId && { sourceBankId: parseInt(sourceBankId, 10) })
+    contractStartDate, contractEndDate, // <-- 追加
+    ...(type !== ITEM_TYPES.BANK && sourceBankId && { sourceBankId: parseInt(sourceBankId, 10) })
   };
+  // ▲▲▲
 
   if (editingItemId !== null) {
     const itemIndex = masterData.findIndex(item => item.id === editingItemId);
@@ -295,19 +310,26 @@ async function saveItem() {
   hideAddForm();
 }
 
+// js/master.js
+
 function updateFormFields() {
   const itemType = document.getElementById('itemType').value;
   const amountLabel = document.querySelector('label[for="itemAmount"]');
   const amountInput = document.getElementById('itemAmount');
   const paymentDayGroup = document.getElementById('paymentDay').parentElement;
   const sourceBankGroup = document.getElementById('itemSourceBank').parentElement;
+  // ▼▼▼ 契約期間のフィールドを取得 ▼▼▼
+  const contractFields = document.querySelectorAll('.contract-period-fields');
 
   document.querySelectorAll('.loan-field').forEach(el => el.style.display = 'none');
   sourceBankGroup.style.display = 'none';
+  // ▼▼▼ 契約期間フィールドを一旦非表示に ▼▼▼
+  contractFields.forEach(el => el.style.display = 'none');
 
   const labels = {
-    income: '収入額 *', card: '想定利用額 *', fixed: '固定費額 *', tax: '税金額 *',
-    loan: '月々返済額 *', variable: '想定予算額 *', bank: '現在の預金残高 *'
+    [ITEM_TYPES.INCOME]: '収入額 *', [ITEM_TYPES.CARD]: '想定利用額 *', [ITEM_TYPES.FIXED]: '固定費額 *',
+    [ITEM_TYPES.TAX]: '税金額 *', [ITEM_TYPES.LOAN]: '月々返済額 *', [ITEM_TYPES.VARIABLE]: '想定予算額 *',
+    [ITEM_TYPES.BANK]: '現在の預金残高 *'
   };
   amountLabel.textContent = labels[itemType] || '金額 *';
   amountInput.placeholder = '例: 50000 (数字のみ入力)';
@@ -320,9 +342,12 @@ function updateFormFields() {
     if (itemType) {
       sourceBankGroup.style.display = 'flex';
     }
-    // ▼▼▼ 定数を使用 ▼▼▼
     if (itemType === ITEM_TYPES.LOAN) {
       document.querySelectorAll('.loan-field').forEach(el => el.style.display = 'flex');
+    }
+    // ▼▼▼ 収入の場合のみ契約期間フィールドを表示 ▼▼▼
+    if (itemType === ITEM_TYPES.INCOME) {
+      contractFields.forEach(el => el.style.display = 'flex');
     }
   }
 }

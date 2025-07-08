@@ -616,3 +616,9 @@ body {
     padding-left: 0;
     padding-right: 0;
 }
+
+.item-card-actions {
+    margin-top: 15px; /* カード本体とボタンの間に余白を追加 */
+    padding-top: 10px; /* ボタンの上に少し余白を追加 */
+    border-top: 1px solid #f0f0f0; /* 上に境界線を追加して視覚的に分離 */
+}
