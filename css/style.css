@@ -336,12 +336,12 @@ body {
 /* ===================================================================================
    マスター管理 & 設定ページ
 =================================================================================== */
-.main-content {
-    display: grid;
-    grid-template-columns: 300px 1fr;
-    gap: 20px;
-    align-items: start;
-}
+/*.main-content {*/
+/*    display: grid;*/
+/*    grid-template-columns: 300px 1fr;*/
+/*    gap: 20px;*/
+/*    align-items: start;*/
+/*}*/
 
 .sidebar, .content-area {
     background: white;
@@ -621,4 +621,263 @@ body {
     margin-top: 15px; /* カード本体とボタンの間に余白を追加 */
     padding-top: 10px; /* ボタンの上に少し余白を追加 */
     border-top: 1px solid #f0f0f0; /* 上に境界線を追加して視覚的に分離 */
+}
+
+/* ===================================================================================
+   通知システム (Notification System)
+   =================================================================================== */
+#notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    width: 320px;
+}
+
+.notification {
+    background-color: #fff;
+    color: #333;
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-left: 5px solid #667eea; /* Default: info */
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    font-size: 14px;
+}
+
+.notification.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.notification.success {
+    border-left-color: #48bb78;
+}
+
+.notification.error {
+    border-left-color: #f56565;
+}
+
+.notification.info {
+    border-left-color: #4299e1;
+}
+
+
+/* ===================================================================================
+   メインコンテンツレイアウト (master.html & settings.html)
+   =================================================================================== */
+.main-content {
+    display: flex;
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.sidebar {
+    flex: 0 0 280px; /* サイドバーの幅を固定 */
+    background-color: #f7fafc;
+    padding: 20px;
+    border-radius: 8px;
+    height: fit-content;
+}
+
+.content-area {
+    flex: 1; /* 残りの幅をすべて使用 */
+}
+
+.section-title {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #4a5568;
+    font-size: 1.1em;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+}
+
+
+/* ===================================================================================
+   master.html 専用スタイル
+   =================================================================================== */
+
+/* --- 統計カード --- */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.stat-card {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    text-align: center;
+}
+.stat-value {
+    font-size: 2em;
+    font-weight: bold;
+    color: #2c3e50;
+}
+.stat-label {
+    font-size: 0.9em;
+    color: #718096;
+    margin-top: 5px;
+}
+.stat-card.success .stat-value { color: #38a169; }
+.stat-card.danger .stat-value { color: #e53e3e; }
+
+/* --- カテゴリリスト --- */
+.category-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.category-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-bottom: 5px;
+}
+.category-item:hover {
+    background-color: #e2e8f0;
+}
+.category-item.active {
+    background-color: #667eea;
+    color: white;
+    font-weight: bold;
+}
+.category-item.active .category-count {
+    background-color: rgba(255,255,255,0.2);
+    color: white;
+}
+.category-count {
+    background-color: #edf2f7;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: bold;
+    color: #4a5568;
+}
+
+/* --- データ管理ボタン --- */
+.data-management-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* --- 項目リスト --- */
+.items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+.item-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    transition: box-shadow 0.2s ease;
+}
+.item-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.07);
+}
+.item-card.inactive {
+    background-color: #f7fafc;
+    opacity: 0.6;
+}
+.item-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.item-name {
+    font-weight: bold;
+    color: #2d3748;
+}
+.item-status {
+    font-size: 0.8em;
+    padding: 3px 8px;
+    border-radius: 12px;
+}
+.item-status.active { background-color: #c6f6d5; color: #2f855a; }
+.item-status.inactive { background-color: #fed7d7; color: #c53030; }
+
+.item-amount {
+    font-size: 1.4em;
+    color: #4a5568;
+    margin-bottom: 15px;
+}
+.item-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* ===================================================================================
+   settings.html 専用スタイル
+   =================================================================================== */
+.setting-card {
+    background-color: #fff;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.9em;
+    font-weight: bold;
+    color: white;
+}
+.status-badge.google { background-color: #4285F4; }
+.status-badge.local { background-color: #718096; }
+.note {
+    font-size: 0.85em;
+    color: #718096;
+    margin-top: 15px;
+}
+
+/* ===================================================================================
+   フォーム共通スタイル
+   =================================================================================== */
+.form-container {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+.form-group label {
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 0.9em;
+    color: #4a5568;
+}
+.form-group input, .form-group select {
+    width: 100%;
+}
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
 }
