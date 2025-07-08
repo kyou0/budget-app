@@ -195,6 +195,8 @@ function hideAddForm() {
 
 // js/master.js
 
+// js/master.js
+
 async function saveItem() {
   // 基本情報の取得
   const name = document.getElementById('itemName').value.trim();
@@ -211,10 +213,8 @@ async function saveItem() {
 
   // ユーザーは常にプラスの数字を入力すればOK。コードが裏で符号を自動調整する。
   if (['expense', 'fixed', 'tax', 'loan', 'card', 'variable'].includes(type)) {
-    // 支出に関連するタイプは、必ず「負の数」として保存する
     amount = -Math.abs(amount);
   } else {
-    // 収入(income)や銀行(bank)は、必ず「正の数」として保存する
     amount = Math.abs(amount);
   }
 
@@ -232,19 +232,22 @@ async function saveItem() {
       initialAmount: parseInt(document.getElementById('initialAmount').value, 10) || 0,
       loanDate: document.getElementById('loanDate').value || null,
       interestRate: interestRate,
-      currentBalance: Math.abs(currentBalance), // 残高も念のため正の数で統一
+      currentBalance: Math.abs(currentBalance),
       loanType: document.getElementById('loanType').value,
       maxLimit: parseInt(document.getElementById('maxLimit').value, 10) || 0,
     };
   }
 
-  const itemData = { name, type, amount, paymentDay, isActive, loanDetails };
-
-  if (type !== 'bank' && sourceBankId) {
-    itemData.sourceBankId = parseInt(sourceBankId, 10);
-  } else {
-    delete itemData.sourceBankId;
-  }
+  // スプレッド構文を使い、より宣言的にオブジェクトを構築する
+  const itemData = {
+    name,
+    type,
+    amount,
+    paymentDay,
+    isActive,
+    loanDetails,
+    ...(type !== 'bank' && sourceBankId && { sourceBankId: parseInt(sourceBankId, 10) })
+  };
 
   if (editingItemId !== null) {
     const itemIndex = masterData.findIndex(item => item.id === editingItemId);
