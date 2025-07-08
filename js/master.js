@@ -101,12 +101,6 @@ function renderAll() {
   updateCategoryCounts();
 }
 
-// js/master.js
-
-// js/master.js
-
-// js/master.js
-
 function renderMasterList() {
   const itemsGrid = document.getElementById('itemsGrid');
   itemsGrid.innerHTML = '';
@@ -132,56 +126,64 @@ function renderMasterList() {
     const statusClass = item.isActive ? 'active' : '';
     const statusText = item.isActive ? '✅ 有効' : '❌ 無効';
 
-    const amountLabels = {
-      [ITEM_TYPES.INCOME]: '収入額:', [ITEM_TYPES.CARD]: '想定利用額:', [ITEM_TYPES.FIXED]: '固定費額:',
-      [ITEM_TYPES.TAX]: '税金額:', [ITEM_TYPES.LOAN]: '月々返済額:', [ITEM_TYPES.VARIABLE]: '想定予算額:',
-      [ITEM_TYPES.BANK]: '現在の残高:'
-    };
-    const amountLabelText = amountLabels[item.type] || '金額:';
-    const amountText = `¥${Math.abs(item.amount).toLocaleString()}`;
+    // ▼▼▼ 表示ロジックを大幅にアップグレード ▼▼▼
+    let amountLabelText = '金額:';
+    let amountText = `¥${Math.abs(item.amount).toLocaleString()}`;
+    let detailsHtml = '';
 
-    let paymentDayText = '未設定';
-    if (item.paymentDay) {
-      if (item.paymentDay === PAYMENT_DAY_RULES.END_OF_MONTH_WEEKDAY) {
-        paymentDayText = '月末の平日';
-      } else {
-        paymentDayText = `${item.paymentDay}日`;
+    if (item.type === ITEM_TYPES.INCOME && item.incomeDetails) {
+      const details = item.incomeDetails;
+      amountLabelText = '基準月収:';
+      amountText = `¥${details.baseAmount.toLocaleString()}`;
+
+      const start = details.contractStartDate ? new Date(details.contractStartDate).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }) : '未設定';
+      const end = details.contractEndDate ? new Date(details.contractEndDate).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }) : '継続中';
+      const offsetOptions = { 0: '当月', 1: '翌月', 2: '翌々月', 3: '3ヶ月後' };
+      const paymentCycle = `${offsetOptions[details.paymentMonthOffset] || ''} ${details.paymentDate || ''}日払い`;
+
+      detailsHtml += `<div class="item-detail"><span class="item-label">契約期間:</span><span class="item-value">${start} 〜 ${end}</span></div>`;
+      detailsHtml += `<div class="item-detail"><span class="item-label">支払いサイクル:</span><span class="item-value">${paymentCycle}</span></div>`;
+
+    } else if (item.type === ITEM_TYPES.LOAN && item.loanDetails) {
+      amountLabelText = '月々返済額:';
+      detailsHtml += `<hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">`;
+      detailsHtml += `<div class="item-detail"><span class="item-label">現在の残高:</span><span class="item-value expense">¥${item.loanDetails.currentBalance.toLocaleString()}</span></div>`;
+      detailsHtml += `<div class="item-detail"><span class="item-label">年利率:</span><span class="item-value">${item.loanDetails.interestRate}%</span></div>`;
+
+    } else if (item.type !== ITEM_TYPES.BANK) {
+      const labels = {
+        [ITEM_TYPES.CARD]: '想定利用額:', [ITEM_TYPES.FIXED]: '固定費額:',
+        [ITEM_TYPES.TAX]: '税金額:', [ITEM_TYPES.VARIABLE]: '想定予算額:',
+      };
+      amountLabelText = labels[item.type] || '金額:';
+
+      let paymentDayText = '未設定';
+      if (item.paymentDay) {
+        if (item.paymentDay === PAYMENT_DAY_RULES.END_OF_MONTH_WEEKDAY) {
+          paymentDayText = '月末の平日';
+        } else {
+          paymentDayText = `${item.paymentDay}日`;
+        }
       }
+      detailsHtml += `<div class="item-detail"><span class="item-label">支払日:</span><span class="item-value">${paymentDayText}</span></div>`;
+    } else {
+      amountLabelText = '現在の残高:';
     }
 
-    let bankInfo = '';
     if (item.sourceBankId) {
       const bank = masterData.find(b => b.id === item.sourceBankId);
       if (bank) {
         const label = item.type === ITEM_TYPES.INCOME ? '振込先:' : '支払元:';
-        bankInfo = `<div class="item-detail"><span class="item-label">${label}</span><span class="item-value">${bank.name}</span></div>`;
+        detailsHtml += `<div class="item-detail"><span class="item-label">${label}</span><span class="item-value">${bank.name}</span></div>`;
       }
     }
-
-    let contractInfo = '';
-    if (item.type === ITEM_TYPES.INCOME && item.contractStartDate) {
-      const start = new Date(item.contractStartDate).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
-      const end = item.contractEndDate ? new Date(item.contractEndDate).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }) : '継続中';
-      contractInfo = `<div class="item-detail"><span class="item-label">契約期間:</span><span class="item-value">${start} 〜 ${end}</span></div>`;
-    }
-
-    let loanDetailsHtml = '';
-    if (item.type === ITEM_TYPES.LOAN && item.loanDetails) {
-      loanDetailsHtml = `
-        <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
-        <div class="item-detail"><span class="item-label">現在の残高:</span><span class="item-value expense">¥${item.loanDetails.currentBalance.toLocaleString()}</span></div>
-        <div class="item-detail"><span class="item-label">年利率:</span><span class="item-value">${item.loanDetails.interestRate}%</span></div>
-      `;
-    }
+    // ▲▲▲
 
     itemCard.innerHTML = `
       <div class="item-card-header"><span class="item-icon">${icon}</span><h4 class="item-name">${item.name}</h4><span class="item-status ${statusClass}">${statusText}</span></div>
       <div class="item-card-body">
           <div class="item-detail"><span class="item-label">${amountLabelText}</span><span class="item-value ${amountColor}">${amountText}</span></div>
-          <div class="item-detail"><span class="item-label">支払日:</span><span class="item-value">${paymentDayText}</span></div>
-          ${bankInfo}
-          ${contractInfo}
-          ${loanDetailsHtml}
+          ${detailsHtml}
       </div>
       <div class="item-card-actions">
           <button class="btn-action edit">✏️ 編集</button>
