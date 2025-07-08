@@ -74,21 +74,27 @@ async function loadData() {
     masterData = [];
   }
 }
+
 /**
- * [master.js専用] データをローカルストレージにのみ保存する
+ * [master.js専用] 変更されたデータをlocalStorageに一時保存し、司令塔に通知する
  */
 async function saveData() {
-  // master.jsではスポットイベントを扱わないため、既存のイベントデータは維持する
+  // 1. まず、他のページが最新データを読み込めるようにローカルストレージを更新する
   const existingData = JSON.parse(localStorage.getItem('budgetAppData') || '{}');
   const dataToSave = {
     master: masterData,
     events: existingData.events || [] // 既存のイベントデータを保持
   };
   localStorage.setItem('budgetAppData', JSON.stringify(dataToSave));
-  console.log('💾 [master.js] データをローカルに保存しました。');
-}
+  console.log('💾 [master.js] データをローカルに一時保存しました。');
 
-// ... renderAll 関数の前 ...
+  // 2. 次に、司令塔(index.js)にデータの保存と同期を依頼する
+  dataChannel.postMessage({
+    type: 'SAVE_DATA_REQUEST',
+    payload: dataToSave
+  });
+  console.log('📡 [master.js] 司令塔にデータ同期をリクエストしました。');
+}
 
 // ===================================================================================
 // メイン描画処理

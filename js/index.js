@@ -929,7 +929,6 @@ async function saveToDrive(content) {
   }
 }
 
-
 // ===================================================================================
 // ページ間通信の受信設定 (アーキテクチャの要)
 // ===================================================================================
@@ -937,26 +936,39 @@ dataChannel.addEventListener('message', async (event) => {
   if (!event.data || !event.data.type) return;
 
   console.log('📡 [index.js] 他のページからメッセージを受信しました:', event.data.type);
-  const receivedData = event.data.payload;
-
-  // 受信したデータで現在のデータを更新
-  masterData = receivedData.master;
-  oneTimeEvents = receivedData.events;
 
   // 命令の種類に応じて処理を分岐
-  if (event.data.type === 'SAVE_DATA_REQUEST') {
-    showNotification('他のページからの変更を検知し、同期を開始します...', 'info');
-    await saveData(); // 自動保存と同期
-    if (document.getElementById('appContainer').style.display === 'block') {
-      renderAll();
-      showNotification('✅ 自動同期が完了し、表示を更新しました。', 'success');
+  switch (event.data.type) {
+    case 'SAVE_DATA_REQUEST':
+    case 'MANUAL_SYNC_REQUEST': {
+      const receivedData = event.data.payload;
+      masterData = receivedData.master;
+      oneTimeEvents = receivedData.events;
+
+      const message = event.data.type === 'MANUAL_SYNC_REQUEST'
+        ? '設定ページからの手動同期リクエストを受信しました...'
+        : '他のページからの変更を検知し、同期を開始します...';
+      showNotification(message, 'info');
+
+      await saveData(); // 保存と同期
+
+      const successMessage = event.data.type === 'MANUAL_SYNC_REQUEST'
+        ? '✅ 手動でのデータ同期が完了しました。'
+        : '✅ 自動同期が完了し、表示を更新しました。';
+      showNotification(successMessage, 'success');
+
+      if (document.getElementById('appContainer').style.display === 'block') {
+        renderAll();
+      }
+      break;
     }
-  } else if (event.data.type === 'MANUAL_SYNC_REQUEST') {
-    showNotification('設定ページからの手動同期リクエストを受信しました...', 'info');
-    await saveData(); // 手動での保存と同期
-    showNotification('✅ 手動でのデータ同期が完了しました。', 'success');
-    if (document.getElementById('appContainer').style.display === 'block') {
-      renderAll();
+
+    case 'FORCE_SYNC_FROM_DRIVE_REQUEST': {
+      showNotification('設定ページからの強制同期リクエストを受信しました...', 'info');
+      // syncWithDriveは内部でUI更新まで行う
+      await syncWithDrive();
+      showNotification('✅ Driveからの強制同期が完了しました。', 'success');
+      break;
     }
   }
 });

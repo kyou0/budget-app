@@ -2,8 +2,8 @@
 // グローバル変数 & 初期設定
 // ===================================================================================
 let currentUser = null;
-let masterData = []; // このページでもデータを持つ
 let loginMode = 'local';
+// このページでは、データは直接保持せず、常にlocalStorageから読み書きする
 
 // ===================================================================================
 // 初期化処理 & ログインチェック
@@ -11,53 +11,41 @@ let loginMode = 'local';
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 設定ページ起動');
 
-  // ログイン状態を確認
   const savedUserJSON = localStorage.getItem('budgetAppUser');
   if (!savedUserJSON) {
-    // ログインしていない場合は、ダッシュボード（ログイン画面）に強制送還
-    // これが最も安全で確実な方法です
     window.location.href = 'index.html';
     return;
   }
 
-  // ログイン済みの場合の処理
-  const appContainer = document.getElementById('appContainer');
-  if (appContainer) {
-    appContainer.style.display = 'block';
-  }
-
+  document.getElementById('appContainer').style.display = 'block';
   currentUser = JSON.parse(savedUserJSON);
   loginMode = currentUser.mode;
   document.getElementById('userName').textContent = currentUser.name;
 
-  loadData();
   updateSyncStatus();
 });
 
 // ===================================================================================
-// データ管理
+// データ管理 (司令塔への通知役)
 // ===================================================================================
-function loadData() {
-  // master.js と同じロジックでデータを読み込む
-  const dataKey = 'budgetMasterData';
-  const storage = loginMode === 'google' ? sessionStorage : localStorage;
 
-  const savedData = storage.getItem(dataKey);
-  if (savedData) {
-    try {
-      masterData = JSON.parse(savedData);
-      console.log(`📂 [${loginMode}モード] ストレージからデータを読み込みました。`);
-    } catch (e) {
-      console.error("データの解析に失敗:", e);
-      masterData = [];
-    }
-  } else {
-    console.warn('ストレージにデータが見つかりません。');
-    if (loginMode === 'google') {
-      showNotification('最新のデータを取得できませんでした。ダッシュボードに戻って再同期してください。', 'warning');
-    }
-  }
+/**
+ * [settings.js専用] 変更されたデータを司令塔(index.js)に通知する
+ * @param {object} data - { master: [...], events: [...] } 形式のデータ
+ */
+async function notifyDataChange(data) {
+  // 1. まず、他のページが最新データを読み込めるようにローカルストレージを更新する
+  localStorage.setItem('budgetAppData', JSON.stringify(data));
+  console.log('💾 [settings.js] データをローカルに一時保存しました。');
+
+  // 2. 次に、司令塔(index.js)にデータの保存と同期を依頼する
+  dataChannel.postMessage({
+    type: 'SAVE_DATA_REQUEST',
+    payload: data
+  });
+  console.log('📡 [settings.js] 司令塔にデータ同期をリクエストしました。');
 }
+
 
 // ===================================================================================
 // UI更新
@@ -65,19 +53,20 @@ function loadData() {
 function updateSyncStatus() {
   const statusBadge = document.getElementById('syncStatus');
   const syncButton = document.getElementById('manualSyncBtn');
+  const forceSyncButton = document.getElementById('forceSyncBtn'); // 強制同期ボタン
 
-  if (!statusBadge || !syncButton) return;
+  if (!statusBadge || !syncButton || !forceSyncButton) return;
 
   if (loginMode === 'google') {
     statusBadge.textContent = 'Google Drive';
     statusBadge.className = 'status-badge google';
     syncButton.disabled = false;
-    syncButton.style.display = 'block';
+    forceSyncButton.disabled = false;
   } else {
     statusBadge.textContent = 'ローカルモード';
     statusBadge.className = 'status-badge local';
     syncButton.disabled = true;
-    syncButton.style.display = 'none'; // ローカルモードでは非表示
+    forceSyncButton.disabled = true;
   }
 }
 
@@ -86,13 +75,12 @@ function updateSyncStatus() {
 // ===================================================================================
 
 /**
- * 手動でメインアプリにデータ同期をリクエストする
+ * 手動で司令塔にデータ同期をリクエストする
  */
 async function manualSync() {
-  console.log('📡 [settings.js] メインアプリに手動同期をリクエストします...');
+  console.log('📡 [settings.js] 司令塔に手動同期をリクエストします...');
   showNotification('メインページにデータ同期をリクエストしています...', 'info');
 
-  // 現在のデータをlocalStorageから読み込む
   const dataString = localStorage.getItem('budgetAppData');
   if (!dataString) {
     showNotification('保存するデータがありません。', 'error');
@@ -100,74 +88,51 @@ async function manualSync() {
   }
   const data = JSON.parse(dataString);
 
-  // メインアプリ(index.js)にデータの保存と同期を依頼する
   dataChannel.postMessage({
-    type: 'MANUAL_SYNC_REQUEST', // 新しい命令タイプ
-    payload: {
-      master: data.master || [],
-      events: data.events || []
-    }
+    type: 'MANUAL_SYNC_REQUEST',
+    payload: data
   });
 }
 
 /**
- * Driveから最新のデータを強制的に取得する
- * @param {boolean} showSuccessNotification - 成功時に通知を表示するかどうか
+ * Driveから最新のデータを強制的に取得するよう司令塔にリクエストする
  */
-async function forceSyncFromDrive(showSuccessNotification = true) {
-  const accessToken = sessionStorage.getItem('googleAccessToken');
-  const fileId = sessionStorage.getItem('driveFileId');
-
-  if (!accessToken || !fileId) {
-    showNotification('Google Driveに接続されていません。', 'error');
+async function forceSyncFromDrive() {
+  if (loginMode !== 'google') {
+    showNotification('Googleログインモードではありません。', 'error');
     return;
   }
+  console.log('📡 [settings.js] 司令塔に強制同期をリクエストします...');
+  showNotification('メインページにDriveからの強制同期をリクエストしています...', 'info');
 
-  const loadingOverlay = document.getElementById('loadingOverlay');
-  if (loadingOverlay) loadingOverlay.classList.add('show');
-
-  try {
-    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
-    });
-    if (!response.ok) throw new Error('ファイルの読み込みに失敗しました');
-
-    const dataText = await response.text();
-    if (dataText) {
-      // 読み込んだデータを短期記憶(sessionStorage)に保存
-      sessionStorage.setItem('budgetMasterData', dataText);
-      // このページのデータも更新
-      masterData = JSON.parse(dataText);
-      if (showSuccessNotification) {
-        showNotification('✅ Driveからデータを同期しました！');
-      }
-    } else {
-      showNotification('Driveのファイルは空です。', 'warning');
-    }
-  } catch (error) {
-    console.error("Driveからの同期に失敗:", error);
-    showNotification('Driveからの同期に失敗しました。', 'error');
-  } finally {
-    if (loadingOverlay) loadingOverlay.classList.remove('show');
-  }
+  dataChannel.postMessage({
+    type: 'FORCE_SYNC_FROM_DRIVE_REQUEST'
+    // payloadは不要。司令塔がDriveから取ってくるため。
+  });
 }
-
 
 /**
  * 現在のデータをJSONファイルとしてエクスポートする
  */
 function exportData() {
-  if (masterData.length === 0) {
+  const dataString = localStorage.getItem('budgetAppData');
+  if (!dataString) {
     showNotification('エクスポートするデータがありません。', 'warning');
     return;
   }
-  const dataStr = JSON.stringify(masterData, null, 2);
+  const data = JSON.parse(dataString);
+  const dataToExport = {
+    master: data.master || [],
+    events: data.events || []
+  };
+
+  const dataStr = JSON.stringify(dataToExport, null, 2);
   const dataBlob = new Blob([dataStr], { type: 'application/json' });
   const url = URL.createObjectURL(dataBlob);
 
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'budget-data.json';
+  link.download = 'budget-app-data.json';
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -198,21 +163,19 @@ async function importData() {
           const importedData = JSON.parse(event.target.result);
 
           // ★★★ 安全性を高める「門番」チェック ★★★
-          const isValidData = Array.isArray(importedData) && importedData.every(item =>
-            typeof item.id !== 'undefined' &&
-            typeof item.name !== 'undefined' &&
-            typeof item.type !== 'undefined' &&
-            typeof item.amount !== 'undefined'
-          );
+          const isValid = typeof importedData === 'object' &&
+            importedData !== null &&
+            Array.isArray(importedData.master) &&
+            Array.isArray(importedData.events);
 
-          if (!isValidData) {
+          if (!isValid) {
             throw new Error('無効なデータ形式です。このアプリのバックアップファイルではありません。');
           }
 
-          masterData = importedData;
-          await saveData(); // 賢い保存係に保存を任せる
+          // 司令塔にデータの変更を通知
+          await notifyDataChange(importedData);
 
-          showNotification('✅ データのインポートが完了しました。');
+          showNotification('✅ データのインポートが完了しました。司令塔が同期を開始します。');
 
         } catch (err) {
           console.error('インポートエラー:', err);
@@ -234,8 +197,9 @@ async function importData() {
  */
 async function resetAllData() {
   if (confirm('本当にすべてのデータをリセットしますか？この操作は元に戻せません。')) {
-    masterData = [];
-    await saveData(); // 変更を保存
-    showNotification('🔄 全データをリセットしました。', 'error');
+    const emptyData = { master: [], events: [] };
+    // 司令塔にリセットを通知
+    await notifyDataChange(emptyData);
+    showNotification('🔄 全データをリセットしました。司令塔が同期を開始します。', 'error');
   }
 }
