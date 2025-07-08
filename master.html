@@ -19,12 +19,12 @@
             <h1>⚙️ マスター管理</h1>
             <div class="user-info">
                 <span id="userName">ユーザー</span>
-                <!-- ▼▼▼ 他のページと動作を合わせるため、onclickを追加 ▼▼▼ -->
+                <!-- ▼▼▼ common.jsで管理するため、onclickは必須 ▼▼▼ -->
                 <button class="logout-btn" onclick="window.logout()">ログアウト</button>
             </div>
         </div>
         <div class="navigation">
-            <!-- ▼▼▼ 他のページと動作を合わせるため、onclickを追加 ▼▼▼ -->
+            <!-- ▼▼▼ common.jsで管理するため、onclickは必須 ▼▼▼ -->
             <button class="nav-btn" onclick="window.goToDashboard()">📈 ダッシュボード</button>
             <button class="nav-btn active">⚙️ マスター管理</button>
             <button class="nav-btn" onclick="window.goToSettings()">🔧 設定</button>
@@ -219,6 +219,7 @@
                     </div>
                 </div>
                 <div class="form-actions">
+                    <!-- ▼▼▼ バグの原因だった onclick を全て削除 ▼▼▼ -->
                     <button type="button" class="btn btn-secondary">キャンセル</button>
                     <button type="button" class="btn btn-primary">💾 保存</button>
                 </div>
