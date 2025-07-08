@@ -7,10 +7,9 @@
     <link rel="stylesheet" href="css/style.css">
     <!-- PWA対応 -->
     <link rel="manifest" href="manifest.json">
-    <!-- ▼▼▼ 修正箇所 ▼▼▼ -->
     <link rel="icon" href="data:,"> <!-- favicon.icoの404エラーを一旦抑制 -->
     <meta name="theme-color" content="#667eea">
-    <meta name="mobile-web-app-capable" content="yes"> <!-- 推奨されるタグを追加 -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="家計簿アプリ">
@@ -25,9 +24,7 @@
         <h1>財務司令塔</h1>
         <p>あなたの家計の羅針盤</p>
         <div class="login-actions">
-            <!-- ▼▼▼ ここをGoogleボタン専用のdivに置き換える ▼▼▼ -->
             <div id="googleLoginBtn" class="gsi-material-button"></div>
-
             <button class="btn btn-secondary" onclick="localLogin()">ローカルモードで続ける</button>
         </div>
     </div>
@@ -112,7 +109,7 @@
 
 </div>
 <script src="js/common.js" defer></script>
-<script src="js/index.js" defer></script>
-<script src="https://accounts.google.com/gsi/client" async onload="onGoogleLibraryLoad()"></script>
+<script src="js/index.js"></script> <!-- deferを削除して、Googleのスクリプトより先に読み込ませる -->
+<script src="https://accounts.google.com/gsi/client" async defer onload="onGoogleLibraryLoad()"></script>
 </body>
 </html>
