@@ -86,28 +86,28 @@ function updateSyncStatus() {
 // ===================================================================================
 
 /**
- * 手動でデータを保存し、Google Driveと同期する
+ * 手動でメインアプリにデータ同期をリクエストする
  */
 async function manualSync() {
-  const loadingOverlay = document.getElementById('loadingOverlay');
-  try {
-    loadingOverlay.classList.add('show');
-    showNotification('☁️ Google Driveと手動で同期しています...', 'info');
+  console.log('📡 [settings.js] メインアプリに手動同期をリクエストします...');
+  showNotification('メインページにデータ同期をリクエストしています...', 'info');
 
-    // 1. まず現在のデータをDriveに保存する (common.jsのsaveDataを呼び出す)
-    await saveData();
-
-    // 2. 保存後、念のためDriveから最新データを再読み込み（他のデバイスでの変更を反映）
-    await forceSyncFromDrive(false); // 成功通知は不要
-
-    showNotification('✅ 同期が完了しました！');
-
-  } catch (error) {
-    console.error("手動同期エラー:", error);
-    showNotification(error.message || '同期に失敗しました。', 'error');
-  } finally {
-    loadingOverlay.classList.remove('show');
+  // 現在のデータをlocalStorageから読み込む
+  const dataString = localStorage.getItem('budgetAppData');
+  if (!dataString) {
+    showNotification('保存するデータがありません。', 'error');
+    return;
   }
+  const data = JSON.parse(dataString);
+
+  // メインアプリ(index.js)にデータの保存と同期を依頼する
+  dataChannel.postMessage({
+    type: 'MANUAL_SYNC_REQUEST', // 新しい命令タイプ
+    payload: {
+      master: data.master || [],
+      events: data.events || []
+    }
+  });
 }
 
 /**

@@ -851,3 +851,112 @@ async function checkContractStatus() {
     await saveData();
   }
 }
+// ===================================================================================
+// データ保存 & 同期 (このアプリの心臓部)
+// ===================================================================================
+
+/**
+ * [index.js専用] データをローカルとGoogle Drive(有効な場合)の両方に保存する
+ * このアプリでデータを永続化する唯一の公式な方法。
+ */
+async function saveData() {
+  const dataToSave = {
+    master: masterData,
+    events: oneTimeEvents,
+  };
+  const dataString = JSON.stringify(dataToSave);
+
+  // 1. まずローカルに保存
+  localStorage.setItem('budgetAppData', dataString);
+  console.log('💾 [index.js] データをローカルに保存しました。');
+
+  // 2. Googleログインモードの場合、Driveにも同期
+  if (loginMode === 'google' && googleAccessToken) {
+    console.log('☁️ Google Driveへの同期を開始します...');
+    await saveToDrive(dataString);
+  }
+}
+
+/**
+ * データをGoogle Driveにアップロードするヘルパー関数
+ * @param {string} content 保存するデータ文字列
+ */
+async function saveToDrive(content) {
+  const fileId = sessionStorage.getItem('driveFileId');
+  if (!googleAccessToken || !fileId) {
+    console.error("Driveへの保存に必要な情報（トークンまたはファイルID）がありません。");
+    throw new Error("アクセストークンまたはファイルIDがありません。");
+  }
+
+  const boundary = '-------314159265358979323846';
+  const delimiter = "\r\n--" + boundary + "\r\n";
+  const close_delim = "\r\n--" + boundary + "--";
+
+  const metadata = {
+    'mimeType': 'application/json'
+  };
+
+  const multipartRequestBody =
+    delimiter +
+    'Content-Type: application/json\r\n\r\n' +
+    JSON.stringify(metadata) +
+    delimiter +
+    'Content-Type: application/json\r\n\r\n' +
+    content +
+    close_delim;
+
+  try {
+    const response = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${googleAccessToken}`,
+        'Content-Type': 'multipart/related; boundary="' + boundary + '"'
+      },
+      body: multipartRequestBody
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Google Driveへの保存に失敗しました:', errorData);
+      throw new Error('Google Driveへのアップロードに失敗しました。');
+    }
+
+    console.log('✅ Google Driveへの保存が成功しました。');
+
+  } catch (error) {
+    console.error("saveToDrive関数でエラー:", error);
+    showNotification('Google Driveへの同期中にエラーが発生しました。', 'error');
+  }
+}
+
+
+// ===================================================================================
+// ページ間通信の受信設定 (アーキテクチャの要)
+// ===================================================================================
+dataChannel.addEventListener('message', async (event) => {
+  if (!event.data || !event.data.type) return;
+
+  console.log('📡 [index.js] 他のページからメッセージを受信しました:', event.data.type);
+  const receivedData = event.data.payload;
+
+  // 受信したデータで現在のデータを更新
+  masterData = receivedData.master;
+  oneTimeEvents = receivedData.events;
+
+  // 命令の種類に応じて処理を分岐
+  if (event.data.type === 'SAVE_DATA_REQUEST') {
+    showNotification('他のページからの変更を検知し、同期を開始します...', 'info');
+    await saveData(); // 自動保存と同期
+    if (document.getElementById('appContainer').style.display === 'block') {
+      renderAll();
+      showNotification('✅ 自動同期が完了し、表示を更新しました。', 'success');
+    }
+  } else if (event.data.type === 'MANUAL_SYNC_REQUEST') {
+    showNotification('設定ページからの手動同期リクエストを受信しました...', 'info');
+    await saveData(); // 手動での保存と同期
+    showNotification('✅ 手動でのデータ同期が完了しました。', 'success');
+    if (document.getElementById('appContainer').style.display === 'block') {
+      renderAll();
+    }
+  }
+});
