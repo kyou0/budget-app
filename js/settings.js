@@ -13,9 +13,25 @@ let loginMode = 'local';
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 設定ページ起動');
 
+  // ★★★ ページが表示されるたびにデータを再読み込みするセンサーを設置 ★★★
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      console.log('👁️ 設定ページが再表示されました。UIを更新します。');
+      reloadDataAndUpdateUI();
+    }
+  });
+
+  // 初回読み込み
+  reloadDataAndUpdateUI();
+  setupEventListeners();
+});
+
+/**
+ * localStorageから最新のデータを読み込み、UIを更新する
+ */
+function reloadDataAndUpdateUI() {
   const savedUserJSON = localStorage.getItem('budgetAppUser');
   if (!savedUserJSON) {
-    // ログイン情報がなければ、強制的にメインページに戻す
     window.location.href = 'index.html';
     return;
   }
@@ -26,8 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('userName').textContent = currentUser.name;
 
   updateSyncStatusUI();
-  setupEventListeners(); // ★★★ すべてのボタンの動作をここで設定 ★★★
-});
+}
 
 /**
  * このページのすべてのボタンにイベントリスナーを設定する

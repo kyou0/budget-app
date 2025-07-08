@@ -1,20 +1,37 @@
-// js/master.js
-
 // ===================================================================================
-// グローバル変数
+// グローバル変数 & 初期設定
 // ===================================================================================
 let masterData = [];
+let oneTimeEvents = [];
 let currentUser = null;
 let loginMode = 'local';
-let editingItemId = null;
 let currentCategory = 'all';
+let editingItemId = null;
 
 // ===================================================================================
-// 初期化処理
+// 初期化処理 & ログインチェック
 // ===================================================================================
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 マスター管理ページ起動');
 
+  // ★★★ ページが表示されるたびにデータを再読み込みするセンサーを設置 ★★★
+  document.addEventListener('visibilitychange', () => {
+    // ページが非表示から表示に切り替わった時だけ実行
+    if (document.visibilityState === 'visible') {
+      console.log('👁️ マスターページが再表示されました。データを更新します。');
+      reloadDataAndRender();
+    }
+  });
+
+  // 初回読み込み
+  reloadDataAndRender();
+  setupEventListeners();
+});
+
+/**
+ * localStorageから最新のデータを読み込み、画面全体を再描画する
+ */
+function reloadDataAndRender() {
   const savedUserJSON = localStorage.getItem('budgetAppUser');
   if (!savedUserJSON) {
     window.location.href = 'index.html';
@@ -26,18 +43,32 @@ document.addEventListener('DOMContentLoaded', function() {
   loginMode = currentUser.mode;
   document.getElementById('userName').textContent = currentUser.name;
 
-  loadData();
-  renderAll();
-  // イベントリスナーはここに集約すると管理しやすい
-  setupEventListeners();
-});
+  const savedData = localStorage.getItem('budgetAppData');
+  if (savedData) {
+    const parsedData = JSON.parse(savedData);
+    masterData = parsedData.master || [];
+    oneTimeEvents = parsedData.events || [];
+  } else {
+    masterData = [];
+    oneTimeEvents = [];
+  }
 
+  // 画面の再描画
+  updateStats();
+  renderItems(currentCategory);
+  updateCategoryCounts();
+}
+
+// ===================================================================================
+// イベントリスナー設定
+// ===================================================================================
 function setupEventListeners() {
   // カテゴリ選択
   document.getElementById('categoryList').addEventListener('click', (e) => {
     const target = e.target.closest('.category-item');
     if (target) {
-      showCategory(target.dataset.category, target);
+      currentCategory = target.dataset.category;
+      showCategory(currentCategory, target);
     }
   });
 
@@ -56,7 +87,7 @@ function setupEventListeners() {
 
   // 項目リストの編集・削除（イベント委任）
   document.getElementById('itemsGrid').addEventListener('click', async (e) => {
-    const button = e.target.closest('button.btn-action');
+    const button = e.target.closest('button.btn-small');
     if (!button) return;
 
     const card = button.closest('.item-card');
@@ -70,23 +101,24 @@ function setupEventListeners() {
   });
 }
 
-
 // ===================================================================================
 // データ管理 (司令塔への通知役)
 // ===================================================================================
-function loadData() {
-  const savedData = localStorage.getItem('budgetAppData');
-  if (savedData) {
-    try {
-      const parsedData = JSON.parse(savedData);
-      masterData = parsedData.master || [];
-    } catch (e) {
-      console.error("ローカルデータの解析に失敗:", e);
-      masterData = [];
-    }
-  } else {
-    console.log("ストレージにデータがありません。");
-  }
+/**
+ * [master.js専用] 変更されたデータを司令塔(index.js)に通知する
+ */
+async function notifyDataChange() {
+  const dataToSave = { master: masterData, events: oneTimeEvents };
+  // 1. まず、他のページが最新データを読み込めるようにローカルストレージを更新する
+  localStorage.setItem('budgetAppData', JSON.stringify(dataToSave));
+  console.log('💾 [master.js] データをローカルに一時保存しました。');
+
+  // 2. 次に、司令塔(index.js)にデータの保存と同期を依頼する
+  dataChannel.postMessage({
+    type: 'SAVE_DATA_REQUEST',
+    payload: dataToSave
+  });
+  console.log('📡 [master.js] 司令塔にデータ同期をリクエストしました。');
 }
 
 /**
