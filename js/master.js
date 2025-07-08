@@ -1,3 +1,5 @@
+// js/master.js
+
 // ===================================================================================
 // グローバル変数 & 初期設定
 // ===================================================================================
@@ -45,18 +47,22 @@ function reloadDataAndRender() {
 
   const savedData = localStorage.getItem('budgetAppData');
   if (savedData) {
-    const parsedData = JSON.parse(savedData);
-    masterData = parsedData.master || [];
-    oneTimeEvents = parsedData.events || [];
+    try {
+      const parsedData = JSON.parse(savedData);
+      masterData = parsedData.master || [];
+      oneTimeEvents = parsedData.events || [];
+    } catch (e) {
+      console.error("マスターデータの解析に失敗:", e);
+      masterData = [];
+      oneTimeEvents = [];
+    }
   } else {
     masterData = [];
     oneTimeEvents = [];
   }
 
   // 画面の再描画
-  updateStats();
-  renderItems(currentCategory);
-  updateCategoryCounts();
+  renderAll();
 }
 
 // ===================================================================================
@@ -105,32 +111,11 @@ function setupEventListeners() {
 // データ管理 (司令塔への通知役)
 // ===================================================================================
 /**
- * [master.js専用] 変更されたデータを司令塔(index.js)に通知する
- */
-async function notifyDataChange() {
-  const dataToSave = { master: masterData, events: oneTimeEvents };
-  // 1. まず、他のページが最新データを読み込めるようにローカルストレージを更新する
-  localStorage.setItem('budgetAppData', JSON.stringify(dataToSave));
-  console.log('💾 [master.js] データをローカルに一時保存しました。');
-
-  // 2. 次に、司令塔(index.js)にデータの保存と同期を依頼する
-  dataChannel.postMessage({
-    type: 'SAVE_DATA_REQUEST',
-    payload: dataToSave
-  });
-  console.log('📡 [master.js] 司令塔にデータ同期をリクエストしました。');
-}
-
-/**
  * [master.js専用] 変更されたデータをlocalStorageに一時保存し、司令塔に通知する
  */
 async function saveData() {
+  const dataToSave = { master: masterData, events: oneTimeEvents };
   // 1. まず、他のページが最新データを読み込めるようにローカルストレージを更新する
-  const existingData = JSON.parse(localStorage.getItem('budgetAppData') || '{}');
-  const dataToSave = {
-    master: masterData,
-    events: existingData.events || [] // 既存のイベントデータを保持
-  };
   localStorage.setItem('budgetAppData', JSON.stringify(dataToSave));
   console.log('💾 [master.js] データをローカルに一時保存しました。');
 
@@ -146,8 +131,8 @@ async function saveData() {
 // UI描画
 // ===================================================================================
 function renderAll() {
-  renderMasterList();
   updateStats();
+  renderMasterList();
   updateCategoryCounts();
   populatePaymentDaySelect();
 }
@@ -165,6 +150,8 @@ function renderMasterList() {
     return;
   }
 
+  filteredData.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
   filteredData.forEach(item => {
     const card = document.createElement('div');
     card.className = `item-card ${item.type} ${item.isActive ? '' : 'inactive'}`;
@@ -176,16 +163,20 @@ function renderMasterList() {
     }
 
     card.innerHTML = `
-            <div class="item-card-header">
-                <span class="item-name">${item.name}</span>
-                <span class="item-status ${item.isActive ? 'active' : ''}">${item.isActive ? '✅ 有効' : '❌ 無効'}</span>
-            </div>
-            ${amountDisplay}
-            <div class="item-actions">
-                <button class="btn-small btn-action edit">編集</button>
-                <button class="btn-small btn-action delete">削除</button>
-            </div>
-        `;
+      <div class="item-card-header">
+          <span class="item-name">${item.name}</span>
+          <span class="item-status ${item.isActive ? 'active' : 'inactive'}">${item.isActive ? '✅ 有効' : '❌ 無効'}</span>
+      </div>
+      ${amountDisplay}
+      <div class="item-details">
+          <p>種別: ${item.type}</p>
+          ${item.paymentDay ? `<p>支払日: ${item.paymentDay === 'EOM' ? '月末' : item.paymentDay + '日'}</p>` : ''}
+      </div>
+      <div class="item-actions">
+          <button class="btn-small edit">編集</button>
+          <button class="btn-small delete">削除</button>
+      </div>
+    `;
     itemsGrid.appendChild(card);
   });
 }
@@ -193,8 +184,8 @@ function renderMasterList() {
 function updateStats() {
   const activeItems = masterData.filter(item => item.isActive);
   const loans = activeItems.filter(item => item.type === 'loan' && item.loanDetails);
-  const totalDebt = loans.reduce((sum, item) => sum + item.loanDetails.currentBalance, 0);
-  const monthlyRepayment = loans.reduce((sum, item) => sum + Math.abs(item.amount), 0);
+  const totalDebt = loans.reduce((sum, item) => sum + (item.loanDetails.currentBalance || 0), 0);
+  const monthlyRepayment = loans.reduce((sum, item) => sum + Math.abs(item.amount || 0), 0);
 
   document.getElementById('statTotalItems').textContent = masterData.length;
   document.getElementById('statActiveItems').textContent = activeItems.length;
@@ -203,20 +194,24 @@ function updateStats() {
 }
 
 function updateCategoryCounts() {
-  const counts = { all: masterData.length };
-  Object.values(ITEM_TYPES).forEach(type => {
-    counts[type] = masterData.filter(item => item.type === type).length;
-    const countEl = document.getElementById(`count${type.charAt(0).toUpperCase() + type.slice(1)}`);
-    if (countEl) {
-      countEl.textContent = counts[type];
+  const categories = ['all', 'income', 'loan', 'card', 'fixed', 'bank', 'tax', 'variable'];
+  categories.forEach(category => {
+    const count = category === 'all'
+      ? masterData.length
+      : masterData.filter(item => item.type === category).length;
+    const elementId = `count${category.charAt(0).toUpperCase() + category.slice(1)}`;
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.textContent = count;
     }
   });
-  document.getElementById('countAll').textContent = counts.all;
 }
+
 
 function populatePaymentDaySelect() {
   const paymentDaySelect = document.getElementById('paymentDay');
   const specificDaysGroup = paymentDaySelect.querySelector('optgroup[label="特定の日付"]');
+  if (!specificDaysGroup) return;
   specificDaysGroup.innerHTML = ''; // Clear existing options
   for (let i = 1; i <= 31; i++) {
     const option = document.createElement('option');
@@ -262,7 +257,7 @@ function showEditForm(itemId) {
   populateBankSelect(); // 先に銀行リストを生成
   document.getElementById('itemSourceBank').value = item.sourceBankId || '';
 
-  if (item.type === ITEM_TYPES.INCOME && item.incomeDetails) {
+  if (item.type === 'income' && item.incomeDetails) {
     const details = item.incomeDetails;
     document.getElementById('itemAmount').value = details.baseAmount;
     document.getElementById('baseAmount').value = details.baseAmount;
@@ -277,7 +272,7 @@ function showEditForm(itemId) {
     document.getElementById('paymentDay').value = item.paymentDay || '';
   }
 
-  if (item.type === ITEM_TYPES.LOAN && item.loanDetails) {
+  if (item.type === 'loan' && item.loanDetails) {
     const details = item.loanDetails;
     document.getElementById('initialAmount').value = details.initialAmount || '';
     document.getElementById('loanDate').value = details.loanDate || '';
@@ -294,25 +289,21 @@ function showEditForm(itemId) {
 
 function hideAddForm() {
   document.getElementById('addForm').style.display = 'none';
+  editingItemId = null;
 }
 
 function updateFormFields() {
   const type = document.getElementById('itemType').value;
-  document.querySelectorAll('.income-field, .loan-field').forEach(el => el.style.display = 'none');
-  document.getElementById('itemAmount').parentElement.style.display = 'flex';
-  document.getElementById('paymentDay').parentElement.style.display = 'flex';
-  document.getElementById('itemSourceBank').parentElement.style.display = 'flex';
+  const isIncome = type === 'income';
+  const isLoan = type === 'loan';
+  const isBank = type === 'bank';
 
-  if (type === 'income') {
-    document.querySelectorAll('.income-field').forEach(el => el.style.display = 'flex');
-    document.getElementById('itemAmount').parentElement.style.display = 'none';
-    document.getElementById('paymentDay').parentElement.style.display = 'none';
-  } else if (type === 'loan') {
-    document.querySelectorAll('.loan-field').forEach(el => el.style.display = 'flex');
-  } else if (type === 'bank') {
-    document.getElementById('paymentDay').parentElement.style.display = 'none';
-    document.getElementById('itemSourceBank').parentElement.style.display = 'none';
-  }
+  document.querySelectorAll('.income-field').forEach(el => el.style.display = isIncome ? 'flex' : 'none');
+  document.querySelectorAll('.loan-field').forEach(el => el.style.display = isLoan ? 'flex' : 'none');
+
+  document.getElementById('itemAmount').parentElement.style.display = isIncome ? 'none' : 'flex';
+  document.getElementById('paymentDay').parentElement.style.display = (isIncome || isBank) ? 'none' : 'flex';
+  document.getElementById('itemSourceBank').parentElement.style.display = isBank ? 'none' : 'flex';
 }
 
 function populateBankSelect() {
@@ -330,6 +321,11 @@ function populateBankSelect() {
 async function saveItem() {
   const name = document.getElementById('itemName').value.trim();
   const type = document.getElementById('itemType').value;
+  if (!name || !type) {
+    showNotification('項目名と種別は必須です。', 'error');
+    return;
+  }
+
   const isActive = document.getElementById('isActive').value === 'true';
   const sourceBankId = document.getElementById('itemSourceBank').value;
 
@@ -338,7 +334,7 @@ async function saveItem() {
     itemData.sourceBankId = parseInt(sourceBankId, 10);
   }
 
-  if (type === ITEM_TYPES.INCOME) {
+  if (type === 'income') {
     const baseAmount = parseInt(document.getElementById('baseAmount').value, 10);
     if (isNaN(baseAmount)) {
       showNotification('収入の場合、基準月収は必須です。', 'error');
@@ -356,23 +352,23 @@ async function saveItem() {
     };
   } else {
     let amount = parseInt(document.getElementById('itemAmount').value, 10);
-    if (!name || !type || isNaN(amount)) {
-      showNotification('項目名、種別、金額は必須です。', 'error');
+    if (isNaN(amount) && type !== 'bank') {
+      showNotification('金額は必須です。', 'error');
       return;
     }
     const paymentDayValue = document.getElementById('paymentDay').value;
-    itemData.paymentDay = paymentDayValue === PAYMENT_DAY_RULES.END_OF_MONTH_WEEKDAY
-      ? PAYMENT_DAY_RULES.END_OF_MONTH_WEEKDAY
+    itemData.paymentDay = paymentDayValue === 'EOM'
+      ? 'EOM'
       : (parseInt(paymentDayValue, 10) || null);
 
-    if ([ITEM_TYPES.FIXED, ITEM_TYPES.TAX, ITEM_TYPES.LOAN, ITEM_TYPES.CARD, ITEM_TYPES.VARIABLE].includes(type)) {
+    if (['fixed', 'tax', 'loan', 'card', 'variable'].includes(type)) {
       itemData.amount = -Math.abs(amount);
     } else {
       itemData.amount = Math.abs(amount);
     }
   }
 
-  if (type === ITEM_TYPES.LOAN) {
+  if (type === 'loan') {
     const interestRate = parseFloat(document.getElementById('interestRate').value);
     const currentBalance = parseInt(document.getElementById('currentBalance').value, 10);
     if (isNaN(interestRate) || isNaN(currentBalance)) {
@@ -452,14 +448,14 @@ async function resetAllData() {
 function exportData() {
   const dataToExport = {
     master: masterData,
-    events: JSON.parse(localStorage.getItem('budgetAppData') || '{}').events || []
+    events: oneTimeEvents
   };
   const dataStr = JSON.stringify(dataToExport, null, 2);
   const dataBlob = new Blob([dataStr], { type: 'application/json' });
   const url = URL.createObjectURL(dataBlob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'budget-app-data.json';
+  link.download = `budget-app-data-${new Date().toISOString().slice(0,10)}.json`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
