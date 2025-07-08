@@ -17,7 +17,6 @@ let oneTimeEvents = [];
 // ===================================================================================
 // 初期化処理
 // ===================================================================================
-// js/index.js
 
 /**
  * Googleのライブラリが読み込み完了したときに呼び出される
@@ -42,11 +41,9 @@ window.onGoogleLibraryLoad = function() {
       callback: handleTokenResponse,
     });
 
-    // ★★★ ここが最重要修正箇所 ★★★
     // Googleの初期化が完了したので、ログインボタンを有効化する
     if (googleLoginBtn) {
       googleLoginBtn.disabled = false;
-      // ボタンのテキストとアイコンを元に戻す
       googleLoginBtn.innerHTML = `
             <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" style="width: 20px; vertical-align: middle; margin-right: 10px;">
             Googleでログイン
@@ -56,7 +53,6 @@ window.onGoogleLibraryLoad = function() {
   } catch (e) {
     console.error("Googleライブラリの初期化に失敗しました。", e);
     showNotification('Googleライブラリの初期化に失敗しました。ページを再読み込みしてください。', 'error');
-    // エラーが起きた場合も、ボタンのテキストを分かりやすく変更
     if (googleLoginBtn) {
       googleLoginBtn.textContent = 'Googleログインでエラー';
     }
@@ -66,7 +62,7 @@ window.onGoogleLibraryLoad = function() {
 /**
  * DOMの読み込みが完了したら実行
  */
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded',  async function() {
   console.log('🚀 家計簿アプリ v2.0 起動');
 
   const loginScreen = document.getElementById('loginScreen');
@@ -79,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (user && user.name && user.mode) {
         currentUser = user;
         loginMode = user.mode;
-        showApp();
+        await showApp();
         return;
       }
     } catch (e) {
@@ -90,7 +86,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
   loginScreen.style.display = 'flex';
   appContainer.style.display = 'none';
-});
+
+  // スポットイベント入力のアコーディオン機能
+  const accordionHeader = document.getElementById('spotEventAccordionHeader');
+  if (accordionHeader) {
+    const accordionContent = document.getElementById('spotEventAccordionContent');
+    accordionHeader.addEventListener('click', () => {
+      accordionHeader.classList.toggle('active');
+      if (accordionContent.style.maxHeight) {
+        // 閉じる
+        accordionContent.style.maxHeight = null;
+        accordionContent.style.paddingTop = null;
+        accordionContent.style.paddingBottom = null;
+      } else {
+        // 開く
+        accordionContent.style.paddingTop = '20px';
+        accordionContent.style.paddingBottom = '5px';
+        accordionContent.style.maxHeight = accordionContent.scrollHeight + 40 + "px";
+      }
+    });
+  }
+}); // ★修正：余分な閉じ括弧を削除
 
 
 // ===================================================================================
@@ -100,6 +116,7 @@ document.addEventListener('DOMContentLoaded', function() {
 /**
  * Googleログインのプロンプトを表示する
  */
+
 window.tryGoogleLogin = function() {
   try {
     if (typeof google === 'undefined' || !google.accounts) {
@@ -116,35 +133,25 @@ window.tryGoogleLogin = function() {
 /**
  * ローカルモードでログインする
  */
-window.localLogin = function() {
-  currentUser = { name: 'ローカルユーザー', mode: 'local' };
-  loginMode = 'local';
-  localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
-  sessionStorage.setItem('justLoggedIn', 'true');
-  showApp();
+window.localLogin = async function() {
+  await finalizeLogin({name: 'ローカルユーザー', mode: 'local'});
 }
 
 /**
  * Googleログイン成功後の処理 (コールバック)
  */
-function handleGoogleLoginSuccess(response) {
+async function handleGoogleLoginSuccess(response) {
   console.log("Googleから認証情報を受け取りました:", response);
   const userObject = decodeJWT(response.credential);
   if (!userObject) {
     showNotification('ユーザー情報の解析に失敗しました。', 'error');
     return;
   }
-
-  currentUser = {
+  await finalizeLogin({
     name: userObject.name,
     email: userObject.email,
     mode: 'google'
-  };
-  loginMode = 'google';
-  localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
-  sessionStorage.setItem('justLoggedIn', 'true');
-
-  showApp();
+  });
 }
 
 /**
@@ -163,6 +170,18 @@ function decodeJWT(token) {
     return null;
   }
 }
+/**
+ * ログイン処理の最終段階を担当するヘルパー関数
+ * @param {{name: string, email?: string, mode: 'local' | 'google'}} user - ユーザー情報
+ */
+async function finalizeLogin(user) {
+  currentUser = user;
+  loginMode = user.mode;
+  localStorage.setItem('budgetAppUser', JSON.stringify(currentUser));
+  sessionStorage.setItem('justLoggedIn', 'true');
+  // この関数は async 関数から呼び出されるので、await は不要
+  await showApp();
+}
 
 
 // ===================================================================================
@@ -172,12 +191,14 @@ function decodeJWT(token) {
 /**
  * ログイン後のアプリ画面を表示・初期化する
  */
-function showApp() {
+// ▼▼▼ async を追加 ▼▼▼
+async function showApp() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appContainer').style.display = 'block';
   document.getElementById('userName').textContent = currentUser.name;
 
-  initializeApp();
+  // ▼▼▼ await を追加して、初期化が完了するのを待つ ▼▼▼
+  await initializeApp();
 }
 
 /**
@@ -192,7 +213,6 @@ async function initializeApp() {
   renderAll();
   if (sessionStorage.getItem('justLoggedIn')) {
     showNotification(`✅ ${currentUser.name}としてログインしました`);
-    // 一度表示したら、印を消す
     sessionStorage.removeItem('justLoggedIn');
   }
 }
@@ -202,7 +222,7 @@ async function initializeApp() {
 // ===================================================================================
 function renderAll() {
   updateCurrentMonthDisplay();
-  renderOneTimeEvents();
+  renderSpotEvents(); // ★修正：関数名をより分かりやすく変更
   generateCalendar();
   updateSummaryCards();
   generateFinancialForecast();
@@ -214,7 +234,6 @@ function renderAll() {
 // ===================================================================================
 async function loadData() {
   const dataKey = 'budgetAppData';
-  // 常にローカルストレージを正とする
   const savedData = localStorage.getItem(dataKey);
   if (savedData) {
     try {
@@ -227,11 +246,9 @@ async function loadData() {
       oneTimeEvents = [];
     }
   } else {
-    // データがない場合は初期化
     masterData = [];
     oneTimeEvents = [];
     if (loginMode === 'google') {
-      // ローカルにない場合のみDriveと同期
       await syncWithDrive();
     }
   }
@@ -241,9 +258,6 @@ async function loadData() {
 // UI描画 (カレンダー、サマリーなど)
 // ===================================================================================
 
-/**
- * 現在表示中の月のスポットイベントを取得するヘルパー関数
- */
 function getSpotEventsThisMonth() {
   return oneTimeEvents.filter(event => {
     const eventDate = new Date(event.date);
@@ -282,8 +296,6 @@ function generateCalendar() {
   const lastDay = new Date(currentYear, currentMonth, 0);
   const daysInMonth = lastDay.getDate();
   const startDayOfWeek = firstDay.getDay();
-
-  // ★修正：ヘルパー関数を利用
   const spotEventsThisMonth = getSpotEventsThisMonth();
 
   for (let i = 0; i < startDayOfWeek; i++) {
@@ -300,10 +312,10 @@ function generateCalendar() {
     }
     const dayNumber = document.createElement('div');
     dayNumber.className = 'day-number';
-    dayNumber.textContent = day;
+    // ▼▼▼ 修正: 数値を文字列に明示的に変換して、型の警告を解決 ▼▼▼
+    dayNumber.textContent = String(day);
     dayEl.appendChild(dayNumber);
 
-    // 定期的な取引
     const recurringItems = masterData.filter(item => item.paymentDay === day && item.isActive);
     recurringItems.forEach(item => {
       const itemEl = document.createElement('div');
@@ -313,13 +325,13 @@ function generateCalendar() {
       dayEl.appendChild(itemEl);
     });
 
-    // スポットイベント
     const spotItems = spotEventsThisMonth.filter(e => new Date(e.date).getDate() === day);
     spotItems.forEach(item => {
       const itemEl = document.createElement('div');
       const typeClass = item.amount >= 0 ? 'income' : 'expense';
       itemEl.className = `calendar-item ${typeClass}`;
-      itemEl.textContent = `⚡️ ${item.description}`;
+      const icon = item.amount < 0 ? '🛒' : '⚡️'; // 支出と収入でアイコンを分ける
+      itemEl.textContent = `${icon} ${item.description}`;
       dayEl.appendChild(itemEl);
     });
 
@@ -331,17 +343,14 @@ function updateSummaryCards() {
   const summaryCardsEl = document.getElementById('summaryCards');
   summaryCardsEl.innerHTML = '';
 
-  // 定期的な収支
   const activeItems = masterData.filter(item => item.isActive);
   const recurringIncome = activeItems.filter(i => i.type === 'income').reduce((sum, i) => sum + i.amount, 0);
   const recurringExpense = activeItems.filter(i => i.amount < 0).reduce((sum, i) => sum + i.amount, 0);
 
-  // ★修正：ヘルパー関数を利用
   const spotEventsThisMonth = getSpotEventsThisMonth();
   const spotIncome = spotEventsThisMonth.filter(e => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
   const spotExpense = spotEventsThisMonth.filter(e => e.amount < 0).reduce((sum, e) => sum + e.amount, 0);
 
-  // 合計
   const totalIncome = recurringIncome + spotIncome;
   const totalExpense = recurringExpense + spotExpense;
   const balance = totalIncome + totalExpense;
@@ -374,7 +383,8 @@ function requestDriveAccess() {
   }
 }
 
-function handleTokenResponse(response) {
+// js/index.js
+async function handleTokenResponse(response) {
   if (response.error) {
     console.error("アクセストークンの取得に失敗", response);
     showNotification('Google Driveへのアクセス許可に失敗しました。', 'error');
@@ -383,17 +393,17 @@ function handleTokenResponse(response) {
   googleAccessToken = response.access_token;
   sessionStorage.setItem('googleAccessToken', googleAccessToken);
   console.log('✅ Drive用アクセストークンを取得しました。');
-  syncWithDrive();
-}
 
-// js/index.js
+  // ▼▼▼ await を追加して、同期が完了するのを待つ ▼▼▼
+  await syncWithDrive();
+}
 
 async function syncWithDrive() {
   const loadingOverlay = document.getElementById('loadingOverlay');
   loadingOverlay.classList.add('show');
   try {
     const fileId = await findOrCreateFile();
-    sessionStorage.setItem('driveFileId', fileId); // fileIdはセッション管理でOK
+    sessionStorage.setItem('driveFileId', fileId);
     const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
       headers: { 'Authorization': `Bearer ${googleAccessToken}` }
     });
@@ -404,11 +414,9 @@ async function syncWithDrive() {
         const parsedData = JSON.parse(dataText);
         masterData = parsedData.master || [];
         oneTimeEvents = parsedData.events || [];
-        // ★最重要：読み込んだデータを「ローカルストレージ」に保存する
         localStorage.setItem('budgetAppData', dataText);
       }
     }
-    // データの取得と解析が完全に成功した後でのみ、描画を実行する
     renderAll();
 
   } catch (error) {
@@ -448,21 +456,17 @@ async function findOrCreateFile() {
 // ===================================================================================
 // 統合版：未来予測＆借金分析エンジン
 // ===================================================================================
+// js/index.js
 
-/**
- * キャッシュフローと借金返済の見通しを統合的に分析し、ダッシュボードに描画する
- */
 function generateFinancialForecast() {
   const container = document.getElementById('financialForecast');
   if (!container) return;
 
-  // 1. 必要なデータを準備
   const banks = masterData.filter(item => item.type === 'bank' && item.isActive);
   const recurringTransactions = masterData.filter(item => item.type !== 'bank' && item.isActive && item.paymentDay);
   const loans = masterData.filter(item => item.type === 'loan' && item.isActive && item.loanDetails);
-  const spotEvents = getSpotEventsThisMonth(); // ★修正：ヘルパー関数を利用
+  const spotEvents = getSpotEventsThisMonth();
 
-  // 分析対象が何もなければ、セクションごと非表示にする
   if (banks.length === 0 && loans.length === 0) {
     container.style.display = 'none';
     return;
@@ -470,17 +474,21 @@ function generateFinancialForecast() {
 
   let forecastHtml = '<h3>📈 財務健全性の見通し</h3>';
 
-  // --- Part 1: キャッシュフロー予測 ---
   if (banks.length > 0) {
     const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
     let dailyEvents = [];
     for (let day = 1; day <= daysInMonth; day++) {
       const recurringOnDay = recurringTransactions.filter(t => t.paymentDay === day);
       const spotOnDay = spotEvents.filter(e => new Date(e.date).getDate() === day);
-      const allEventsOnDay = [
-        ...recurringOnDay,
-        ...spotOnDay.map(e => ({ amount: e.amount, sourceBankId: e.bankId }))
-      ];
+      const allEventsOnDay = [];
+      recurringOnDay.forEach(t => {
+        allEventsOnDay.push({ amount: t.amount, sourceBankId: t.sourceBankId });
+      });
+      spotOnDay.forEach(e => {
+        // スポットイベントには現在bankIdがないため、sourceBankIdはnullにする
+        allEventsOnDay.push({ amount: e.amount, sourceBankId: null });
+      });
+
       if (allEventsOnDay.length > 0) {
         dailyEvents.push({ day, events: allEventsOnDay });
       }
@@ -494,6 +502,7 @@ function generateFinancialForecast() {
       const todayEvents = dailyEvents.find(e => e.day === day);
       if (todayEvents) {
         todayEvents.events.forEach(event => {
+          // sourceBankIdが存在し、かつ追跡対象の銀行である場合のみ残高を更新
           if (event.sourceBankId && bankBalances.hasOwnProperty(event.sourceBankId)) {
             bankBalances[event.sourceBankId] += event.amount;
           }
@@ -507,7 +516,7 @@ function generateFinancialForecast() {
             if (bank) {
               alerts.push({
                 day,
-                bankId,
+                bankId: Number(bankId), // 型を明確化
                 bankName: bank.name,
                 shortfall: Math.abs(bankBalances[bankId])
               });
@@ -533,7 +542,6 @@ function generateFinancialForecast() {
     }
   }
 
-  // --- Part 2: 借金返済の見通し ---
   if (loans.length > 0) {
     forecastHtml += '<div class="forecast-section">';
     forecastHtml += '<h4>💸 借金返済の見通し</h4>';
@@ -559,12 +567,8 @@ function generateFinancialForecast() {
   container.innerHTML = forecastHtml;
   container.style.display = 'block';
 }
-
-/**
- * 返済期間を計算するヘルパー関数
- */
 function calculateRepaymentPeriod(balance, monthlyPayment, interestRate) {
-  const MAX_REPAYMENT_MONTHS = 12 * 100; // 最大返済期間を100年（1200ヶ月）に設定
+  const MAX_REPAYMENT_MONTHS = 12 * 100;
   const monthlyInterestRate = interestRate / 100 / 12;
 
   if (balance * monthlyInterestRate >= monthlyPayment) {
@@ -589,16 +593,24 @@ function calculateRepaymentPeriod(balance, monthlyPayment, interestRate) {
 
 /**
  * スポットイベントを追加する
+ * HTMLの onclick="addSpotEvent()" から呼び出される
  */
-window.addOneTimeEvent = async function() {
-  const date = document.getElementById('eventDate').value;
-  const description = document.getElementById('eventDescription').value.trim();
-  const amount = parseInt(document.getElementById('eventAmount').value, 10);
-  const bankId = parseInt(document.getElementById('eventBankId').value, 10);
+window.addSpotEvent = async function() {
+  const date = document.getElementById('spotDate').value;
+  const type = document.getElementById('spotType').value;
+  const description = document.getElementById('spotDescription').value.trim();
+  let amount = parseInt(document.getElementById('spotAmount').value, 10);
 
-  if (!date || !description || isNaN(amount) || isNaN(bankId)) {
-    showNotification('日付、内容、金額、対象銀行は全て必須です。', 'error');
+  if (!date || !description || isNaN(amount)) {
+    showNotification('日付、内容、金額は全て必須です。', 'error');
     return;
+  }
+
+  // ユーザーは常にプラスで入力。支出の場合は、ここで負の数に変換する。
+  if (type === 'expense') {
+    amount = -Math.abs(amount);
+  } else {
+    amount = Math.abs(amount);
   }
 
   const newEvent = {
@@ -606,7 +618,7 @@ window.addOneTimeEvent = async function() {
     date,
     description,
     amount,
-    bankId
+    // bankIdは、将来的な拡張（どの銀行からの支出か）のために残しておくことも可能
   };
 
   oneTimeEvents.push(newEvent);
@@ -615,15 +627,15 @@ window.addOneTimeEvent = async function() {
   showNotification(`✅ イベント「${description}」を追加しました。`);
 
   // フォームをクリア
-  document.getElementById('eventDate').value = '';
-  document.getElementById('eventDescription').value = '';
-  document.getElementById('eventAmount').value = '';
+  document.getElementById('spotDate').value = '';
+  document.getElementById('spotDescription').value = '';
+  document.getElementById('spotAmount').value = '';
 }
 
 /**
  * スポットイベントを削除する
  */
-window.deleteOneTimeEvent = async function(eventId) {
+window.deleteSpotEvent = async function(eventId) {
   oneTimeEvents = oneTimeEvents.filter(event => event.id !== eventId);
   await saveData(); // データを保存
   renderAll(); // 全てを再描画
@@ -631,23 +643,12 @@ window.deleteOneTimeEvent = async function(eventId) {
 }
 
 /**
- * スポットイベントのリストと、フォームの銀行プルダウンを描画する
+ * スポットイベントのリストを描画する
+ * この関数は renderAll() から呼び出される
  */
-function renderOneTimeEvents() {
+function renderSpotEvents() {
   const listEl = document.getElementById('oneTimeEventsList');
-  const bankSelectEl = document.getElementById('eventBankId');
-  if (!listEl || !bankSelectEl) return;
-
-  // --- ▼▼▼ ここが最終完成版のプルダウン生成ロジックです ▼▼▼ ---
-  const banks = masterData.filter(item => item.type === 'bank' && item.isActive);
-
-  // HTMLの断片を配列に格納し、最後に一度だけDOMを更新する（高速化）
-  const bankOptionsHtml = banks
-    .map(bank => `<option value="${bank.id}">${bank.name}</option>`)
-    .join('');
-
-  bankSelectEl.innerHTML = '<option value="">選択してください</option>' + bankOptionsHtml;
-  // --- ▲▲▲ ここまで ▲▲▲ ---
+  if (!listEl) return;
 
   const eventsThisMonth = getSpotEventsThisMonth();
 
@@ -656,16 +657,17 @@ function renderOneTimeEvents() {
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .map(event => {
         const amountClass = event.amount >= 0 ? 'income' : 'expense';
+        const icon = event.amount < 0 ? '🛒' : '⚡️';
         return `
           <div class="event-item">
-              <span>${event.date.slice(5)}: ${event.description}</span>
+              <span>${icon} ${event.date.slice(5)}: ${event.description}</span>
               <span class="amount ${amountClass}">¥${event.amount.toLocaleString()}</span>
-              <button class="btn-delete-small" onclick="deleteOneTimeEvent(${event.id})">×</button>
+              <button class="btn-delete-small" onclick="deleteSpotEvent(${event.id})">×</button>
           </div>
         `;
-      });
+      }).join('');
 
-    listEl.innerHTML = '<h4>今月のスポットイベント</h4>' + eventItemsHtml.join('');
+    listEl.innerHTML = '<h4>今月のスポットイベント</h4>' + eventItemsHtml;
   } else {
     listEl.innerHTML = '';
   }
