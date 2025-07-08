@@ -71,21 +71,28 @@ function hideLoading() {
   document.getElementById('loadingOverlay').classList.remove('show');
 }
 
-
 // ===================================================================================
 // Google認証
 // ===================================================================================
 function onGoogleLibraryLoad() {
-  const googleLoginBtn = document.getElementById('googleLoginBtn');
+  // ▼▼▼ この関数を丸ごと置き換える ▼▼▼
+
+  const googleLoginBtnContainer = document.getElementById('googleLoginBtn');
+
   google.accounts.id.initialize({
-    // ▼▼▼ ここにあなたのクライアントIDを設定 ▼▼▼
     client_id: '45451544416-9c9vljcaqir137dudhoj0da6ndchlph1.apps.googleusercontent.com',
     callback: handleGoogleLogin,
   });
-  googleLoginBtn.textContent = 'Googleでログイン';
-  googleLoginBtn.disabled = false;
-}
 
+  // Google公式のボタンを描画する命令
+  google.accounts.id.renderButton(
+    googleLoginBtnContainer, // 描画する場所 (Step 1で用意したdiv)
+    { theme: "outline", size: "large", text: "signin_with", shape: "rectangular", logo_alignment: "left" } // ボタンのデザイン
+  );
+  // 自動でポップアップさせたい場合はこの行を有効化
+  // google.accounts.id.prompt();
+
+}
 function tryGoogleLogin() {
   google.accounts.id.prompt();
 }

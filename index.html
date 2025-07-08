@@ -20,18 +20,16 @@
 <div id="notification-container"></div>
 <div class="loading-overlay" id="loadingOverlay">🔄 同期中...</div>
 
-<!-- ログイン画面 -->
 <div class="login-screen" id="loginScreen">
     <div class="login-card">
-        <h1>家計簿アプリ v2.0</h1>
-        <p>Googleアカウントまたはローカルでデータを管理します。</p>
-        <button id="googleLoginBtn" class="btn btn-primary" style="width: 100%; margin-bottom: 15px;" onclick="tryGoogleLogin()" disabled>
-            <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" style="width: 20px; vertical-align: middle; margin-right: 10px;">
-            Googleログイン準備中...
-        </button>
-        <button class="btn btn-secondary" style="width: 100%;" onclick="localLogin()">
-            ローカルで続ける
-        </button>
+        <h1>財務司令塔</h1>
+        <p>あなたの家計の羅針盤</p>
+        <div class="login-actions">
+            <!-- ▼▼▼ ここをGoogleボタン専用のdivに置き換える ▼▼▼ -->
+            <div id="googleLoginBtn" class="gsi-material-button"></div>
+
+            <button class="btn btn-secondary" onclick="localLogin()">ローカルモードで続ける</button>
+        </div>
     </div>
 </div>
 
