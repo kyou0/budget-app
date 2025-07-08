@@ -10,6 +10,8 @@ let editingItemId = null;
 // ===================================================================================
 // 初期化処理
 // ===================================================================================
+// js/master.js
+
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 マスター管理ページ起動');
   const appContainer = document.getElementById('appContainer');
@@ -29,6 +31,26 @@ document.addEventListener('DOMContentLoaded', function() {
   renderAll();
 
   document.getElementById('itemType')?.addEventListener('change', updateFormFields);
+  // イベント委任：itemsGrid内のクリックを全てここで処理する
+  document.getElementById('itemsGrid').addEventListener('click', function(event) {
+    const button = event.target.closest('button.btn-action');
+    if (!button) {
+      return; // クリックされたのがボタンでなければ何もしない
+    }
+
+    const card = button.closest('.item-card');
+    if (!card) {
+      return;
+    }
+
+    const itemId = parseInt(card.dataset.id, 10);
+
+    if (button.classList.contains('edit')) {
+      showEditForm(itemId);
+    } else if (button.classList.contains('delete')) {
+      deleteItem(itemId);
+    }
+  });
 });
 
 // ===================================================================================
