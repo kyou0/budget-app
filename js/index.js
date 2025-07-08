@@ -79,7 +79,7 @@ function onGoogleLibraryLoad() {
   const googleLoginBtn = document.getElementById('googleLoginBtn');
   google.accounts.id.initialize({
     // ▼▼▼ ここにあなたのクライアントIDを設定 ▼▼▼
-    client_id: 'https://kyou0.github.io',
+    client_id: '45451544416-9c9vljcaqir137dudhoj0da6ndchlph1.apps.googleusercontent.com',
     callback: handleGoogleLogin,
   });
   googleLoginBtn.textContent = 'Googleでログイン';
@@ -105,7 +105,7 @@ async function handleGoogleLogin(response) {
   // トークンクライアントを初期化してアクセストークンを取得
   const client = google.accounts.oauth2.initTokenClient({
     // ▼▼▼ ここにもあなたのクライアントIDを設定 ▼▼▼
-    client_id: 'あなたのクライアントIDをここに貼り付け.apps.googleusercontent.com',
+    client_id: '45451544416-9c9vljcaqir137dudhoj0da6ndchlph1.apps.googleusercontent.com',
     scope: 'https://www.googleapis.com/auth/drive.file',
     callback: async (tokenResponse) => {
       if (tokenResponse && tokenResponse.access_token) {
