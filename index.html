@@ -17,6 +17,7 @@
     <script src="js/shared.js" defer></script>
 </head>
 <body>
+<div id="notification-container"></div>
 <div class="loading-overlay" id="loadingOverlay">🔄 同期中...</div>
 
 <!-- ログイン画面 -->
@@ -94,6 +95,10 @@
                 </div>
                 <button class="btn btn-primary" style="width: 100%;" onclick="addSpotEvent()">追加</button>
             </div>
+        </div>
+
+        <div class="card-style" id="oneTimeEventsList" style="margin-top: 20px;">
+            <!-- 今月のスポットイベントがここに表示されます -->
         </div>
 
         <div id="financialForecast" class="card-style" style="display: none;">

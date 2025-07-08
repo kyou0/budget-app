@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<div id="notification-container"></div>
 <div class="loading-overlay" id="loadingOverlay">🔄 同期中...</div>
 
 <div id="appContainer" class="app-container" style="display: none;">
@@ -46,7 +47,7 @@
                 <p>
                     現在のデータは <span id="syncStatus" class="status-badge local">ローカル</span> に保存されています。
                 </p>
-                <button id="manualSyncBtn" class="btn" onclick="manualSync()" style="display: none;">💾 今すぐ保存＆同期</button>
+                <button id="manualSyncBtn" class="btn" onclick="manualSync()">💾 今すぐ保存＆同期</button>
                 <p class="note">
                     Google Driveとの同期は、Googleアカウントでログインした場合にのみ有効になります。
                 </p>
@@ -55,7 +56,8 @@
     </div>
 </div>
 
-<script src="js/common.js"></script>
-<script src="js/settings.js"></script>
+<script src="js/shared.js" defer></script>
+<script src="js/common.js" defer></script>
+<script src="js/settings.js" defer></script>
 </body>
 </html>
