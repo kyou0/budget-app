@@ -2,7 +2,7 @@
 // グローバル変数 & 状態管理
 // ===================================================================================
 const GOOGLE_CLIENT_ID = '45451544416-9c9vljcaqir137dudhoj0da6ndchlph1.apps.googleusercontent.com';
-const GOOGLE_REDIRECT_URI = 'https://kyou0.github.io/index.html';
+const GOOGLE_REDIRECT_URI = 'https://kyou0.github.io/budget-app/index.html';
 
 let googleAccessToken = null;
 let masterData = [];
