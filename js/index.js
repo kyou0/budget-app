@@ -2,6 +2,7 @@
 // グローバル変数 & 状態管理
 // ===================================================================================
 const GOOGLE_CLIENT_ID = '45451544416-9c9vljcaqir137dudhoj0da6ndchlph1.apps.googleusercontent.com';
+// ★★★ 必ず、Google Cloud Consoleで設定した「リダイレクトURI」と完全に一致させてください ★★★
 const GOOGLE_REDIRECT_URI = 'https://kyou0.github.io/budget-app/index.html';
 
 let googleAccessToken = null;
@@ -18,28 +19,22 @@ let isSyncing = false;
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('🚀 アプリケーション起動');
 
-  // ▼▼▼ ここからが新しいロジック ▼▼▼
-  // ページが表示されるたびに、ローカルストレージから最新のデータを読み込むセンサー
   document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState === 'visible') {
       console.log('👁️ 司令塔ページが再表示されました。データを更新します。');
-      // isSyncingでなければ、ローカルの最新情報で画面を再描画
       if (!isSyncing) {
         await loadData();
         renderAll();
       }
     }
   });
-  // ▲▲▲ ここまでが新しいロジック ▲▲▲
 
   const urlParams = new URLSearchParams(window.location.search);
   const authCode = urlParams.get('code');
 
   if (authCode) {
-    // Googleからのリダイレクト直後の場合
     await handleGoogleRedirect(authCode);
   } else {
-    // 通常の起動の場合
     const savedUser = localStorage.getItem('budgetAppUser');
     if (savedUser) {
       currentUser = JSON.parse(savedUser);
@@ -50,7 +45,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       await initializeApplication();
     }
   }
-  // イベントリスナーは最後に一度だけ設定
   setupEventListeners();
 });
 
@@ -62,10 +56,8 @@ async function initializeApplication() {
       logout();
       return;
     }
-    // 初回読み込み時のみDriveと同期
     await syncWithDrive();
   } else {
-    // ローカルモードの場合
     await loadData();
     renderAll();
   }
@@ -75,12 +67,8 @@ async function initializeApplication() {
 // Google認証 (リダイレクト方式)
 // ===================================================================================
 
-/**
- * ユーザーをGoogleの認証ページにリダイレクトさせる
- */
 function redirectToGoogleLogin() {
   const oauth2Endpoint = 'https://accounts.google.com/o/oauth2/v2/auth';
-
   const params = {
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: GOOGLE_REDIRECT_URI,
@@ -89,7 +77,6 @@ function redirectToGoogleLogin() {
     access_type: 'offline',
     prompt: 'consent'
   };
-
   const url = `${oauth2Endpoint}?${new URLSearchParams(params)}`;
   window.location.href = url;
 }
@@ -142,7 +129,11 @@ async function handleGoogleRedirect(code) {
   } catch (error) {
     console.error("Google認証エラー:", error);
     showNotification('Google認証に失敗しました。ログイン画面に戻ります。', 'error');
-    logout();
+
+    // ▼▼▼ ここが修正点：過剰防衛する警備員（logout()）を解雇 ▼▼▼
+    // logout();
+    // ▲▲▲ この一行を削除、またはコメントアウトする ▲▲▲
+
   } finally {
     hideLoading();
   }
