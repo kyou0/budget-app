@@ -90,6 +90,7 @@ async function handleGoogleRedirect(code) {
   window.history.replaceState({}, document.title, window.location.pathname);
 
   try {
+    // ステップ1: 認証コードをアクセストークンに交換する
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -101,18 +102,29 @@ async function handleGoogleRedirect(code) {
       })
     });
 
-    if (!tokenResponse.ok) throw new Error('トークンの取得に失敗しました。');
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.json();
+      console.error('🚨 Googleからの詳細なエラー:', errorData);
+      throw new Error(`トークンの取得に失敗しました。理由: ${errorData.error_description || errorData.error}`);
+    }
+
     const tokenData = await tokenResponse.json();
     googleAccessToken = tokenData.access_token;
     sessionStorage.setItem('googleAccessToken', googleAccessToken);
 
+    // ▼▼▼ ここからが追加する「玄関のドアを開ける」処理 ▼▼▼
+
+    // ステップ2: アクセストークンを使ってユーザー情報を取得する
     const profileResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { 'Authorization': `Bearer ${googleAccessToken}` }
     });
 
-    if (!profileResponse.ok) throw new Error('ユーザー情報の取得に失敗しました。');
+    if (!profileResponse.ok) {
+      throw new Error('ユーザー情報の取得に失敗しました。');
+    }
     const profileData = await profileResponse.json();
 
+    // ステップ3: ログイン処理を完了させ、UIを更新する
     currentUser = {
       name: profileData.name,
       email: profileData.email,
@@ -124,16 +136,14 @@ async function handleGoogleRedirect(code) {
     document.getElementById('appContainer').style.display = 'block';
     document.getElementById('userName').textContent = currentUser.name;
 
+    // ステップ4: 最初のデータ同期を実行する
     await syncWithDrive();
+
+    // ▲▲▲ ここまでが追加する処理 ▲▲▲
 
   } catch (error) {
     console.error("Google認証エラー:", error);
-    showNotification('Google認証に失敗しました。ログイン画面に戻ります。', 'error');
-
-    // ▼▼▼ ここが修正点：過剰防衛する警備員（logout()）を解雇 ▼▼▼
-    // logout();
-    // ▲▲▲ この一行を削除、またはコメントアウトする ▲▲▲
-
+    showNotification('Google認証に失敗しました。詳細はコンソールを確認してください。', 'error');
   } finally {
     hideLoading();
   }
