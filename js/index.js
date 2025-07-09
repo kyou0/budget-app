@@ -1,7 +1,7 @@
 // ===================================================================================
 // グローバル変数 & 状態管理
 // ===================================================================================
-const GOOGLE_CLIENT_ID = '45451544416-9c9vljcaqir137dudhoj0da6ndchlph1.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '45451544416-8nlqo6bhl56arpjuuh4kekfa24ed9np5.apps.googleusercontent.com';
 // ★★★ 必ず、Google Cloud Consoleで設定した「リダイレクトURI」と完全に一致させてください ★★★
 const GOOGLE_REDIRECT_URI = 'https://kyou0.github.io/budget-app/index.html';
 
