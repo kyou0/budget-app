@@ -134,7 +134,7 @@ export function generateMonthEvents(masterItems, loans, year, month) {
           name: `返済: ${loan.name}`,
           type: 'expense',
           amount: loan.monthlyPayment,
-          bankId: '', 
+          bankId: loan.bankId || '', 
           originalDate: dateStr,
           actualDate: dateStr,
           penaltyFee: 0,

@@ -25,6 +25,7 @@
  * @property {Object} [effective] - 有効期間
  * @property {string|null} [effective.start] - YYYY-MM-DD
  * @property {string|null} [effective.end] - YYYY-MM-DD
+ * @property {string} [tag] - 分類タグ (card, loan, fixed, tax, etc.)
  * @property {boolean} active
  */
 
@@ -57,6 +58,11 @@
  * @property {ScheduleRule} [scheduleRule] - v2 日付ルール
  * @property {number} [paymentDay] - v1 互換用 (1-31)
  * @property {'none'|'prev_weekday'|'next_weekday'} [adjustment] - 土日祝の調整
+ * @property {string} [bankId] - 支払元銀行
+ * @property {string} [repaymentMethod] - 返済方式 (fixed_payment, revolving_minimum, etc.)
+ * @property {number} [originalPrincipal] - 元金合計
+ * @property {number} [remainingPayments] - 残り回数
+ * @property {string} [notes] - メモ
  * @property {boolean} active
  */
 

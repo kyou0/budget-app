@@ -38,21 +38,41 @@ export function renderMaster(container) {
           </div>
           
           ${currentTab === 'items' ? `
-            <div class="form-group">
-              <label>種類</label>
-              <select id="master-type" onchange="toggleMasterFormFields()">
-                <option value="expense">支出</option>
-                <option value="income">収入</option>
-              </select>
+            <div class="form-row">
+              <div class="form-group">
+                <label>種類</label>
+                <select id="master-type" onchange="toggleMasterFormFields()">
+                  <option value="expense">支出</option>
+                  <option value="income">収入</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>タグ (分類)</label>
+                <select id="master-tag">
+                  <option value="">(なし)</option>
+                  <option value="fixed">固定費</option>
+                  <option value="variable">変動費</option>
+                  <option value="card">カード払</option>
+                  <option value="loan">借入返済</option>
+                  <option value="tax">税金/保険</option>
+                  <option value="service">サブスク</option>
+                </select>
+              </div>
             </div>
             <div id="field-amount" class="form-group">
-              <label>金額モード</label>
-              <select id="master-amount-mode">
-                <option value="fixed">固定</option>
-                <option value="variable">変動</option>
-              </select>
-              <label style="margin-top:5px;">金額 (またはベース金額)</label>
-              <input type="number" id="master-amount" required>
+              <div class="form-row">
+                <div>
+                  <label>金額モード</label>
+                  <select id="master-amount-mode">
+                    <option value="fixed">固定</option>
+                    <option value="variable">変動</option>
+                  </select>
+                </div>
+                <div>
+                  <label>金額 (ベース)</label>
+                  <input type="number" id="master-amount" required>
+                </div>
+              </div>
             </div>
             <div id="field-rule" class="form-group">
               <label>日付ルール</label>
@@ -77,26 +97,29 @@ export function renderMaster(container) {
                 <input type="number" id="master-nth" min="1" max="20" placeholder="第n営業日" class="hidden">
               </div>
             </div>
-            <div id="field-bank-select" class="form-group">
-              <label>入出金先銀行</label>
-              <select id="master-bank-id">
-                <option value="">(未選択)</option>
-                ${items.filter(i => i.type === 'bank').map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
-              </select>
+            <div class="form-row">
+              <div id="field-bank-select" class="form-group">
+                <label>入出金先銀行</label>
+                <select id="master-bank-id">
+                  <option value="">(未選択)</option>
+                  ${items.filter(i => i.type === 'bank').map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>土日祝の調整</label>
+                <select id="master-adjustment">
+                  <option value="none">調整なし</option>
+                  <option value="prev_weekday">前営業日 (金曜など)</option>
+                  <option value="next_weekday">翌営業日 (月曜など)</option>
+                </select>
+              </div>
             </div>
             <div class="form-group">
-              <label>土日祝の調整</label>
-              <select id="master-adjustment">
-                <option value="none">調整なし</option>
-                <option value="prev_weekday">前営業日 (金曜など)</option>
-                <option value="next_weekday">翌営業日 (月曜など)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>有効期間 (開始日)</label>
-              <input type="date" id="master-eff-start">
-              <label style="margin-top:5px;">有効期間 (終了日)</label>
-              <input type="date" id="master-eff-end">
+              <label>有効期間</label>
+              <div class="form-row">
+                <input type="date" id="master-eff-start" placeholder="開始日">
+                <input type="date" id="master-eff-end" placeholder="終了日">
+              </div>
             </div>
           ` : currentTab === 'banks' ? `
             <input type="hidden" id="master-type" value="bank">
@@ -105,43 +128,63 @@ export function renderMaster(container) {
               <input type="number" id="master-balance" required>
             </div>
           ` : `
-            <div class="form-group">
-              <label>種別</label>
-              <select id="loan-type">
-                <option value="消費者金融">消費者金融</option>
-                <option value="銀行カードローン">銀行カードローン</option>
-                <option value="クレジットカード">クレジットカード</option>
-                <option value="親族">親族</option>
-                <option value="友人">友人</option>
-              </select>
+            <div class="form-row">
+              <div class="form-group">
+                <label>種別</label>
+                <select id="loan-type">
+                  <option value="消費者金融">消費者金融</option>
+                  <option value="銀行カードローン">銀行カードローン</option>
+                  <option value="クレジットカード">クレジットカード</option>
+                  <option value="分割払い">分割払い</option>
+                  <option value="親族">親族</option>
+                  <option value="友人">友人</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>年利 (%)</label>
+                <input type="number" id="loan-rate" step="0.1" required>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>現在残高</label>
+                <input type="number" id="loan-balance" required>
+              </div>
+              <div class="form-group">
+                <label>月間返済額</label>
+                <input type="number" id="loan-payment" required>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>限度額 (任意)</label>
+                <input type="number" id="loan-limit">
+              </div>
+              <div class="form-group">
+                <label>返済日 (1-31)</label>
+                <input type="number" id="loan-day" min="1" max="31" value="27">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>支払元銀行</label>
+                <select id="loan-bank-id">
+                  <option value="">(未選択)</option>
+                  ${items.filter(i => i.type === 'bank').map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>土日祝の調整</label>
+                <select id="loan-adjustment">
+                  <option value="none">調整なし</option>
+                  <option value="prev_weekday">前営業日</option>
+                  <option value="next_weekday">翌営業日</option>
+                </select>
+              </div>
             </div>
             <div class="form-group">
-              <label>年利 (%)</label>
-              <input type="number" id="loan-rate" step="0.1" required>
-            </div>
-            <div class="form-group">
-              <label>現在残高</label>
-              <input type="number" id="loan-balance" required>
-            </div>
-            <div class="form-group">
-              <label>月間返済額</label>
-              <input type="number" id="loan-payment" required>
-            </div>
-            <div class="form-group">
-              <label>限度額</label>
-              <input type="number" id="loan-limit" required>
-            </div>
-            <div class="form-group">
-              <label>返済日 (1-31)</label>
-              <input type="number" id="loan-day" min="1" max="31" value="27">
-            </div>
-            <div class="form-group">
-              <label>土日祝の調整</label>
-              <select id="loan-adjustment">
-                <option value="none">調整なし</option>
-                <option value="prev_weekday">前営業日 (金曜など)</option>
-                <option value="next_weekday">翌営業日 (月曜など)</option>
-              </select>
+              <label>メモ</label>
+              <textarea id="loan-notes" rows="2" placeholder="備考など"></textarea>
             </div>
           `}
           
@@ -255,14 +298,20 @@ function renderItemsList(items) {
   return items.map(item => `
     <div class="master-item ${item.active ? '' : 'inactive'}">
       <div class="info">
-        <span class="type ${item.type}">
-          ${getIcon(item.name, item.type)} ${item.type === 'income' ? '収入' : '支出'}
-        </span>
-        <span class="name">${item.name}</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="type ${item.type}">
+            ${item.type === 'income' ? '収入' : '支出'}
+          </span>
+          ${item.tag ? `<span style="font-size: 0.7rem; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; color: #6b7280;">${item.tag}</span>` : ''}
+        </div>
+        <span class="name">${getIcon(item.name, item.type)} ${item.name}</span>
         <span class="amount">
-          ${item.amountMode === 'variable' ? '見積: ' : ''}¥${item.amount.toLocaleString()}
+          ${item.amountMode === 'variable' ? '<span style="color:var(--warn)">見積</span> ' : ''}¥${item.amount.toLocaleString()}
         </span>
-        <span class="day">${formatRule(item.scheduleRule || {type:'monthly', day:item.day})}</span>
+        <div style="font-size: 0.8rem; color: #4b5563; margin-top: 4px;">
+          📅 ${formatRule(item.scheduleRule || {type:'monthly', day:item.day})}
+          ${item.adjustment !== 'none' ? ` (${item.adjustment === 'prev_weekday' ? '前倒し' : '後倒し'})` : ''}
+        </div>
         <div class="bank-link" style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">
           🏦 ${bankMap[item.bankId] || '(銀行未設定)'}
         </div>
@@ -272,7 +321,7 @@ function renderItemsList(items) {
         <button onclick="toggleMasterItem('${item.id}')" class="btn small ${item.active ? 'warn' : 'success'}">
           ${item.active ? '無効化' : '有効化'}
         </button>
-        <button onclick="deleteMasterItem('${item.id}')" class="btn small danger" style="padding: 4px; font-size: 0.7rem;">削除</button>
+        <button onclick="deleteMasterItem('${item.id}')" class="btn small danger">削除</button>
       </div>
     </div>
   `).join('');
@@ -310,20 +359,32 @@ function renderBanksList(banks) {
 }
 
 function renderLoansList(loans) {
+  const bankMap = Object.fromEntries(appStore.data.master.items.filter(i => i.type === 'bank').map(b => [b.id, b.name]));
+  
   return loans.map(loan => `
-    <div class="master-item ${loan.active ? '' : 'inactive'}">
+    <div class="master-item ${loan.active ? '' : 'inactive'}" style="border-left-color: var(--danger);">
       <div class="info">
-        <span class="type expense">${getIcon(loan.name, 'loan')} ${loan.type}</span>
-        <span class="name">${loan.name}</span>
-        <span class="amount">残: ¥${loan.currentBalance.toLocaleString()}</span>
-        <span class="day">月: ¥${loan.monthlyPayment.toLocaleString()}</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="type expense">借入</span>
+          <span style="font-size: 0.7rem; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; color: #6b7280;">${loan.type}</span>
+        </div>
+        <span class="name">${getIcon(loan.name, 'loan')} ${loan.name}</span>
+        <div style="display: flex; gap: 15px; font-size: 0.9rem;">
+          <span class="amount">残: ¥${loan.currentBalance.toLocaleString()}</span>
+          <span class="day">返済: ¥${loan.monthlyPayment.toLocaleString()}</span>
+        </div>
+        <div style="font-size: 0.8rem; color: #4b5563; margin-top: 4px;">
+          📅 ${formatRule(loan.scheduleRule || {type:'monthly', day:loan.paymentDay})} 
+          (${bankMap[loan.bankId] || '銀行未設定'})
+        </div>
+        ${loan.notes ? `<div style="font-size: 0.7rem; color: #6b7280; margin-top: 4px; font-style: italic;">📝 ${loan.notes}</div>` : ''}
       </div>
       <div class="actions">
         <button onclick="editLoan('${loan.id}')" class="btn small">編集</button>
         <button onclick="toggleLoan('${loan.id}')" class="btn small ${loan.active ? 'warn' : 'success'}">
           ${loan.active ? '無効化' : '有効化'}
         </button>
-        <button onclick="deleteLoan('${loan.id}')" class="btn small danger" style="padding: 4px; font-size: 0.7rem;">削除</button>
+        <button onclick="deleteLoan('${loan.id}')" class="btn small danger">削除</button>
       </div>
     </div>
   `).join('');
@@ -341,6 +402,7 @@ function showModal(data = null) {
     
     if (currentTab === 'items' || currentTab === 'banks') {
       if (form['master-type']) form['master-type'].value = data.type;
+      if (form['master-tag']) form['master-tag'].value = data.tag || '';
       if (form['master-amount']) form['master-amount'].value = data.amount || 0;
       if (form['master-amount-mode']) form['master-amount-mode'].value = data.amountMode || 'fixed';
       
@@ -365,9 +427,11 @@ function showModal(data = null) {
       if (form['loan-rate']) form['loan-rate'].value = data.interestRate;
       if (form['loan-balance']) form['loan-balance'].value = data.currentBalance;
       if (form['loan-payment']) form['loan-payment'].value = data.monthlyPayment;
-      if (form['loan-limit']) form['loan-limit'].value = data.maxLimit;
-      if (form['loan-day']) form['loan-day'].value = data.paymentDay || 27;
+      if (form['loan-limit']) form['loan-limit'].value = data.maxLimit || 0;
+      if (form['loan-day']) form['loan-day'].value = data.paymentDay || (data.scheduleRule?.day) || 27;
+      if (form['loan-bank-id']) form['loan-bank-id'].value = data.bankId || '';
       if (form['loan-adjustment']) form['loan-adjustment'].value = data.adjustment || 'none';
+      if (form['loan-notes']) form['loan-notes'].value = data.notes || '';
     }
   } else {
     title.textContent = '新規追加';
@@ -400,6 +464,7 @@ function saveData() {
     const data = {
       name: form['master-name'] ? form['master-name'].value : '',
       type: type,
+      tag: form['master-tag'] ? form['master-tag'].value : '',
       amount: (type === 'bank' || !form['master-amount']) ? 0 : Number(form['master-amount'].value),
       amountMode: form['master-amount-mode'] ? form['master-amount-mode'].value : 'fixed',
       scheduleRule: type === 'bank' ? null : scheduleRule,
@@ -423,7 +488,9 @@ function saveData() {
       monthlyPayment: Number(form['loan-payment'] ? form['loan-payment'].value : 0),
       maxLimit: Number(form['loan-limit'] ? form['loan-limit'].value : 0),
       paymentDay: Number(form['loan-day'] ? form['loan-day'].value : 27),
-      adjustment: form['loan-adjustment'] ? form['loan-adjustment'].value : 'none'
+      bankId: form['loan-bank-id'] ? form['loan-bank-id'].value : '',
+      adjustment: form['loan-adjustment'] ? form['loan-adjustment'].value : 'none',
+      notes: form['loan-notes'] ? form['loan-notes'].value : ''
     };
     if (id) appStore.updateLoan(id, data);
     else appStore.addLoan(data);

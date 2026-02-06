@@ -118,11 +118,28 @@ export function renderSettings(container) {
         const data = JSON.parse(event.target.result);
         if (confirm('データを上書きしますか？現在のデータは失われます。')) {
           console.log('Importing data...', data);
+          
+          // Migrate schema if necessary
           const migratedData = appStore.migrate(data);
+          
+          // Force apply data to store
           appStore.data = migratedData;
           appStore.save();
+          
+          window.showToast('インポートが完了しました。リロードします。', 'success');
           console.log('Data saved. Reloading...');
-          location.reload();
+          
+          // Push to drive if enabled
+          if (appStore.data.settings?.driveSyncEnabled) {
+            driveSync.push().then(() => {
+              setTimeout(() => location.reload(), 500);
+            }).catch(err => {
+              console.error('Drive push failed after import:', err);
+              setTimeout(() => location.reload(), 500);
+            });
+          } else {
+            setTimeout(() => location.reload(), 500);
+          }
         }
       } catch (err) {
         console.error('Import failed:', err);
@@ -130,6 +147,8 @@ export function renderSettings(container) {
       }
     };
     reader.readAsText(file);
+    // Reset file input so same file can be imported again
+    e.target.value = '';
   };
 
   const importFile = document.getElementById('import-file');

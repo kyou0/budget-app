@@ -48,6 +48,9 @@ class Store {
           if (!item.amountMode) {
             item.amountMode = 'fixed';
           }
+          if (!item.tag) {
+            item.tag = '';
+          }
           if (!item.effective) {
             item.effective = { start: null, end: null };
           }
@@ -66,6 +69,8 @@ class Store {
               loan.scheduleRule = { type: 'monthly', day: loan.paymentDay || 27 };
             }
           }
+          if (!loan.bankId) loan.bankId = '';
+          if (!loan.notes) loan.notes = '';
           return loan;
         }).filter(Boolean);
       }
@@ -73,6 +78,12 @@ class Store {
       data.schemaVersion = 2;
       console.log('Migration to v2 completed.');
     }
+
+    // Ensure all required top-level structures exist (for safer imports)
+    if (!data.master) data.master = { items: [], loans: [] };
+    if (!data.calendar) data.calendar = { generatedMonths: {} };
+    if (!data.settings) data.settings = { ...INITIAL_DATA.settings };
+    if (!data.transactions) data.transactions = [];
 
     return data;
   }
