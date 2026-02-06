@@ -1,4 +1,4 @@
-const CACHE_NAME = 'budget-app-v1';
+const CACHE_NAME = 'budget-app-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,9 @@ const ASSETS = [
   './src/router.js',
   './src/generate.js',
   './src/calc.js',
+  './src/auth/googleAuth.js',
+  './src/sync/driveSync.js',
+  './src/sync/calendarSync.js',
   './src/ui/dashboard.js',
   './src/ui/analysis.js',
   './src/ui/master.js',

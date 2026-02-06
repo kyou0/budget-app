@@ -4,9 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="初期実装: 機能追加（ダッシュボード、分析画面、Google Drive / Calendar同期、イベント生成）">
+    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="Add renderSettings import and sync dependencies in dashboard.js">
       <change beforePath="$PROJECT_DIR$/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/app.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/dashboard.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/dashboard.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/auth/googleAuth.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/auth/googleAuth.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -105,15 +107,7 @@
       <workItem from="1752008405239" duration="8787000" />
       <workItem from="1752043321720" duration="6342000" />
       <workItem from="1770367781792" duration="119000" />
-      <workItem from="1770367929210" duration="3463000" />
-    </task>
-    <task id="LOCAL-00088" summary="master側で鍵が受け取れてなかったので、その部分を修正">
-      <option name="closed" value="true" />
-      <created>1751998024136</created>
-      <option name="number" value="00088" />
-      <option name="presentableId" value="LOCAL-00088" />
-      <option name="project" value="LOCAL" />
-      <updated>1751998024136</updated>
+      <workItem from="1770367929210" duration="4020000" />
     </task>
     <task id="LOCAL-00089" summary="収入に月末とかを追加し、変数ができないって箇所があったので変数に変更">
       <option name="closed" value="true" />
@@ -499,7 +493,15 @@
       <option name="project" value="LOCAL" />
       <updated>1770369580894</updated>
     </task>
-    <option name="localTasksCounter" value="137" />
+    <task id="LOCAL-00137" summary="Add renderSettings import and sync dependencies in dashboard.js">
+      <option name="closed" value="true" />
+      <created>1770371624275</created>
+      <option name="number" value="00137" />
+      <option name="presentableId" value="LOCAL-00137" />
+      <option name="project" value="LOCAL" />
+      <updated>1770371624275</updated>
+    </task>
+    <option name="localTasksCounter" value="138" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -517,7 +519,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="基礎部分の修正" />
     <MESSAGE value="基礎部分の修正 Ver2" />
     <MESSAGE value="master.js変更" />
     <MESSAGE value="デザイン修正漏れを対応" />
@@ -542,7 +543,8 @@
     <MESSAGE value="不要ファイル削除" />
     <MESSAGE value="不要な`.output.txt`を削除" />
     <MESSAGE value="初期実装: 機能追加（ダッシュボード、分析画面、Google Drive / Calendar同期、イベント生成）" />
-    <option name="LAST_COMMIT_MESSAGE" value="初期実装: 機能追加（ダッシュボード、分析画面、Google Drive / Calendar同期、イベント生成）" />
+    <MESSAGE value="Add renderSettings import and sync dependencies in dashboard.js" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add renderSettings import and sync dependencies in dashboard.js" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

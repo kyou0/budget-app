@@ -5,10 +5,27 @@ import { renderMaster } from './src/ui/master.js';
 import { renderSettings } from './src/ui/settings.js';
 
 import { store } from './src/store.js';
-import { googleAuth } from './src/auth/googleAuth.js';
+import { googleAuth, initGoogleAuth } from './src/auth/googleAuth.js';
 import { driveSync } from './src/sync/driveSync.js';
 
 const container = document.getElementById('app-container');
+
+/**
+ * トースト通知の表示
+ */
+window.showToast = (message, type = 'info') => {
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('show');
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }, 100);
+};
 
 const routes = {
   '#dashboard': () => renderDashboard(container),
@@ -40,13 +57,14 @@ function renderLogin() {
     const clientId = store.data.settings?.googleClientId;
     if (clientId) {
       try {
-        await googleAuth.init();
+        // initGoogleAuth は DOMContentLoaded で呼ばれているはずだが念のため
+        initGoogleAuth(clientId);
         await googleAuth.getAccessToken(); // ログイン試行
         sessionStorage.setItem('isLoggedIn', 'true');
         initApp();
       } catch (err) {
         console.error('Login failed', err);
-        alert('ログインに失敗しました。設定画面でClient IDが正しく入力されているか確認してください。');
+        window.showToast('ログインに失敗しました。設定を確認してください。', 'danger');
       }
     } else {
       // Client IDがない場合はデモモード
@@ -64,11 +82,12 @@ async function initApp() {
   }
 
   // Google Auth 初期化 (Client IDがあれば)
-  if (store.data.settings?.googleClientId) {
+  const configClientId = store.data.settings?.googleClientId;
+  if (configClientId) {
     try {
-      await googleAuth.init();
+      initGoogleAuth(configClientId);
     } catch (err) {
-      console.error('GIS init failed', err);
+      console.warn('GIS init failed', err);
     }
     
     // ログイン済みならバックグラウンドでDriveからPullを試行
@@ -76,24 +95,36 @@ async function initApp() {
       try {
         const remoteData = await driveSync.pull();
         if (remoteData) {
-          // 簡易的なマージまたは上書き
           if (confirm('Google Driveから新しいデータが見つかりました。読み込みますか？')) {
             store.data = store.migrate(remoteData);
             store.save();
           }
         }
       } catch (err) {
-        console.error('Initial drive sync failed', err);
+        console.warn('Initial drive sync failed', err);
       }
     }
   }
 
   document.querySelector('.bottom-nav').style.display = 'flex';
-  router.init();
+  try {
+    router.init();
+  } catch (err) {
+    console.error('Router init failed', err);
+  }
 }
 
 // 初期化
 document.addEventListener('DOMContentLoaded', () => {
+  // 起動時に設定からClient IDを読み込んで初期化
+  const configClientId = store.data.settings?.googleClientId;
+  if (configClientId) {
+    // ライブラリのロードを待つために少し遅延させるか、
+    // index.html の async defer を信じる。
+    // 指示通り initGoogleAuth を呼ぶ。
+    setTimeout(() => initGoogleAuth(configClientId), 500);
+  }
+
   initApp();
 
   if ('serviceWorker' in navigator) {

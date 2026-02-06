@@ -107,17 +107,23 @@ export function renderSettings(container) {
     const googleClientId = document.getElementById('google-client-id').value;
     const googleApiKey = document.getElementById('google-api-key').value;
     store.updateSettings({ googleClientId, googleApiKey });
-    alert('API設定を保存しました。反映には再読み込みが必要な場合があります。');
+    
+    // 即時初期化を試行
+    if (googleClientId) {
+      import('../auth/googleAuth.js').then(m => m.initGoogleAuth(googleClientId));
+    }
+    
+    window.showToast('API設定を保存しました。', 'success');
   };
 
   window.loginGoogle = async () => {
     try {
       await googleAuth.init();
       await googleAuth.getAccessToken();
-      alert('Google ログイン成功');
+      window.showToast('Google ログイン成功', 'success');
       renderSettings(container);
     } catch (err) {
-      alert('ログイン失敗: ' + (err.error || err.message));
+      window.showToast('ログイン失敗: ' + (err.error || err.message), 'danger');
     }
   };
 
@@ -134,10 +140,10 @@ export function renderSettings(container) {
   window.manualDrivePush = async () => {
     try {
       await driveSync.push();
-      alert('クラウドに保存しました');
+      window.showToast('クラウドに保存しました', 'success');
       renderSettings(container);
     } catch (err) {
-      alert('保存失敗: ' + err.message);
+      window.showToast('保存失敗: ' + err.message, 'danger');
     }
   };
 
@@ -148,13 +154,13 @@ export function renderSettings(container) {
         if (remoteData) {
           store.data = store.migrate(remoteData);
           store.save();
-          alert('クラウドから読み込みました。');
+          window.showToast('クラウドから読み込みました。', 'success');
           location.reload();
         } else {
-          alert('クラウド上にデータが見つかりませんでした。');
+          window.showToast('クラウド上にデータが見つかりませんでした。', 'warn');
         }
       } catch (err) {
-        alert('読み込み失敗: ' + err.message);
+        window.showToast('読み込み失敗: ' + err.message, 'danger');
       }
     }
   };

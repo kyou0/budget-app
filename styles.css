@@ -90,6 +90,30 @@ body {
 .event-item.paid { opacity: 0.6; text-decoration: line-through; }
 .event-item.delayed { border: 1px solid var(--danger); background: #fee2e2; }
 
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #333;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  z-index: 2000;
+  opacity: 0;
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.toast.danger { background: var(--danger); }
+.toast.success { background: var(--success); }
+.toast.warn { background: var(--warn); }
+
 @keyframes blink {
   0% { opacity: 1; }
   50% { opacity: 0.5; }
