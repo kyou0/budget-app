@@ -163,10 +163,13 @@ export function renderDashboard(container) {
       
       // Google Calendar 同期
       if (store.data.settings?.calendarSyncEnabled) {
+        window.showToast('カレンダー同期中...', 'info');
         try {
           await calendarSync.syncMonthEvents(yearMonth);
+          window.showToast('カレンダー同期完了', 'success');
         } catch (err) {
           console.error('Initial calendar sync failed', err);
+          window.showToast('カレンダー同期に失敗しました', 'danger');
         }
       }
 

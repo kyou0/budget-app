@@ -50,7 +50,11 @@ export const INITIAL_DATA = {
   settings: {
     googleClientId: '',
     googleApiKey: '',
-    tutorialCompleted: false
+    tutorialCompleted: false,
+    driveSyncEnabled: false,
+    calendarSyncEnabled: false,
+    incomeCalendarId: 'primary',
+    expenseCalendarId: 'primary'
   },
   transactions: []
 };

@@ -46,7 +46,28 @@ export function renderSettings(container) {
               <input type="checkbox" id="calendar-sync-enabled" ${settings.calendarSyncEnabled ? 'checked' : ''} onchange="toggleCalendarSync()"> 
               カレンダー同期を有効化
             </label>
-            <p style="font-size: 0.7rem; color: #6b7280;">※有効にすると、支払い完了時にGoogleカレンダーも更新されます。</p>
+
+            <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+              <button onclick="loadCalendarList()" class="btn small" style="align-self: flex-start;">カレンダー一覧を読み込む</button>
+              
+              <div class="form-group">
+                <label style="font-size: 0.75rem;">収入用カレンダー</label>
+                <select id="income-calendar-id" onchange="updateCalendarSettings()" style="width: 100%; font-size: 0.8rem;">
+                  <option value="primary" ${settings.incomeCalendarId === 'primary' ? 'selected' : ''}>プライマリ (標準)</option>
+                  ${settings.incomeCalendarId && settings.incomeCalendarId !== 'primary' ? `<option value="${settings.incomeCalendarId}" selected>${settings.incomeCalendarId}</option>` : ''}
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label style="font-size: 0.75rem;">支出用カレンダー</label>
+                <select id="expense-calendar-id" onchange="updateCalendarSettings()" style="width: 100%; font-size: 0.8rem;">
+                  <option value="primary" ${settings.expenseCalendarId === 'primary' ? 'selected' : ''}>プライマリ (標準)</option>
+                  ${settings.expenseCalendarId && settings.expenseCalendarId !== 'primary' ? `<option value="${settings.expenseCalendarId}" selected>${settings.expenseCalendarId}</option>` : ''}
+                </select>
+              </div>
+            </div>
+            
+            <p style="font-size: 0.7rem; color: #6b7280; margin-top: 10px;">※有効にすると、生成・完了時にGoogleカレンダーも同期されます。</p>
           </div>
           
           <div style="margin-top: 10px; font-size: 0.75rem; color: #6b7280;">
@@ -139,6 +160,41 @@ export function renderSettings(container) {
   window.toggleCalendarSync = () => {
     const enabled = document.getElementById('calendar-sync-enabled').checked;
     store.updateSettings({ calendarSyncEnabled: enabled });
+  };
+
+  window.loadCalendarList = async () => {
+    try {
+      // カレンダー一覧の読み取りとイベント操作の両方のスコープを要求
+      await googleAuth.getAccessToken([
+        googleAuth.getScopes().CALENDAR,
+        googleAuth.getScopes().CALENDAR_LIST
+      ]);
+      const calendars = await calendarSync.listCalendars();
+      const incomeSelect = document.getElementById('income-calendar-id');
+      const expenseSelect = document.getElementById('expense-calendar-id');
+      
+      const currentIncome = store.data.settings.incomeCalendarId || 'primary';
+      const currentExpense = store.data.settings.expenseCalendarId || 'primary';
+
+      const options = calendars.map(c => `<option value="${c.id}">${c.summary}${c.primary ? ' (プライマリ)' : ''}</option>`).join('');
+      
+      incomeSelect.innerHTML = options;
+      expenseSelect.innerHTML = options;
+      
+      // 値を再設定（一覧に含まれていれば）
+      incomeSelect.value = currentIncome;
+      expenseSelect.value = currentExpense;
+      
+      window.showToast('カレンダー一覧を取得しました', 'success');
+    } catch (err) {
+      window.showToast('カレンダー取得失敗: ' + err.message, 'danger');
+    }
+  };
+
+  window.updateCalendarSettings = () => {
+    const incomeCalendarId = document.getElementById('income-calendar-id').value;
+    const expenseCalendarId = document.getElementById('expense-calendar-id').value;
+    store.updateSettings({ incomeCalendarId, expenseCalendarId });
   };
 
   window.manualDrivePush = async () => {

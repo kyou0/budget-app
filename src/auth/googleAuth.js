@@ -7,6 +7,7 @@ let clientId = null;
 
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+const CALENDAR_LIST_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
 
 /**
  * GISの初期化
@@ -96,7 +97,8 @@ export const googleAuth = {
   getScopes() {
     return {
       DRIVE: DRIVE_SCOPE,
-      CALENDAR: CALENDAR_SCOPE
+      CALENDAR: CALENDAR_SCOPE,
+      CALENDAR_LIST: CALENDAR_LIST_SCOPE
     };
   }
 };
