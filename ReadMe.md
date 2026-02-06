@@ -166,18 +166,30 @@ AI提案:
 
 ## 🏗️ システム構成
 
-### 3ページ構成
-1. **📊 ダッシュボード**（メイン画面）
-2. **⚙️ マスター管理**（データ登録・編集）
-3. **🔧 設定**（Google連携・同期）
+### ディレクトリ構成
+```
+/index.html      - エントリーポイント
+/styles.css      - 全体スタイル
+/app.js          - アプリ初期化・ルーティング
+/manifest.json   - PWA設定
+/src/
+  store.js       - 状態管理（localStorage保存）
+  schema.js      - データ構造定義
+  generate.js    - 月次イベント生成ロジック（純関数）
+  calc.js        - ペナルティ計算等の計算ロジック
+  router.js      - ハッシュルーティング管理
+  ui/
+    dashboard.js - カレンダー・サマリー画面
+    master.js    - マスター登録・編集画面
+    settings.js  - 設定・データ管理画面
+```
 
 ### 技術スタック
-- **フロントエンド**: HTML + CSS + JavaScript
-- **認証**: Google OAuth 2.0
-- **データ同期**: Google Drive API
-- **カレンダー連携**: Google Calendar API
-- **ホスティング**: GitHub Pages
-- **データ保存**: localStorage + Google Drive
+- **フロントエンド**: Vanilla JavaScript (ES Modules)
+- **スタイル**: CSS3 (Flexbox/Grid)
+- **ホスティング**: GitHub Pages (GitHub Actions 自動デプロイ)
+- **データ保存**: localStorage (オフライン対応)
+- **PWA**: manifest.json によるインストール対応
 
 ---
 
@@ -455,3 +467,34 @@ AI提案:
 ---
 
 **📞 Contact**: ChatGPTで要件定義 → 即座に実装対応
+
+## 🛠 開発者向けガイド
+
+### 1. ローカルでの実行方法
+本プロジェクトは純粋な HTML/CSS/JS で構成されているため、静的ファイルサーバーを使用して実行できます。
+
+#### Python を使用する場合 (推奨)
+```bash
+python3 -m http.server 8000
+```
+実行後、ブラウザで `http://localhost:8000` にアクセスしてください。
+
+#### Node.js (npx) を使用する場合
+```bash
+npx serve .
+```
+実行後、表示されるURL（通常は `http://localhost:3000`）にアクセスしてください。
+
+### 2. GitHub Pages へのデプロイ
+`.github/workflows/deploy.yml` により、`main` ブランチへのプッシュ時に自動的にデプロイされます。
+
+#### 初回設定手順
+1. GitHub リポジトリの **Settings** タブを開く。
+2. 左メニューの **Pages** をクリック。
+3. **Build and deployment** > **Source** で `GitHub Actions` を選択する。
+
+以降、コードをプッシュするたびに自動で更新されます。
+
+### 3. データ構造について
+データはブラウザの `localStorage` に保存されます。
+開発中にデータをリセットしたい場合は、ブラウザのデベロッパーツール（F12）の「アプリケーション」タブから `localStorage` をクリアしてください。

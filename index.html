@@ -1,115 +1,30 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📈 ダッシュボード - 家計簿アプリ v2.0</title>
-    <link rel="stylesheet" href="css/style.css">
-    <!-- PWA対応 -->
-    <link rel="manifest" href="manifest.json">
-    <!-- ▼▼▼ 修正箇所 ▼▼▼ -->
-    <link rel="icon" href="data:,"> <!-- favicon.icoの404エラーを一旦抑制 -->
-    <meta name="theme-color" content="#667eea">
-    <meta name="mobile-web-app-capable" content="yes"> <!-- 推奨されるタグを追加 -->
-    <!-- ▲▲▲ ここまで ▲▲▲ -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="家計簿アプリ">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>個人向け動的家計簿PWA</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="manifest.json">
 </head>
 <body>
-<div class="loading-overlay" id="loadingOverlay">🔄 同期中...</div>
+  <nav class="bottom-nav">
+    <a href="#dashboard" class="nav-item">
+      <span class="icon">📅</span>
+      <span class="label">カレンダー</span>
+    </a>
+    <a href="#master" class="nav-item">
+      <span class="icon">⚙️</span>
+      <span class="label">マスター</span>
+    </a>
+    <a href="#settings" class="nav-item">
+      <span class="icon">🔧</span>
+      <span class="label">設定</span>
+    </a>
+  </nav>
 
-<!-- ログイン画面 -->
-<div class="login-screen" id="loginScreen">
-    <div class="login-card">
-        <h1>家計簿アプリ v2.0</h1>
-        <p>Googleアカウントまたはローカルでデータを管理します。</p>
-        <button id="googleLoginBtn" class="btn btn-primary" style="width: 100%; margin-bottom: 15px;" onclick="tryGoogleLogin()" disabled>
-            <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" style="width: 20px; vertical-align: middle; margin-right: 10px;">
-            Googleログイン準備中...
-        </button>
-        <button class="btn btn-secondary" style="width: 100%;" onclick="localLogin()">
-            ローカルで続ける
-        </button>
-    </div>
-</div>
+  <main id="app-container"></main>
 
-<!-- メインアプリ -->
-<div id="appContainer" class="app-container" style="display: none;">
-    <!-- 全ページ共通ヘッダー -->
-    <div class="header">
-        <div class="header-top">
-            <h1>📈 ダッシュボード</h1>
-            <div class="user-info">
-                <span id="userName">ユーザー</span>
-                <button class="logout-btn" onclick="window.logout()">ログアウト</button>
-            </div>
-        </div>
-        <div class="navigation">
-            <button class="nav-btn active" onclick="window.goToDashboard()">📈 ダッシュボード</button>
-            <button class="nav-btn" onclick="window.goToMaster()">⚙️ マスター管理</button>
-            <button class="nav-btn" onclick="window.goToSettings()">🔧 設定</button>
-        </div>
-    </div>
-
-    <div>
-        <div class="controls">
-            <div class="month-selector">
-                <button class="btn" onclick="changeMonth(-1)">＜ 前月</button>
-                <span id="currentMonth" class="current-month"></span>
-                <button class="btn" onclick="changeMonth(1)">次月 ＞</button>
-            </div>
-        </div>
-
-        <div class="summary-cards" id="summaryCards">
-            <!-- サマリーカードがここに表示されます -->
-        </div>
-        <div class="card accordion" id="spot-event-accordion">
-            <div class="accordion-header" id="spotEventAccordionHeader">
-                <h3>⚡️ スポットイベント入力</h3>
-                <span class="accordion-icon">▶</span>
-            </div>
-            <div class="accordion-content" id="spotEventAccordionContent">
-                <p>臨時収入や、予定外の大きな支出などをここから登録できます。</p>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="spotDate">日付</label>
-                        <input type="date" id="spotDate">
-                    </div>
-                    <div class="form-group">
-                        <label for="spotType">種別</label>
-                        <select id="spotType">
-                            <option value="expense">支出</option>
-                            <option value="income">収入</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="spotAmount">金額</label>
-                    <input type="number" id="spotAmount" placeholder="例: 10000 (プラスで入力)">
-                </div>
-                <div class="form-group">
-                    <label for="spotDescription">内容</label>
-                    <input type="text" id="spotDescription" placeholder="例: 友人への立替金返済">
-                </div>
-                <button class="btn btn-primary" style="width: 100%;" onclick="addSpotEvent()">追加</button>
-            </div>
-        </div>
-
-        <div id="financialForecast" class="card-style" style="display: none;">
-            <!-- 未来予測とアラートがここに自動で表示されます -->
-        </div>
-
-        <div class="calendar-container">
-            <div class="calendar" id="calendar">
-                <!-- カレンダーがここに表示されます -->
-            </div>
-        </div>
-    </div>
-
-</div>
-<script src="js/common.js" defer></script>
-<script src="js/index.js" defer></script>
-<script src="https://accounts.google.com/gsi/client" async onload="onGoogleLibraryLoad()"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
