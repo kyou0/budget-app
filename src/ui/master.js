@@ -44,12 +44,36 @@ export function renderMaster(container) {
               </select>
             </div>
             <div id="field-amount" class="form-group">
-              <label>金額</label>
+              <label>金額モード</label>
+              <select id="master-amount-mode">
+                <option value="fixed">固定</option>
+                <option value="variable">変動</option>
+              </select>
+              <label style="margin-top:5px;">金額 (またはベース金額)</label>
               <input type="number" id="master-amount" required>
             </div>
-            <div id="field-day" class="form-group">
-              <label>日</label>
-              <input type="number" id="master-day" min="1" max="31" required>
+            <div id="field-rule" class="form-group">
+              <label>日付ルール</label>
+              <select id="master-rule-type" onchange="toggleRuleFields()">
+                <option value="monthly">毎月◯日</option>
+                <option value="monthEnd">月末</option>
+                <option value="weekly">毎週◯曜</option>
+                <option value="nextMonthDay">翌月◯日</option>
+                <option value="monthlyBusinessDay">第◯営業日</option>
+              </select>
+              <div id="rule-detail" style="margin-top:10px;">
+                <input type="number" id="master-day" min="1" max="31" placeholder="日">
+                <select id="master-weekday" class="hidden">
+                  <option value="0">日曜日</option>
+                  <option value="1">月曜日</option>
+                  <option value="2">火曜日</option>
+                  <option value="3">水曜日</option>
+                  <option value="4">木曜日</option>
+                  <option value="5">金曜日</option>
+                  <option value="6">土曜日</option>
+                </select>
+                <input type="number" id="master-nth" min="1" max="20" placeholder="第n営業日" class="hidden">
+              </div>
             </div>
             <div id="field-bank-select" class="form-group">
               <label>入出金先銀行</label>
@@ -57,6 +81,20 @@ export function renderMaster(container) {
                 <option value="">(未選択)</option>
                 ${items.filter(i => i.type === 'bank').map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
               </select>
+            </div>
+            <div class="form-group">
+              <label>土日祝の調整</label>
+              <select id="master-adjustment">
+                <option value="none">調整なし</option>
+                <option value="prev_weekday">前営業日 (金曜など)</option>
+                <option value="next_weekday">翌営業日 (月曜など)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>有効期間 (開始日)</label>
+              <input type="date" id="master-eff-start">
+              <label style="margin-top:5px;">有効期間 (終了日)</label>
+              <input type="date" id="master-eff-end">
             </div>
           ` : currentTab === 'banks' ? `
             <input type="hidden" id="master-type" value="bank">
@@ -90,6 +128,18 @@ export function renderMaster(container) {
             <div class="form-group">
               <label>限度額</label>
               <input type="number" id="loan-limit" required>
+            </div>
+            <div class="form-group">
+              <label>返済日 (1-31)</label>
+              <input type="number" id="loan-day" min="1" max="31" value="27">
+            </div>
+            <div class="form-group">
+              <label>土日祝の調整</label>
+              <select id="loan-adjustment">
+                <option value="none">調整なし</option>
+                <option value="prev_weekday">前営業日 (金曜など)</option>
+                <option value="next_weekday">翌営業日 (月曜など)</option>
+              </select>
             </div>
           `}
           
@@ -141,14 +191,31 @@ export function renderMaster(container) {
     if (!typeEl) return;
     const type = typeEl.value;
     const amountField = document.getElementById('field-amount');
-    const dayField = document.getElementById('field-day');
+    const ruleField = document.getElementById('field-rule');
     const balanceField = document.getElementById('field-balance');
     const bankSelectField = document.getElementById('field-bank-select');
 
     if (amountField) amountField.classList.toggle('hidden', type === 'bank');
-    if (dayField) dayField.classList.toggle('hidden', type === 'bank');
+    if (ruleField) ruleField.classList.toggle('hidden', type === 'bank');
     if (balanceField) balanceField.classList.toggle('hidden', type !== 'bank');
     if (bankSelectField) bankSelectField.classList.toggle('hidden', type === 'bank');
+    
+    if (type !== 'bank') {
+      window.toggleRuleFields();
+    }
+  };
+
+  window.toggleRuleFields = () => {
+    const ruleType = document.getElementById('master-rule-type').value;
+    const dayInput = document.getElementById('master-day');
+    const weekdaySelect = document.getElementById('master-weekday');
+    const nthInput = document.getElementById('master-nth');
+
+    if (!dayInput) return;
+
+    dayInput.classList.toggle('hidden', !['monthly', 'nextMonthDay'].includes(ruleType));
+    weekdaySelect.classList.toggle('hidden', ruleType !== 'weekly');
+    nthInput.classList.toggle('hidden', ruleType !== 'monthlyBusinessDay');
   };
 }
 
@@ -163,9 +230,9 @@ function renderItemsList(items) {
         </span>
         <span class="name">${item.name}</span>
         <span class="amount">
-          ¥${item.amount.toLocaleString()}
+          ${item.amountMode === 'variable' ? '見積: ' : ''}¥${item.amount.toLocaleString()}
         </span>
-        <span class="day">${item.day}日</span>
+        <span class="day">${formatRule(item.scheduleRule || {type:'monthly', day:item.day})}</span>
         <div class="bank-link" style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">
           🏦 ${bankMap[item.bankId] || '(銀行未設定)'}
         </div>
@@ -178,6 +245,18 @@ function renderItemsList(items) {
       </div>
     </div>
   `).join('');
+}
+
+function formatRule(rule) {
+  if (!rule) return '設定なし';
+  switch (rule.type) {
+    case 'monthly': return `${rule.day}日`;
+    case 'monthEnd': return '月末';
+    case 'weekly': return `毎週${['日','月','火','水','木','金','土'][rule.weekday]}`;
+    case 'nextMonthDay': return `翌月${rule.day}日`;
+    case 'monthlyBusinessDay': return `第${rule.nth}営業日`;
+    default: return '不明';
+  }
 }
 
 function renderBanksList(banks) {
@@ -230,10 +309,23 @@ function showModal(data = null) {
     if (currentTab === 'items' || currentTab === 'banks') {
       if (form['master-type']) form['master-type'].value = data.type;
       if (form['master-amount']) form['master-amount'].value = data.amount || 0;
-      if (form['master-day']) form['master-day'].value = data.day || 1;
+      if (form['master-amount-mode']) form['master-amount-mode'].value = data.amountMode || 'fixed';
+      
+      if (form['master-rule-type']) {
+        const rule = data.scheduleRule || { type: 'monthly', day: data.day || 1 };
+        form['master-rule-type'].value = rule.type;
+        if (form['master-day']) form['master-day'].value = rule.day || 1;
+        if (form['master-weekday']) form['master-weekday'].value = rule.weekday || 0;
+        if (form['master-nth']) form['master-nth'].value = rule.nth || 1;
+      }
+
       if (form['master-balance']) form['master-balance'].value = data.currentBalance || 0;
       if (form['master-bank-id']) form['master-bank-id'].value = data.bankId || '';
+      if (form['master-adjustment']) form['master-adjustment'].value = data.adjustment || 'none';
       
+      if (form['master-eff-start']) form['master-eff-start'].value = data.effective?.start || '';
+      if (form['master-eff-end']) form['master-eff-end'].value = data.effective?.end || '';
+
       window.toggleMasterFormFields();
     } else if (currentTab === 'loans') {
       if (form['loan-type']) form['loan-type'].value = data.type;
@@ -241,6 +333,8 @@ function showModal(data = null) {
       if (form['loan-balance']) form['loan-balance'].value = data.currentBalance;
       if (form['loan-payment']) form['loan-payment'].value = data.monthlyPayment;
       if (form['loan-limit']) form['loan-limit'].value = data.maxLimit;
+      if (form['loan-day']) form['loan-day'].value = data.paymentDay || 27;
+      if (form['loan-adjustment']) form['loan-adjustment'].value = data.adjustment || 'none';
     }
   } else {
     title.textContent = '新規追加';
@@ -262,12 +356,27 @@ function saveData() {
     const typeEl = form['master-type'];
     const type = typeEl ? typeEl.value : (currentTab === 'banks' ? 'bank' : 'expense');
     
+    const ruleType = form['master-rule-type'] ? form['master-rule-type'].value : 'monthly';
+    const scheduleRule = {
+      type: ruleType,
+      day: Number(form['master-day']?.value || 1),
+      weekday: Number(form['master-weekday']?.value || 0),
+      nth: Number(form['master-nth']?.value || 1)
+    };
+
     const data = {
       name: form['master-name'] ? form['master-name'].value : '',
       type: type,
       amount: (type === 'bank' || !form['master-amount']) ? 0 : Number(form['master-amount'].value),
-      day: (type === 'bank' || !form['master-day']) ? 1 : Number(form['master-day'].value),
+      amountMode: form['master-amount-mode'] ? form['master-amount-mode'].value : 'fixed',
+      scheduleRule: type === 'bank' ? null : scheduleRule,
+      day: scheduleRule.day, // v1 fallback
       bankId: (type === 'bank' || !form['master-bank-id']) ? '' : form['master-bank-id'].value,
+      adjustment: (type === 'bank' || !form['master-adjustment']) ? 'none' : form['master-adjustment'].value,
+      effective: {
+        start: form['master-eff-start']?.value || null,
+        end: form['master-eff-end']?.value || null
+      },
       currentBalance: (type === 'bank' && form['master-balance']) ? Number(form['master-balance'].value) : 0
     };
     if (id) appStore.updateMasterItem(id, data);
@@ -279,7 +388,9 @@ function saveData() {
       interestRate: Number(form['loan-rate'] ? form['loan-rate'].value : 0),
       currentBalance: Number(form['loan-balance'] ? form['loan-balance'].value : 0),
       monthlyPayment: Number(form['loan-payment'] ? form['loan-payment'].value : 0),
-      maxLimit: Number(form['loan-limit'] ? form['loan-limit'].value : 0)
+      maxLimit: Number(form['loan-limit'] ? form['loan-limit'].value : 0),
+      paymentDay: Number(form['loan-day'] ? form['loan-day'].value : 27),
+      adjustment: form['loan-adjustment'] ? form['loan-adjustment'].value : 'none'
     };
     if (id) appStore.updateLoan(id, data);
     else appStore.addLoan(data);

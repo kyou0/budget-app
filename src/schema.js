@@ -1,12 +1,30 @@
 /**
+ * @typedef {Object} ScheduleRule
+ * @property {'monthly'|'monthEnd'|'weekly'|'monthlyBusinessDay'|'nextMonthDay'} type
+ * @property {number} [day] - monthly, nextMonthDay 用 (1-31)
+ * @property {number} [weekday] - weekly 用 (0:日, 1:月...)
+ * @property {number} [nth] - monthlyBusinessDay 用 (第n営業日)
+ */
+
+/**
  * @typedef {Object} MasterItem
  * @property {string} id
  * @property {string} name
  * @property {'income'|'expense'|'bank'} type
  * @property {number} amount
- * @property {number} day - 1-31
+ * @property {'fixed'|'variable'} [amountMode] - 金額モード
+ * @property {Object} [estimate] - 変動時の見積もり
+ * @property {number} [estimate.min]
+ * @property {number} [estimate.base]
+ * @property {number} [estimate.max]
+ * @property {ScheduleRule} [scheduleRule] - v2 日付ルール
+ * @property {number} [day] - v1 互換用 (1-31)
  * @property {string} [bankId] - 紐づく銀行口座のID
  * @property {number} [currentBalance] - 銀行口座などの現在残高
+ * @property {'none'|'prev_weekday'|'next_weekday'} [adjustment] - 土日祝の調整
+ * @property {Object} [effective] - 有効期間
+ * @property {string|null} [effective.start] - YYYY-MM-DD
+ * @property {string|null} [effective.end] - YYYY-MM-DD
  * @property {boolean} active
  */
 
@@ -17,11 +35,14 @@
  * @property {string} name
  * @property {'income'|'expense'} type
  * @property {number} amount
+ * @property {'fixed'|'variable'} [amountMode]
  * @property {string} [bankId] - 紐づく銀行口座のID
  * @property {string} originalDate - YYYY-MM-DD
  * @property {string} actualDate - YYYY-MM-DD
  * @property {number} penaltyFee
  * @property {'pending'|'paid'} status
+ * @property {string} [gcalEventId]
+ * @property {string} [gcalCalendarId]
  */
 
 /**
@@ -33,15 +54,16 @@
  * @property {number} maxLimit - 限度額
  * @property {number} currentBalance - 現在残高
  * @property {number} monthlyPayment - 月間返済額
- * @property {string} startDate - YYYY-MM-DD
+ * @property {ScheduleRule} [scheduleRule] - v2 日付ルール
+ * @property {number} [paymentDay] - v1 互換用 (1-31)
+ * @property {'none'|'prev_weekday'|'next_weekday'} [adjustment] - 土日祝の調整
  * @property {boolean} active
  */
 
 export const INITIAL_DATA = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   master: {
     items: [],
-    methods: [],
     loans: []
   },
   calendar: {

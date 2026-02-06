@@ -26,10 +26,54 @@ class Store {
   }
 
   migrate(data) {
-    // 現在はバージョン1のみなので、必要に応じて拡張
     if (!data.schemaVersion) {
       data.schemaVersion = 1;
     }
+
+    if (data.schemaVersion === 1) {
+      console.log('Migrating schema v1 to v2...');
+      
+      // Master items migration
+      if (data.master && data.master.items) {
+        data.master.items = data.master.items.map(item => {
+          if (!item) return item;
+          if (!item.scheduleRule) {
+            // day=31 を月末 (monthEnd) とみなす判定
+            if (item.day === 31 || item.day === 30) {
+              item.scheduleRule = { type: 'monthEnd' };
+            } else {
+              item.scheduleRule = { type: 'monthly', day: item.day || 1 };
+            }
+          }
+          if (!item.amountMode) {
+            item.amountMode = 'fixed';
+          }
+          if (!item.effective) {
+            item.effective = { start: null, end: null };
+          }
+          return item;
+        }).filter(Boolean);
+      }
+
+      // Loans migration
+      if (data.master && data.master.loans) {
+        data.master.loans = data.master.loans.map(loan => {
+          if (!loan) return loan;
+          if (!loan.scheduleRule) {
+            if (loan.paymentDay === 31 || loan.paymentDay === 30) {
+              loan.scheduleRule = { type: 'monthEnd' };
+            } else {
+              loan.scheduleRule = { type: 'monthly', day: loan.paymentDay || 27 };
+            }
+          }
+          return loan;
+        }).filter(Boolean);
+      }
+
+      data.schemaVersion = 2;
+      console.log('Migration to v2 completed.');
+    }
+
     return data;
   }
 

@@ -163,7 +163,14 @@ export function renderDashboard(container) {
       : `${currentYear}年${currentMonth}月のイベントを生成しますか？`;
 
     if (confirm(confirmMsg)) {
+      console.log(`Generating events for ${currentYear}-${currentMonth}...`);
       const newEvents = generateMonthEvents(appStore.data.master.items, loans, currentYear, currentMonth);
+      console.log(`Generated ${newEvents.length} events.`);
+      
+      if (newEvents.length === 0) {
+        window.showToast('生成される項目がありません。マスター登録を確認してください。', 'warn');
+      }
+
       appStore.addMonthEvents(yearMonth, newEvents);
       
       // Google Calendar 同期 (自動)
@@ -176,6 +183,7 @@ export function renderDashboard(container) {
         driveSync.push().catch(err => console.error('Auto drive push failed', err));
       }
 
+      window.showToast(`${currentMonth}月の予定を${hasEvents ? '再生成' : '生成'}しました`, 'success');
       renderDashboard(container);
     }
   };
@@ -209,8 +217,14 @@ export function renderDashboard(container) {
 
     detail.innerHTML = `
       <p>項目: ${event.name}</p>
-      <p>金額: ¥${event.amount.toLocaleString()}</p>
+      <p>金額: ${event.amountMode === 'variable' ? '(変動)' : ''} ¥${event.amount.toLocaleString()}</p>
       <p>予定日: ${event.originalDate}</p>
+      ${event.amountMode === 'variable' ? `
+        <div class="form-group">
+          <label>実績金額</label>
+          <input type="number" id="actual-amount" value="${event.amount}">
+        </div>
+      ` : ''}
       <div class="form-group">
         <label>入出金先銀行</label>
         <select id="event-bank-id">
@@ -232,9 +246,12 @@ export function renderDashboard(container) {
     updatePenalty();
 
     payBtn.onclick = async () => {
-      const penalty = calculatePenalty(event.amount, event.originalDate, dateInput.value);
+      const actualAmountEl = document.getElementById('actual-amount');
+      const finalAmount = actualAmountEl ? Number(actualAmountEl.value) : event.amount;
+      const penalty = calculatePenalty(finalAmount, event.originalDate, dateInput.value);
       const selectedBankId = document.getElementById('event-bank-id').value;
       const updates = {
+        amount: finalAmount,
         actualDate: dateInput.value,
         penaltyFee: penalty,
         status: 'paid',
@@ -246,7 +263,7 @@ export function renderDashboard(container) {
       if (selectedBankId) {
         const bank = masterItems.find(i => i.id === selectedBankId);
         if (bank) {
-          const delta = event.type === 'income' ? (event.amount - penalty) : -(event.amount + penalty);
+          const delta = event.type === 'income' ? (finalAmount - penalty) : -(finalAmount + penalty);
           appStore.updateMasterItem(selectedBankId, { currentBalance: (bank.currentBalance || 0) + delta });
         }
       }
