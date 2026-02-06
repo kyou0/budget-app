@@ -2,6 +2,7 @@ import { Router } from './src/router.js';
 import { renderDashboard } from './src/ui/dashboard.js';
 import { renderAnalysis } from './src/ui/analysis.js';
 import { renderMaster } from './src/ui/master.js';
+import { renderSettings } from './src/ui/settings.js';
 
 import { store } from './src/store.js';
 import { googleAuth } from './src/auth/googleAuth.js';

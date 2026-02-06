@@ -1,6 +1,7 @@
 import { store } from '../store.js';
 import { generateMonthEvents } from '../generate.js';
 import { calculatePenalty, calculatePayoffSummary } from '../calc.js';
+import { googleAuth } from '../auth/googleAuth.js';
 import { driveSync } from '../sync/driveSync.js';
 import { calendarSync } from '../sync/calendarSync.js';
 
