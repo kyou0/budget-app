@@ -19,7 +19,7 @@ export function renderSettings(container) {
           <label>Google Client ID</label>
           <input type="text" id="google-client-id" value="${settings.googleClientId || ''}" placeholder="Client IDを入力">
         </div>
-        <div class="form-group">
+        <div class="form-group" style="display: none;">
           <label>Google API Key</label>
           <input type="password" id="google-api-key" value="${settings.googleApiKey || ''}" placeholder="API Keyを入力">
         </div>
@@ -164,11 +164,6 @@ export function renderSettings(container) {
 
   window.loadCalendarList = async () => {
     try {
-      // カレンダー一覧の読み取りとイベント操作の両方のスコープを要求
-      await googleAuth.getAccessToken([
-        googleAuth.getScopes().CALENDAR,
-        googleAuth.getScopes().CALENDAR_LIST
-      ]);
       const calendars = await calendarSync.listCalendars();
       const incomeSelect = document.getElementById('income-calendar-id');
       const expenseSelect = document.getElementById('expense-calendar-id');

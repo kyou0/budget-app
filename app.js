@@ -123,7 +123,15 @@ async function initApp() {
 // 初期化
 document.addEventListener('DOMContentLoaded', () => {
   // 起動時に設定からClient IDを読み込んで初期化
-  const configClientId = store.data.settings?.googleClientId;
+  const DEFAULT_CLIENT_ID = '45451544416-8nlqo6bhl56arpjuuh4kekfa24ed9np5.apps.googleusercontent.com';
+  let configClientId = store.data.settings?.googleClientId;
+  
+  // Client IDが未設定の場合はデフォルトを設定（利便性のため）
+  if (!configClientId) {
+    configClientId = DEFAULT_CLIENT_ID;
+    store.updateSettings({ googleClientId: DEFAULT_CLIENT_ID });
+  }
+
   if (configClientId) {
     // ライブラリのロードを待つために少し遅延させるか、
     // index.html の async defer を信じる。

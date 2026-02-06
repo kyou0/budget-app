@@ -1,6 +1,6 @@
 import { store } from '../store.js';
 
-let currentTab = 'items'; // 'items' | 'loans'
+let currentTab = 'items'; // 'items' | 'banks' | 'loans'
 
 export function renderMaster(container) {
   const items = store.data.master.items;
@@ -9,16 +9,19 @@ export function renderMaster(container) {
   container.innerHTML = `
     <div class="tabs">
       <button class="tab-btn ${currentTab === 'items' ? 'active' : ''}" onclick="switchMasterTab('items')">収支項目</button>
+      <button class="tab-btn ${currentTab === 'banks' ? 'active' : ''}" onclick="switchMasterTab('banks')">銀行口座</button>
       <button class="tab-btn ${currentTab === 'loans' ? 'active' : ''}" onclick="switchMasterTab('loans')">借入先</button>
     </div>
 
     <div class="master-header">
-      <h2>${currentTab === 'items' ? '収支マスター' : '借入先マスター'}</h2>
+      <h2>${currentTab === 'items' ? '収支マスター' : currentTab === 'banks' ? '銀行マスター' : '借入先マスター'}</h2>
       <button id="add-btn" class="btn primary">新規追加</button>
     </div>
 
     <div class="master-list">
-      ${currentTab === 'items' ? renderItemsList(items) : renderLoansList(loans)}
+      ${currentTab === 'items' ? renderItemsList(items.filter(i => i.type !== 'bank')) : 
+        currentTab === 'banks' ? renderBanksList(items.filter(i => i.type === 'bank')) : 
+        renderLoansList(loans)}
     </div>
 
     <!-- 項目モーダル -->
@@ -38,20 +41,15 @@ export function renderMaster(container) {
               <select id="master-type" onchange="toggleMasterFormFields()">
                 <option value="expense">支出</option>
                 <option value="income">収入</option>
-                <option value="bank">銀行口座</option>
               </select>
             </div>
             <div id="field-amount" class="form-group">
               <label>金額</label>
-              <input type="number" id="master-amount">
+              <input type="number" id="master-amount" required>
             </div>
             <div id="field-day" class="form-group">
               <label>日</label>
-              <input type="number" id="master-day" min="1" max="31">
-            </div>
-            <div id="field-balance" class="form-group hidden">
-              <label>現在残高</label>
-              <input type="number" id="master-balance">
+              <input type="number" id="master-day" min="1" max="31" required>
             </div>
             <div id="field-bank-select" class="form-group">
               <label>入出金先銀行</label>
@@ -59,6 +57,12 @@ export function renderMaster(container) {
                 <option value="">(未選択)</option>
                 ${items.filter(i => i.type === 'bank').map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
               </select>
+            </div>
+          ` : currentTab === 'banks' ? `
+            <input type="hidden" id="master-type" value="bank">
+            <div id="field-balance" class="form-group">
+              <label>現在残高</label>
+              <input type="number" id="master-balance" required>
             </div>
           ` : `
             <div class="form-group">
@@ -153,22 +157,45 @@ export function renderMaster(container) {
 }
 
 function renderItemsList(items) {
+  const bankMap = Object.fromEntries(store.data.master.items.filter(i => i.type === 'bank').map(b => [b.id, b.name]));
+  
   return items.map(item => `
     <div class="master-item ${item.active ? '' : 'inactive'}">
       <div class="info">
         <span class="type ${item.type}">
-          ${item.type === 'income' ? '収入' : item.type === 'bank' ? '銀行' : '支出'}
+          ${item.type === 'income' ? '収入' : '支出'}
         </span>
         <span class="name">${item.name}</span>
         <span class="amount">
-          ${item.type === 'bank' ? `残: ¥${(item.currentBalance || 0).toLocaleString()}` : `¥${item.amount.toLocaleString()}`}
+          ¥${item.amount.toLocaleString()}
         </span>
-        <span class="day">${item.type === 'bank' ? '' : `${item.day}日`}</span>
+        <span class="day">${item.day}日</span>
+        <div class="bank-link" style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">
+          🏦 ${bankMap[item.bankId] || '(銀行未設定)'}
+        </div>
       </div>
       <div class="actions">
         <button onclick="editMasterItem('${item.id}')" class="btn small">編集</button>
         <button onclick="toggleMasterItem('${item.id}')" class="btn small ${item.active ? 'warn' : 'success'}">
           ${item.active ? '無効化' : '有効化'}
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderBanksList(banks) {
+  return banks.map(bank => `
+    <div class="master-item ${bank.active ? '' : 'inactive'}">
+      <div class="info">
+        <span class="type bank">銀行</span>
+        <span class="name">${bank.name}</span>
+        <span class="amount">残: ¥${(bank.currentBalance || 0).toLocaleString()}</span>
+      </div>
+      <div class="actions">
+        <button onclick="editMasterItem('${bank.id}')" class="btn small">編集</button>
+        <button onclick="toggleMasterItem('${bank.id}')" class="btn small ${bank.active ? 'warn' : 'success'}">
+          ${bank.active ? '無効化' : '有効化'}
         </button>
       </div>
     </div>

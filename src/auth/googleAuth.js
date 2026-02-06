@@ -3,7 +3,9 @@ import { store } from '../store.js';
 let tokenClient = null;
 let accessToken = null;
 let tokenExpiresAt = 0;
+let grantedScopes = '';
 let clientId = null;
+let authPromise = null;
 
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
@@ -20,6 +22,9 @@ export function initGoogleAuth(configClientId) {
     return;
   }
 
+  // すでに同じIDで初期化済みならスキップ
+  if (clientId === configClientId && tokenClient) return;
+
   clientId = configClientId;
 
   try {
@@ -27,13 +32,7 @@ export function initGoogleAuth(configClientId) {
       client_id: clientId,
       scope: 'openid', // 最小限のスコープ（必須）
       callback: (response) => {
-        // デフォルトのコールバック（通常はgetAccessToken側で上書きされる）
-        if (response.error) {
-          console.error('Auth error:', response.error);
-          return;
-        }
-        accessToken = response.access_token;
-        tokenExpiresAt = Date.now() + (response.expires_in * 1000);
+        // ここは通常 getAccessToken の callback で上書きされる
       },
     });
   } catch (err) {
@@ -46,7 +45,6 @@ export function isInitialized() {
 }
 
 export const googleAuth = {
-  // 以前の init メソッドは非推奨だが、互換性のために残すか、新しいフローに合わせる
   async init() {
     const configClientId = store.data.settings?.googleClientId;
     initGoogleAuth(configClientId);
@@ -60,25 +58,45 @@ export const googleAuth = {
       return Promise.reject(new Error('GIS not initialized'));
     }
 
-    // スコープが指定されていない場合は最小限の 'openid' を使用
     const scope = requiredScopes.length > 0 ? requiredScopes.join(' ') : 'openid';
 
-    return new Promise((resolve, reject) => {
+    // すでに有効なトークンがあり、かつ必要なスコープをすべて含んでいる場合は再利用
+    if (accessToken && Date.now() < tokenExpiresAt) {
+      const hasAllScopes = requiredScopes.every(s => grantedScopes.includes(s));
+      if (hasAllScopes) {
+        return accessToken;
+      }
+    }
+
+    // すでにリクエスト進行中の場合はそのPromiseを返す
+    if (authPromise) return authPromise;
+
+    authPromise = new Promise((resolve, reject) => {
       tokenClient.callback = (response) => {
+        authPromise = null;
         if (response.error) {
+          console.error('Auth callback error:', response.error);
           reject(response);
           return;
         }
         accessToken = response.access_token;
         tokenExpiresAt = Date.now() + (response.expires_in * 1000);
+        grantedScopes = response.scope;
         resolve(accessToken);
       };
 
-      tokenClient.requestAccessToken({ 
-        scope: scope,
-        prompt: accessToken ? '' : 'select_account'
-      });
+      try {
+        tokenClient.requestAccessToken({ 
+          scope: scope,
+          prompt: accessToken ? '' : 'select_account'
+        });
+      } catch (err) {
+        authPromise = null;
+        reject(err);
+      }
     });
+
+    return authPromise;
   },
 
   isSignedIn() {

@@ -11,7 +11,7 @@ export function generateMonthEvents(masterItems, loans, year, month) {
 
   // 通常の収支項目
   masterItems
-    .filter(item => item.active)
+    .filter(item => item.active && item.type !== 'bank')
     .forEach(item => {
       const day = Math.min(item.day, lastDay);
       const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;

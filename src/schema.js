@@ -48,7 +48,7 @@ export const INITIAL_DATA = {
     generatedMonths: {}
   },
   settings: {
-    googleClientId: '',
+    googleClientId: '45451544416-8nlqo6bhl56arpjuuh4kekfa24ed9np5.apps.googleusercontent.com',
     googleApiKey: '',
     tutorialCompleted: false,
     driveSyncEnabled: false,
