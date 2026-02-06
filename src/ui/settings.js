@@ -67,6 +67,10 @@ export function renderSettings(container) {
 
       <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
       
+      <div style="margin-bottom: 20px;">
+        <button onclick="startTutorialFromSettings()" class="btn">チュートリアルを再開</button>
+      </div>
+
       <button onclick="clearAllData()" class="btn warn">全データ削除（リセット）</button>
     </div>
   `;
@@ -170,5 +174,9 @@ export function renderSettings(container) {
       localStorage.removeItem('budget_app_data');
       location.reload();
     }
+  };
+
+  window.startTutorialFromSettings = () => {
+    import('./tutorial.js').then(m => m.startTutorial());
   };
 }

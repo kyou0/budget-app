@@ -3,6 +3,7 @@ import { renderDashboard } from './src/ui/dashboard.js';
 import { renderAnalysis } from './src/ui/analysis.js';
 import { renderMaster } from './src/ui/master.js';
 import { renderSettings } from './src/ui/settings.js';
+import { startTutorial } from './src/ui/tutorial.js';
 
 import { store } from './src/store.js';
 import { googleAuth, initGoogleAuth } from './src/auth/googleAuth.js';
@@ -109,6 +110,11 @@ async function initApp() {
   document.querySelector('.bottom-nav').style.display = 'flex';
   try {
     router.init();
+    
+    // チュートリアルが必要な場合
+    if (!store.data.settings?.tutorialCompleted) {
+      setTimeout(() => startTutorial(), 1000);
+    }
   } catch (err) {
     console.error('Router init failed', err);
   }

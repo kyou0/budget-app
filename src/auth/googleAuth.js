@@ -24,7 +24,7 @@ export function initGoogleAuth(configClientId) {
   try {
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: clientId,
-      scope: '', // 必要に応じて増分認可
+      scope: 'openid', // 最小限のスコープ（必須）
       callback: (response) => {
         // デフォルトのコールバック（通常はgetAccessToken側で上書きされる）
         if (response.error) {
@@ -59,6 +59,9 @@ export const googleAuth = {
       return Promise.reject(new Error('GIS not initialized'));
     }
 
+    // スコープが指定されていない場合は最小限の 'openid' を使用
+    const scope = requiredScopes.length > 0 ? requiredScopes.join(' ') : 'openid';
+
     return new Promise((resolve, reject) => {
       tokenClient.callback = (response) => {
         if (response.error) {
@@ -71,7 +74,7 @@ export const googleAuth = {
       };
 
       tokenClient.requestAccessToken({ 
-        scope: requiredScopes.join(' '),
+        scope: scope,
         prompt: accessToken ? '' : 'select_account'
       });
     });

@@ -17,7 +17,8 @@ const ASSETS = [
   './src/ui/analysis.js',
   './src/ui/master.js',
   './src/ui/settings.js',
-  './img/favicon.png'
+  './img/favicon.png',
+  './img/favicon.ico'
 ];
 
 self.addEventListener('install', (event) => {

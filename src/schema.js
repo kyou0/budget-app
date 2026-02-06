@@ -47,7 +47,8 @@ export const INITIAL_DATA = {
   },
   settings: {
     googleClientId: '',
-    googleApiKey: ''
+    googleApiKey: '',
+    tutorialCompleted: false
   },
   transactions: []
 };
