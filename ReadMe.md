@@ -170,18 +170,20 @@ AI提案:
 ```
 /index.html      - エントリーポイント
 /styles.css      - 全体スタイル
-/app.js          - アプリ初期化・ルーティング
+/app.js          - アプリ初期化・ルーティング・ログイン
+/sw.js           - Service Worker（オフライン対応）
 /manifest.json   - PWA設定
 /src/
   store.js       - 状態管理（localStorage保存）
   schema.js      - データ構造定義
-  generate.js    - 月次イベント生成ロジック（純関数）
-  calc.js        - ペナルティ計算等の計算ロジック
+  generate.js    - 月次イベント生成ロジック
+  calc.js        - ペナルティ・完済計算ロジック
   router.js      - ハッシュルーティング管理
   ui/
-    dashboard.js - カレンダー・サマリー画面
-    master.js    - マスター登録・編集画面
-    settings.js  - 設定・データ管理画面
+    dashboard.js - カレンダー・残高予測・アラート
+    analysis.js  - 分析・モチベーション表示
+    master.js    - マスター管理（収支・銀行・借入）
+    settings.js  - 設定・データ管理
 ```
 
 ### 技術スタック
@@ -424,15 +426,44 @@ AI提案:
 
 ## 🔧 技術詳細
 
-### API利用
-- **Google Drive API**: データ保存・同期
-- **Google Calendar API**: 支払日管理・通知
-- **Google OAuth 2.0**: 認証・ログイン
+### Google Cloud Console 設定手順
+本アプリのGoogle連携機能（Drive同期・Calendar連携）を利用するには、以下の設定が必要です。
 
-### セキュリティ
-- **HTTPS必須**: GitHub Pages標準対応
-- **API Key管理**: 環境変数での管理
-- **データ暗号化**: ローカル保存時の暗号化
+1. **プロジェクト作成**: [Google Cloud Console](https://console.cloud.google.com/) で新しいプロジェクトを作成します。
+2. **APIの有効化**:
+   - `Google Drive API` を有効化。
+   - `Google Calendar API` を有効化。
+3. **OAuth 同意画面の設定**:
+   - User Type: `External`（または組織内限定）。
+   - スコープ追加: `./auth/drive.appdata`, `./auth/calendar.events` を手動で追加するか、アプリ実行時の要求を許可します。
+   - テストユーザー: 公開前は自分のメールアドレスをテストユーザーに追加する必要があります。
+4. **認証情報 (OAuth Client ID) の作成**:
+   - `OAuth クライアント ID` を作成。種類は `ウェブ アプリケーション`。
+   - **承認済みの JavaScript 生成元**:
+     - ローカル開発用: `http://localhost:8000` (または `http://localhost:3000`)
+     - 本番用: `https://<あなたのユーザー名>.github.io`
+   - **承認済みのリダイレクト URI**: (GIS Token Client を使用するため、基本的には空または生成元と同じでOKですが、必要に応じて設定してください)
+5. **APIキーの作成**:
+   - Google Drive API のファイル検索（files.list）などで使用します。
+   - `API キー` を作成し、HTTP リファラー（GitHub Pages のドメイン）で制限をかけることを強く推奨します。
+
+### API利用
+- **Google Drive API**: データ保存・同期 (appDataFolder)
+- **Google Calendar API**: 支払日管理・通知
+- **Google OAuth 2.0**: 認証 (Google Identity Services)
+
+### セキュリティと運用の注意点
+- **APIキーとClient IDの管理**: 本アプリは静的サイトとして公開されるため、Client IDやAPIキーはブラウザから確認可能です。Google Cloud Consoleにて、**HTTPリファラーの制限**（自身のドメインのみ許可）を必ず設定してください。
+- **スコープの最小化**: 本アプリは「Incremental Authorization（増分認可）」を採用しています。Drive同期をオンにした時のみDriveスコープを、Calendar連携をオンにした時のみCalendarスコープを要求します。
+- **トークンの保護**: 取得したアクセストークンはブラウザのメモリ上でのみ保持し、`localStorage` 等の永続ストレージには保存しません。ページをリロードすると再取得が必要になりますが、これはセキュリティ上のベストプラクティスです。
+- **データの競合回避**: 複数のデバイスで利用する場合、保存前にクラウド上の更新時刻をチェックします。競合が検知された場合は、ユーザーに上書きするかプルするかを確認するダイアログを表示します。
+
+### 動作確認手順
+1. Google Cloud Console でプロジェクトと認証情報を作成します。
+2. アプリの「設定」画面で Client ID と API Key を入力して保存します。
+3. 「Google ログイン」ボタンを押し、認証を完了させます。
+4. Drive同期またはCalendar連携を有効化します。
+5. ダッシュボードでイベントを生成したり、支払い完了操作を行うと、自動的にクラウドへ反映されます。
 
 ---
 

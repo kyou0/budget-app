@@ -1,0 +1,168 @@
+import { store } from '../store.js';
+import { googleAuth } from '../auth/googleAuth.js';
+import { driveSync } from '../sync/driveSync.js';
+import { calendarSync } from '../sync/calendarSync.js';
+
+export function renderSettings(container) {
+  const settings = store.data.settings || {};
+  
+  container.innerHTML = `
+    <div class="settings-header">
+      <h2>設定</h2>
+    </div>
+    <div class="settings-content" style="padding: 20px;">
+      <p>バージョン: 1.2.0 (Google Sync対応)</p>
+      
+      <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+        <h3 style="margin-top: 0;">Google 連携設定</h3>
+        <div class="form-group">
+          <label>Google Client ID</label>
+          <input type="text" id="google-client-id" value="${settings.googleClientId || ''}" placeholder="Client IDを入力">
+        </div>
+        <div class="form-group">
+          <label>Google API Key</label>
+          <input type="password" id="google-api-key" value="${settings.googleApiKey || ''}" placeholder="API Keyを入力">
+        </div>
+        
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+          <button onclick="saveGoogleSettings()" class="btn primary">API設定を保存</button>
+          <button onclick="loginGoogle()" class="btn">${googleAuth.isSignedIn() ? '再ログイン' : 'Google ログイン'}</button>
+        </div>
+
+        <div style="padding: 10px; background: #f9fafb; border-radius: 6px; font-size: 0.85rem;">
+          <div style="margin-bottom: 10px;">
+            <strong>Drive 同期</strong><br>
+            <label style="display: flex; align-items: center; gap: 5px; margin-top: 5px;">
+              <input type="checkbox" id="drive-sync-enabled" ${settings.driveSyncEnabled ? 'checked' : ''} onchange="toggleDriveSync()"> 
+              自動同期を有効化
+            </label>
+            <button onclick="manualDrivePush()" class="btn small" style="margin-top: 5px;">今すぐクラウドに保存</button>
+            <button onclick="manualDrivePull()" class="btn small" style="margin-top: 5px;">クラウドから読み込み</button>
+          </div>
+          
+          <div style="border-top: 1px solid #eee; padding-top: 10px;">
+            <strong>Calendar 連携</strong><br>
+            <label style="display: flex; align-items: center; gap: 5px; margin-top: 5px;">
+              <input type="checkbox" id="calendar-sync-enabled" ${settings.calendarSyncEnabled ? 'checked' : ''} onchange="toggleCalendarSync()"> 
+              カレンダー同期を有効化
+            </label>
+            <p style="font-size: 0.7rem; color: #6b7280;">※有効にすると、支払い完了時にGoogleカレンダーも更新されます。</p>
+          </div>
+          
+          <div style="margin-top: 10px; font-size: 0.75rem; color: #6b7280;">
+            最終同期: ${settings.lastSyncAt ? new Date(settings.lastSyncAt).toLocaleString() : 'なし'}
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <h3>データ管理</h3>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+          <button onclick="exportData()" class="btn primary">エクスポート (JSON)</button>
+          <button onclick="document.getElementById('import-file').click()" class="btn">インポート (JSON)</button>
+          <input type="file" id="import-file" style="display: none;" accept=".json">
+        </div>
+        <p style="font-size: 0.8rem; color: #6b7280;">機種変更やバックアップ時にご利用ください。</p>
+      </div>
+
+      <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+      
+      <button onclick="clearAllData()" class="btn warn">全データ削除（リセット）</button>
+    </div>
+  `;
+
+  window.exportData = () => {
+    const data = JSON.stringify(store.data, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `budget_app_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  window.importData = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (confirm('データを上書きしますか？現在のデータは失われます。')) {
+          store.data = store.migrate(data);
+          store.save();
+          location.reload();
+        }
+      } catch (err) {
+        alert('ファイルの読み込みに失敗しました。');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  document.getElementById('import-file').onchange = window.importData;
+
+  window.saveGoogleSettings = () => {
+    const googleClientId = document.getElementById('google-client-id').value;
+    const googleApiKey = document.getElementById('google-api-key').value;
+    store.updateSettings({ googleClientId, googleApiKey });
+    alert('API設定を保存しました。反映には再読み込みが必要な場合があります。');
+  };
+
+  window.loginGoogle = async () => {
+    try {
+      await googleAuth.init();
+      await googleAuth.getAccessToken();
+      alert('Google ログイン成功');
+      renderSettings(container);
+    } catch (err) {
+      alert('ログイン失敗: ' + (err.error || err.message));
+    }
+  };
+
+  window.toggleDriveSync = () => {
+    const enabled = document.getElementById('drive-sync-enabled').checked;
+    store.updateSettings({ driveSyncEnabled: enabled });
+  };
+
+  window.toggleCalendarSync = () => {
+    const enabled = document.getElementById('calendar-sync-enabled').checked;
+    store.updateSettings({ calendarSyncEnabled: enabled });
+  };
+
+  window.manualDrivePush = async () => {
+    try {
+      await driveSync.push();
+      alert('クラウドに保存しました');
+      renderSettings(container);
+    } catch (err) {
+      alert('保存失敗: ' + err.message);
+    }
+  };
+
+  window.manualDrivePull = async () => {
+    if (confirm('クラウドからデータを読み込みます。現在のローカルデータは上書きされます。よろしいですか？')) {
+      try {
+        const remoteData = await driveSync.pull();
+        if (remoteData) {
+          store.data = store.migrate(remoteData);
+          store.save();
+          alert('クラウドから読み込みました。');
+          location.reload();
+        } else {
+          alert('クラウド上にデータが見つかりませんでした。');
+        }
+      } catch (err) {
+        alert('読み込み失敗: ' + err.message);
+      }
+    }
+  };
+
+  window.clearAllData = () => {
+    if (confirm('全てのデータを削除して初期化しますか？この操作は取り消せません。')) {
+      localStorage.removeItem('budget_app_data');
+      location.reload();
+    }
+  };
+}

@@ -1,0 +1,550 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="不要な`.output.txt`を削除">
+      <change beforePath="$PROJECT_DIR$/ReadMe.md" beforeDir="false" afterPath="$PROJECT_DIR$/ReadMe.md" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ComposerSettings">
+    <execution />
+  </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="cachedIndexableFilesCount" value="36" />
+    <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_COMMON_BRANCH" value="main" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="ROOT_SYNC" value="SYNC" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;kyou0&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/kyou0/budget-app.git&quot;,
+    &quot;accountId&quot;: &quot;5b15fd7b-c0b4-4460-98b2-3491d7f032be&quot;
+  }
+}</component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 3
+}</component>
+  <component name="ProjectId" id="2zMCVD1ShKxtNa2Y0xMmRPQQCm9" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/onuma/PhpstormProjects/budget-app&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/img" />
+      <recent name="$PROJECT_DIR$" />
+    </key>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-9b0f141eb926-JavaScript-PS-253.30387.85" />
+        <option value="bundled-php-predefined-a98d8de5180a-0e0d91225499-com.jetbrains.php.sharedIndexes-PS-253.30387.85" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="" />
+      <created>1738814375358</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1738814375358</updated>
+      <workItem from="1738814377401" duration="32000" />
+      <workItem from="1751531577931" duration="2549000" />
+      <workItem from="1751534850062" duration="8329000" />
+      <workItem from="1751608507951" duration="7537000" />
+      <workItem from="1751617464131" duration="10162000" />
+      <workItem from="1751641880047" duration="13137000" />
+      <workItem from="1751890505576" duration="36040000" />
+      <workItem from="1752008405239" duration="8787000" />
+      <workItem from="1752043321720" duration="6342000" />
+      <workItem from="1770367781792" duration="119000" />
+      <workItem from="1770367929210" duration="1628000" />
+    </task>
+    <task id="LOCAL-00087" summary="警告を消しまくった">
+      <option name="closed" value="true" />
+      <created>1751997830786</created>
+      <option name="number" value="00087" />
+      <option name="presentableId" value="LOCAL-00087" />
+      <option name="project" value="LOCAL" />
+      <updated>1751997830786</updated>
+    </task>
+    <task id="LOCAL-00088" summary="master側で鍵が受け取れてなかったので、その部分を修正">
+      <option name="closed" value="true" />
+      <created>1751998024136</created>
+      <option name="number" value="00088" />
+      <option name="presentableId" value="LOCAL-00088" />
+      <option name="project" value="LOCAL" />
+      <updated>1751998024136</updated>
+    </task>
+    <task id="LOCAL-00089" summary="収入に月末とかを追加し、変数ができないって箇所があったので変数に変更">
+      <option name="closed" value="true" />
+      <created>1751999346509</created>
+      <option name="number" value="00089" />
+      <option name="presentableId" value="LOCAL-00089" />
+      <option name="project" value="LOCAL" />
+      <updated>1751999346509</updated>
+    </task>
+    <task id="LOCAL-00090" summary="グループで一部順序変更">
+      <option name="closed" value="true" />
+      <created>1751999524641</created>
+      <option name="number" value="00090" />
+      <option name="presentableId" value="LOCAL-00090" />
+      <option name="project" value="LOCAL" />
+      <updated>1751999524641</updated>
+    </task>
+    <task id="LOCAL-00091" summary="収入でいつ始まっていていつ終わるかを追加">
+      <option name="closed" value="true" />
+      <created>1752000514396</created>
+      <option name="number" value="00091" />
+      <option name="presentableId" value="LOCAL-00091" />
+      <option name="project" value="LOCAL" />
+      <updated>1752000514396</updated>
+    </task>
+    <task id="LOCAL-00092" summary="入力した契約期間がカードに表示されるように変更">
+      <option name="closed" value="true" />
+      <created>1752000619221</created>
+      <option name="number" value="00092" />
+      <option name="presentableId" value="LOCAL-00092" />
+      <option name="project" value="LOCAL" />
+      <updated>1752000619221</updated>
+    </task>
+    <task id="LOCAL-00093" summary="タイポ修正">
+      <option name="closed" value="true" />
+      <created>1752000667468</created>
+      <option name="number" value="00093" />
+      <option name="presentableId" value="LOCAL-00093" />
+      <option name="project" value="LOCAL" />
+      <updated>1752000667468</updated>
+    </task>
+    <task id="LOCAL-00094" summary="index側でカレンダー機能の一部修正">
+      <option name="closed" value="true" />
+      <created>1752001370401</created>
+      <option name="number" value="00094" />
+      <option name="presentableId" value="LOCAL-00094" />
+      <option name="project" value="LOCAL" />
+      <updated>1752001370401</updated>
+    </task>
+    <task id="LOCAL-00095" summary="時給計算できるようにロジックの大幅変更">
+      <option name="closed" value="true" />
+      <created>1752001720151</created>
+      <option name="number" value="00095" />
+      <option name="presentableId" value="LOCAL-00095" />
+      <option name="project" value="LOCAL" />
+      <updated>1752001720151</updated>
+    </task>
+    <task id="LOCAL-00096" summary="固定と時給とそれぞれ解釈が違ったので修正">
+      <option name="closed" value="true" />
+      <created>1752002528602</created>
+      <option name="number" value="00096" />
+      <option name="presentableId" value="LOCAL-00096" />
+      <option name="project" value="LOCAL" />
+      <updated>1752002528603</updated>
+    </task>
+    <task id="LOCAL-00097" summary="remderMasterList更新">
+      <option name="closed" value="true" />
+      <created>1752002607738</created>
+      <option name="number" value="00097" />
+      <option name="presentableId" value="LOCAL-00097" />
+      <option name="project" value="LOCAL" />
+      <updated>1752002607738</updated>
+    </task>
+    <task id="LOCAL-00098" summary="index側でMasterが変更された際の挙動を変更">
+      <option name="closed" value="true" />
+      <created>1752002783345</created>
+      <option name="number" value="00098" />
+      <option name="presentableId" value="LOCAL-00098" />
+      <option name="project" value="LOCAL" />
+      <updated>1752002783345</updated>
+    </task>
+    <task id="LOCAL-00099" summary="shared.jsを作ってそっちに同じ仕組みは移動した">
+      <option name="closed" value="true" />
+      <created>1752003653682</created>
+      <option name="number" value="00099" />
+      <option name="presentableId" value="LOCAL-00099" />
+      <option name="project" value="LOCAL" />
+      <updated>1752003653682</updated>
+    </task>
+    <task id="LOCAL-00100" summary="移動した変数をちゃんと呼んでないバグ修正">
+      <option name="closed" value="true" />
+      <created>1752003801676</created>
+      <option name="number" value="00100" />
+      <option name="presentableId" value="LOCAL-00100" />
+      <option name="project" value="LOCAL" />
+      <updated>1752003801676</updated>
+    </task>
+    <task id="LOCAL-00101" summary="移動した変数をちゃんと呼んでないバグ修正">
+      <option name="closed" value="true" />
+      <created>1752003954952</created>
+      <option name="number" value="00101" />
+      <option name="presentableId" value="LOCAL-00101" />
+      <option name="project" value="LOCAL" />
+      <updated>1752003954952</updated>
+    </task>
+    <task id="LOCAL-00102" summary="shared.jsの一時保存をMasterに移動">
+      <option name="closed" value="true" />
+      <created>1752004212179</created>
+      <option name="number" value="00102" />
+      <option name="presentableId" value="LOCAL-00102" />
+      <option name="project" value="LOCAL" />
+      <updated>1752004212180</updated>
+    </task>
+    <task id="LOCAL-00103" summary="common.jsの簡略化">
+      <option name="closed" value="true" />
+      <created>1752004683511</created>
+      <option name="number" value="00103" />
+      <option name="presentableId" value="LOCAL-00103" />
+      <option name="project" value="LOCAL" />
+      <updated>1752004683511</updated>
+    </task>
+    <task id="LOCAL-00104" summary="基礎部分の修正">
+      <option name="closed" value="true" />
+      <created>1752004900871</created>
+      <option name="number" value="00104" />
+      <option name="presentableId" value="LOCAL-00104" />
+      <option name="project" value="LOCAL" />
+      <updated>1752004900871</updated>
+    </task>
+    <task id="LOCAL-00105" summary="基礎部分の修正 Ver2">
+      <option name="closed" value="true" />
+      <created>1752005301109</created>
+      <option name="number" value="00105" />
+      <option name="presentableId" value="LOCAL-00105" />
+      <option name="project" value="LOCAL" />
+      <updated>1752005301109</updated>
+    </task>
+    <task id="LOCAL-00106" summary="master.js変更">
+      <option name="closed" value="true" />
+      <created>1752005375341</created>
+      <option name="number" value="00106" />
+      <option name="presentableId" value="LOCAL-00106" />
+      <option name="project" value="LOCAL" />
+      <updated>1752005375342</updated>
+    </task>
+    <task id="LOCAL-00107" summary="デザイン修正漏れを対応">
+      <option name="closed" value="true" />
+      <created>1752005753814</created>
+      <option name="number" value="00107" />
+      <option name="presentableId" value="LOCAL-00107" />
+      <option name="project" value="LOCAL" />
+      <updated>1752005753815</updated>
+    </task>
+    <task id="LOCAL-00108" summary="onclick必要なくなったから削除">
+      <option name="closed" value="true" />
+      <created>1752005819687</created>
+      <option name="number" value="00108" />
+      <option name="presentableId" value="LOCAL-00108" />
+      <option name="project" value="LOCAL" />
+      <updated>1752005819687</updated>
+    </task>
+    <task id="LOCAL-00109" summary="不要なCSSの修正">
+      <option name="closed" value="true" />
+      <created>1752005858556</created>
+      <option name="number" value="00109" />
+      <option name="presentableId" value="LOCAL-00109" />
+      <option name="project" value="LOCAL" />
+      <updated>1752005858556</updated>
+    </task>
+    <task id="LOCAL-00110" summary="masterhtml修正">
+      <option name="closed" value="true" />
+      <created>1752006064886</created>
+      <option name="number" value="00110" />
+      <option name="presentableId" value="LOCAL-00110" />
+      <option name="project" value="LOCAL" />
+      <updated>1752006064886</updated>
+    </task>
+    <task id="LOCAL-00111" summary="大バグ修正">
+      <option name="closed" value="true" />
+      <created>1752006536807</created>
+      <option name="number" value="00111" />
+      <option name="presentableId" value="LOCAL-00111" />
+      <option name="project" value="LOCAL" />
+      <updated>1752006536807</updated>
+    </task>
+    <task id="LOCAL-00112" summary="index.js修正">
+      <option name="closed" value="true" />
+      <created>1752006785854</created>
+      <option name="number" value="00112" />
+      <option name="presentableId" value="LOCAL-00112" />
+      <option name="project" value="LOCAL" />
+      <updated>1752006785854</updated>
+    </task>
+    <task id="LOCAL-00113" summary="クライアントIDの変更">
+      <option name="closed" value="true" />
+      <created>1752007023478</created>
+      <option name="number" value="00113" />
+      <option name="presentableId" value="LOCAL-00113" />
+      <option name="project" value="LOCAL" />
+      <updated>1752007023478</updated>
+    </task>
+    <task id="LOCAL-00114" summary="クライアントIDの変更">
+      <option name="closed" value="true" />
+      <created>1752007112576</created>
+      <option name="number" value="00114" />
+      <option name="presentableId" value="LOCAL-00114" />
+      <option name="project" value="LOCAL" />
+      <updated>1752007112576</updated>
+    </task>
+    <task id="LOCAL-00115" summary="settings同期できるように変更">
+      <option name="closed" value="true" />
+      <created>1752007416351</created>
+      <option name="number" value="00115" />
+      <option name="presentableId" value="LOCAL-00115" />
+      <option name="project" value="LOCAL" />
+      <updated>1752007416351</updated>
+    </task>
+    <task id="LOCAL-00116" summary="settings同期できるように変更">
+      <option name="closed" value="true" />
+      <created>1752007656679</created>
+      <option name="number" value="00116" />
+      <option name="presentableId" value="LOCAL-00116" />
+      <option name="project" value="LOCAL" />
+      <updated>1752007656679</updated>
+    </task>
+    <task id="LOCAL-00117" summary="一部同期ボタンについて修正">
+      <option name="closed" value="true" />
+      <created>1752007811325</created>
+      <option name="number" value="00117" />
+      <option name="presentableId" value="LOCAL-00117" />
+      <option name="project" value="LOCAL" />
+      <updated>1752007811325</updated>
+    </task>
+    <task id="LOCAL-00118" summary="master.js差し替え">
+      <option name="closed" value="true" />
+      <created>1752008004071</created>
+      <option name="number" value="00118" />
+      <option name="presentableId" value="LOCAL-00118" />
+      <option name="project" value="LOCAL" />
+      <updated>1752008004071</updated>
+    </task>
+    <task id="LOCAL-00119" summary="indexのjs読み込みの仕方を変更">
+      <option name="closed" value="true" />
+      <created>1752008138684</created>
+      <option name="number" value="00119" />
+      <option name="presentableId" value="LOCAL-00119" />
+      <option name="project" value="LOCAL" />
+      <updated>1752008138684</updated>
+    </task>
+    <task id="LOCAL-00120" summary="indexのjs読み込みの仕方を変更">
+      <option name="closed" value="true" />
+      <created>1752008464778</created>
+      <option name="number" value="00120" />
+      <option name="presentableId" value="LOCAL-00120" />
+      <option name="project" value="LOCAL" />
+      <updated>1752008464778</updated>
+    </task>
+    <task id="LOCAL-00121" summary="スポット収入について＋ボタンにて追加するように変更">
+      <option name="closed" value="true" />
+      <created>1752008688322</created>
+      <option name="number" value="00121" />
+      <option name="presentableId" value="LOCAL-00121" />
+      <option name="project" value="LOCAL" />
+      <updated>1752008688322</updated>
+    </task>
+    <task id="LOCAL-00122" summary="スポット収入について＋ボタンにて追加するように変更">
+      <option name="closed" value="true" />
+      <created>1752008772311</created>
+      <option name="number" value="00122" />
+      <option name="presentableId" value="LOCAL-00122" />
+      <option name="project" value="LOCAL" />
+      <updated>1752008772311</updated>
+    </task>
+    <task id="LOCAL-00123" summary="同期したデータがindexに行くたびに勝手に初期化する処理を修正">
+      <option name="closed" value="true" />
+      <created>1752009105889</created>
+      <option name="number" value="00123" />
+      <option name="presentableId" value="LOCAL-00123" />
+      <option name="project" value="LOCAL" />
+      <updated>1752009105889</updated>
+    </task>
+    <task id="LOCAL-00124" summary="認証二重エラー修正">
+      <option name="closed" value="true" />
+      <created>1752009351803</created>
+      <option name="number" value="00124" />
+      <option name="presentableId" value="LOCAL-00124" />
+      <option name="project" value="LOCAL" />
+      <updated>1752009351803</updated>
+    </task>
+    <task id="LOCAL-00125" summary="認証二重エラー修正">
+      <option name="closed" value="true" />
+      <created>1752009433480</created>
+      <option name="number" value="00125" />
+      <option name="presentableId" value="LOCAL-00125" />
+      <option name="project" value="LOCAL" />
+      <updated>1752009433480</updated>
+    </task>
+    <task id="LOCAL-00126" summary="認証二重エラー修正">
+      <option name="closed" value="true" />
+      <created>1752009539623</created>
+      <option name="number" value="00126" />
+      <option name="presentableId" value="LOCAL-00126" />
+      <option name="project" value="LOCAL" />
+      <updated>1752009539623</updated>
+    </task>
+    <task id="LOCAL-00127" summary="URI変更">
+      <option name="closed" value="true" />
+      <created>1752009659609</created>
+      <option name="number" value="00127" />
+      <option name="presentableId" value="LOCAL-00127" />
+      <option name="project" value="LOCAL" />
+      <updated>1752009659609</updated>
+    </task>
+    <task id="LOCAL-00128" summary="CSS修正">
+      <option name="closed" value="true" />
+      <created>1752034707096</created>
+      <option name="number" value="00128" />
+      <option name="presentableId" value="LOCAL-00128" />
+      <option name="project" value="LOCAL" />
+      <updated>1752034707096</updated>
+    </task>
+    <task id="LOCAL-00129" summary="Google認証修正">
+      <option name="closed" value="true" />
+      <created>1752035113209</created>
+      <option name="number" value="00129" />
+      <option name="presentableId" value="LOCAL-00129" />
+      <option name="project" value="LOCAL" />
+      <updated>1752035113209</updated>
+    </task>
+    <task id="LOCAL-00130" summary="Google認証修正">
+      <option name="closed" value="true" />
+      <created>1752035378810</created>
+      <option name="number" value="00130" />
+      <option name="presentableId" value="LOCAL-00130" />
+      <option name="project" value="LOCAL" />
+      <updated>1752035378810</updated>
+    </task>
+    <task id="LOCAL-00131" summary="css読み込み">
+      <option name="closed" value="true" />
+      <created>1752035624908</created>
+      <option name="number" value="00131" />
+      <option name="presentableId" value="LOCAL-00131" />
+      <option name="project" value="LOCAL" />
+      <updated>1752035624908</updated>
+    </task>
+    <task id="LOCAL-00132" summary="GOOGLE_CLIENT_ID変更した">
+      <option name="closed" value="true" />
+      <created>1752036516315</created>
+      <option name="number" value="00132" />
+      <option name="presentableId" value="LOCAL-00132" />
+      <option name="project" value="LOCAL" />
+      <updated>1752036516315</updated>
+    </task>
+    <task id="LOCAL-00133" summary="GOOGLE_CLIENT_ID変更した">
+      <option name="closed" value="true" />
+      <created>1752043912551</created>
+      <option name="number" value="00133" />
+      <option name="presentableId" value="LOCAL-00133" />
+      <option name="project" value="LOCAL" />
+      <updated>1752043912551</updated>
+    </task>
+    <task id="LOCAL-00134" summary="不要ファイル削除">
+      <option name="closed" value="true" />
+      <created>1770368709411</created>
+      <option name="number" value="00134" />
+      <option name="presentableId" value="LOCAL-00134" />
+      <option name="project" value="LOCAL" />
+      <updated>1770368709411</updated>
+    </task>
+    <task id="LOCAL-00135" summary="不要な`.output.txt`を削除">
+      <option name="closed" value="true" />
+      <created>1770369088031</created>
+      <option name="number" value="00135" />
+      <option name="presentableId" value="LOCAL-00135" />
+      <option name="project" value="LOCAL" />
+      <updated>1770369088031</updated>
+    </task>
+    <option name="localTasksCounter" value="136" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="common.jsの簡略化" />
+    <MESSAGE value="基礎部分の修正" />
+    <MESSAGE value="基礎部分の修正 Ver2" />
+    <MESSAGE value="master.js変更" />
+    <MESSAGE value="デザイン修正漏れを対応" />
+    <MESSAGE value="onclick必要なくなったから削除" />
+    <MESSAGE value="不要なCSSの修正" />
+    <MESSAGE value="masterhtml修正" />
+    <MESSAGE value="大バグ修正" />
+    <MESSAGE value="index.js修正" />
+    <MESSAGE value="クライアントIDの変更" />
+    <MESSAGE value="settings同期できるように変更" />
+    <MESSAGE value="一部同期ボタンについて修正" />
+    <MESSAGE value="master.js差し替え" />
+    <MESSAGE value="indexのjs読み込みの仕方を変更" />
+    <MESSAGE value="スポット収入について＋ボタンにて追加するように変更" />
+    <MESSAGE value="同期したデータがindexに行くたびに勝手に初期化する処理を修正" />
+    <MESSAGE value="認証二重エラー修正" />
+    <MESSAGE value="URI変更" />
+    <MESSAGE value="CSS修正" />
+    <MESSAGE value="Google認証修正" />
+    <MESSAGE value="css読み込み" />
+    <MESSAGE value="GOOGLE_CLIENT_ID変更した" />
+    <MESSAGE value="不要ファイル削除" />
+    <MESSAGE value="不要な`.output.txt`を削除" />
+    <option name="LAST_COMMIT_MESSAGE" value="不要な`.output.txt`を削除" />
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>
