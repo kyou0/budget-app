@@ -1,36 +1,43 @@
-import { store } from '../store.js';
+import { store as appStore } from '../store.js';
 import { googleAuth } from '../auth/googleAuth.js';
 
 export const calendarSync = {
   async listCalendars() {
     try {
-      const token = await googleAuth.getAccessToken([googleAuth.getScopes().CALENDAR]);
+      const token = await googleAuth.getAccessToken([
+        googleAuth.getScopes().CALENDAR,
+        googleAuth.getScopes().CALENDAR_LIST
+      ]);
       const response = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!response.ok) throw new Error('Failed to fetch calendar list');
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error('Calendar List API Error:', response.status, errText);
+        throw new Error(`Failed to fetch calendar list: ${response.status}`);
+      }
       const data = await response.json();
-      return data.items;
+      return data.items || [];
     } catch (err) {
       console.error('List calendars error:', err);
       throw err;
     }
   },
 
-  async syncMonthEvents(yearMonth) {
+  async syncMonthEvents(yearMonth, existingToken = null) {
     try {
-      const token = await googleAuth.getAccessToken([googleAuth.getScopes().CALENDAR]);
-      const events = store.data.calendar.generatedMonths[yearMonth];
+      const token = existingToken || await googleAuth.getAccessToken([googleAuth.getScopes().CALENDAR]);
+      const events = appStore.data.calendar.generatedMonths[yearMonth];
       if (!events) return;
 
       for (const event of events) {
         const calendarId = event.type === 'income' 
-          ? (store.data.settings?.incomeCalendarId || 'primary')
-          : (store.data.settings?.expenseCalendarId || 'primary');
+          ? (appStore.data.settings?.incomeCalendarId || 'primary')
+          : (appStore.data.settings?.expenseCalendarId || 'primary');
 
         if (!event.gcalEventId) {
           const gcalEvent = await this.createEvent(token, event, calendarId);
-          store.updateEvent(yearMonth, event.id, { 
+          appStore.updateEvent(yearMonth, event.id, { 
             gcalEventId: gcalEvent.id,
             gcalCalendarId: calendarId 
           });
@@ -82,7 +89,7 @@ export const calendarSync = {
     }
 
     const targetCalendarId = calendarId || event.gcalCalendarId || 
-                             (event.type === 'income' ? (store.data.settings?.incomeCalendarId || 'primary') : (store.data.settings?.expenseCalendarId || 'primary'));
+                             (event.type === 'income' ? (appStore.data.settings?.incomeCalendarId || 'primary') : (appStore.data.settings?.expenseCalendarId || 'primary'));
 
     const gcalEvent = {
       summary: `${event.status === 'paid' ? '✅' : (event.type === 'income' ? '💰' : '💸')} ${event.name}`,

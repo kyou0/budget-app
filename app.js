@@ -5,7 +5,7 @@ import { renderMaster } from './src/ui/master.js';
 import { renderSettings } from './src/ui/settings.js';
 import { startTutorial } from './src/ui/tutorial.js';
 
-import { store } from './src/store.js';
+import { store as appStore } from './src/store.js';
 import { googleAuth, initGoogleAuth } from './src/auth/googleAuth.js';
 import { driveSync } from './src/sync/driveSync.js';
 
@@ -55,7 +55,7 @@ function renderLogin() {
   document.querySelector('.bottom-nav').style.display = 'none';
   
   document.getElementById('login-btn').onclick = async () => {
-    const clientId = store.data.settings?.googleClientId;
+    const clientId = appStore.data.settings?.googleClientId;
     if (clientId) {
       try {
         // initGoogleAuth は DOMContentLoaded で呼ばれているはずだが念のため
@@ -83,22 +83,23 @@ async function initApp() {
   }
 
   // Google Auth 初期化 (Client IDがあれば)
-  const configClientId = store.data.settings?.googleClientId;
+  const configClientId = appStore.data.settings?.googleClientId;
   if (configClientId) {
     try {
-      initGoogleAuth(configClientId);
+      // 非同期で初期化
+      await initGoogleAuth(configClientId);
     } catch (err) {
       console.warn('GIS init failed', err);
     }
     
     // ログイン済みならバックグラウンドでDriveからPullを試行
-    if (googleAuth.isSignedIn() && store.data.settings.driveSyncEnabled) {
+    if (googleAuth.isSignedIn() && appStore.data.settings.driveSyncEnabled) {
       try {
         const remoteData = await driveSync.pull();
         if (remoteData) {
           if (confirm('Google Driveから新しいデータが見つかりました。読み込みますか？')) {
-            store.data = store.migrate(remoteData);
-            store.save();
+            appStore.data = appStore.migrate(remoteData);
+            appStore.save();
           }
         }
       } catch (err) {
@@ -112,7 +113,7 @@ async function initApp() {
     router.init();
     
     // チュートリアルが必要な場合
-    if (!store.data.settings?.tutorialCompleted) {
+    if (!appStore.data.settings?.tutorialCompleted) {
       setTimeout(() => startTutorial(), 1000);
     }
   } catch (err) {
@@ -124,19 +125,12 @@ async function initApp() {
 document.addEventListener('DOMContentLoaded', () => {
   // 起動時に設定からClient IDを読み込んで初期化
   const DEFAULT_CLIENT_ID = '45451544416-8nlqo6bhl56arpjuuh4kekfa24ed9np5.apps.googleusercontent.com';
-  let configClientId = store.data.settings?.googleClientId;
+  let configClientId = appStore.data.settings?.googleClientId;
   
   // Client IDが未設定の場合はデフォルトを設定（利便性のため）
   if (!configClientId) {
     configClientId = DEFAULT_CLIENT_ID;
-    store.updateSettings({ googleClientId: DEFAULT_CLIENT_ID });
-  }
-
-  if (configClientId) {
-    // ライブラリのロードを待つために少し遅延させるか、
-    // index.html の async defer を信じる。
-    // 指示通り initGoogleAuth を呼ぶ。
-    setTimeout(() => initGoogleAuth(configClientId), 500);
+    appStore.updateSettings({ googleClientId: DEFAULT_CLIENT_ID });
   }
 
   initApp();

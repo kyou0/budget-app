@@ -1,10 +1,10 @@
-import { store } from '../store.js';
+import { store as appStore } from '../store.js';
 
 let currentTab = 'items'; // 'items' | 'banks' | 'loans'
 
 export function renderMaster(container) {
-  const items = store.data.master.items;
-  const loans = store.data.master.loans || [];
+  const items = appStore.data.master.items;
+  const loans = appStore.data.master.loans || [];
 
   container.innerHTML = `
     <div class="tabs">
@@ -115,49 +115,45 @@ export function renderMaster(container) {
   };
 
   window.editMasterItem = (id) => {
-    const item = store.data.master.items.find(i => i.id === id);
+    const item = appStore.data.master.items.find(i => i.id === id);
     showModal(item);
   };
 
   window.editLoan = (id) => {
-    const loan = store.data.master.loans.find(l => l.id === id);
+    const loan = appStore.data.master.loans.find(l => l.id === id);
     showModal(loan);
   };
 
   window.toggleMasterItem = (id) => {
-    const item = store.data.master.items.find(i => i.id === id);
-    store.updateMasterItem(id, { active: !item.active });
+    const item = appStore.data.master.items.find(i => i.id === id);
+    appStore.updateMasterItem(id, { active: !item.active });
     renderMaster(container);
   };
 
   window.toggleLoan = (id) => {
-    const loan = store.data.master.loans.find(l => l.id === id);
-    store.updateLoan(id, { active: !loan.active });
+    const loan = appStore.data.master.loans.find(l => l.id === id);
+    appStore.updateLoan(id, { active: !loan.active });
     renderMaster(container);
   };
 
   window.toggleMasterFormFields = () => {
-    const type = document.getElementById('master-type').value;
+    const typeEl = document.getElementById('master-type');
+    if (!typeEl) return;
+    const type = typeEl.value;
     const amountField = document.getElementById('field-amount');
     const dayField = document.getElementById('field-day');
     const balanceField = document.getElementById('field-balance');
+    const bankSelectField = document.getElementById('field-bank-select');
 
-    if (type === 'bank') {
-      amountField.classList.add('hidden');
-      dayField.classList.add('hidden');
-      balanceField.classList.remove('hidden');
-      document.getElementById('field-bank-select').classList.add('hidden');
-    } else {
-      amountField.classList.remove('hidden');
-      dayField.classList.remove('hidden');
-      balanceField.classList.add('hidden');
-      document.getElementById('field-bank-select').classList.remove('hidden');
-    }
+    if (amountField) amountField.classList.toggle('hidden', type === 'bank');
+    if (dayField) dayField.classList.toggle('hidden', type === 'bank');
+    if (balanceField) balanceField.classList.toggle('hidden', type !== 'bank');
+    if (bankSelectField) bankSelectField.classList.toggle('hidden', type === 'bank');
   };
 }
 
 function renderItemsList(items) {
-  const bankMap = Object.fromEntries(store.data.master.items.filter(i => i.type === 'bank').map(b => [b.id, b.name]));
+  const bankMap = Object.fromEntries(appStore.data.master.items.filter(i => i.type === 'bank').map(b => [b.id, b.name]));
   
   return items.map(item => `
     <div class="master-item ${item.active ? '' : 'inactive'}">
@@ -228,21 +224,23 @@ function showModal(data = null) {
 
   if (data) {
     title.textContent = '編集';
-    form['edit-id'].value = data.id;
-    form['master-name'].value = data.name;
-    if (currentTab === 'items') {
-      form['master-type'].value = data.type;
-      form['master-amount'].value = data.amount || 0;
-      form['master-day'].value = data.day || 1;
-      form['master-balance'].value = data.currentBalance || 0;
-      form['master-bank-id'].value = data.bankId || '';
+    if (form['edit-id']) form['edit-id'].value = data.id;
+    if (form['master-name']) form['master-name'].value = data.name;
+    
+    if (currentTab === 'items' || currentTab === 'banks') {
+      if (form['master-type']) form['master-type'].value = data.type;
+      if (form['master-amount']) form['master-amount'].value = data.amount || 0;
+      if (form['master-day']) form['master-day'].value = data.day || 1;
+      if (form['master-balance']) form['master-balance'].value = data.currentBalance || 0;
+      if (form['master-bank-id']) form['master-bank-id'].value = data.bankId || '';
+      
       window.toggleMasterFormFields();
-    } else {
-      form['loan-type'].value = data.type;
-      form['loan-rate'].value = data.interestRate;
-      form['loan-balance'].value = data.currentBalance;
-      form['loan-payment'].value = data.monthlyPayment;
-      form['loan-limit'].value = data.maxLimit;
+    } else if (currentTab === 'loans') {
+      if (form['loan-type']) form['loan-type'].value = data.type;
+      if (form['loan-rate']) form['loan-rate'].value = data.interestRate;
+      if (form['loan-balance']) form['loan-balance'].value = data.currentBalance;
+      if (form['loan-payment']) form['loan-payment'].value = data.monthlyPayment;
+      if (form['loan-limit']) form['loan-limit'].value = data.maxLimit;
     }
   } else {
     title.textContent = '新規追加';
@@ -260,29 +258,31 @@ function saveData() {
   const form = document.getElementById('master-form');
   const id = form['edit-id'].value;
   
-  if (currentTab === 'items') {
-    const type = form['master-type'].value;
+  if (currentTab === 'items' || currentTab === 'banks') {
+    const typeEl = form['master-type'];
+    const type = typeEl ? typeEl.value : (currentTab === 'banks' ? 'bank' : 'expense');
+    
     const data = {
-      name: form['master-name'].value,
+      name: form['master-name'] ? form['master-name'].value : '',
       type: type,
-      amount: type === 'bank' ? 0 : Number(form['master-amount'].value),
-      day: type === 'bank' ? 1 : Number(form['master-day'].value),
-      bankId: type === 'bank' ? '' : form['master-bank-id'].value,
-      currentBalance: type === 'bank' ? Number(form['master-balance'].value) : 0
+      amount: (type === 'bank' || !form['master-amount']) ? 0 : Number(form['master-amount'].value),
+      day: (type === 'bank' || !form['master-day']) ? 1 : Number(form['master-day'].value),
+      bankId: (type === 'bank' || !form['master-bank-id']) ? '' : form['master-bank-id'].value,
+      currentBalance: (type === 'bank' && form['master-balance']) ? Number(form['master-balance'].value) : 0
     };
-    if (id) store.updateMasterItem(id, data);
-    else store.addMasterItem(data);
-  } else {
+    if (id) appStore.updateMasterItem(id, data);
+    else appStore.addMasterItem(data);
+  } else if (currentTab === 'loans') {
     const data = {
-      name: form['master-name'].value,
-      type: form['loan-type'].value,
-      interestRate: Number(form['loan-rate'].value),
-      currentBalance: Number(form['loan-balance'].value),
-      monthlyPayment: Number(form['loan-payment'].value),
-      maxLimit: Number(form['loan-limit'].value)
+      name: form['master-name'] ? form['master-name'].value : '',
+      type: form['loan-type'] ? form['loan-type'].value : '消費者金融',
+      interestRate: Number(form['loan-rate'] ? form['loan-rate'].value : 0),
+      currentBalance: Number(form['loan-balance'] ? form['loan-balance'].value : 0),
+      monthlyPayment: Number(form['loan-payment'] ? form['loan-payment'].value : 0),
+      maxLimit: Number(form['loan-limit'] ? form['loan-limit'].value : 0)
     };
-    if (id) store.updateLoan(id, data);
-    else store.addLoan(data);
+    if (id) appStore.updateLoan(id, data);
+    else appStore.addLoan(data);
   }
   
   hideModal();

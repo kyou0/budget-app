@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "master": {
+    "items": [
+      {
+        "id": "bank-001",
+        "name": "楽天銀行",
+        "type": "bank",
+        "amount": 0,
+        "day": 1,
+        "currentBalance": 500000,
+        "active": true
+      },
+      {
+        "id": "bank-002",
+        "name": "三菱UFJ銀行",
+        "type": "bank",
+        "amount": 0,
+        "day": 1,
+        "currentBalance": 120000,
+        "active": true
+      },
+      {
+        "id": "income-001",
+        "name": "給与収入",
+        "type": "income",
+        "amount": 300000,
+        "day": 25,
+        "bankId": "bank-001",
+        "active": true
+      },
+      {
+        "id": "income-002",
+        "name": "副業報酬",
+        "type": "income",
+        "amount": 50000,
+        "day": 15,
+        "bankId": "bank-002",
+        "active": true
+      },
+      {
+        "id": "expense-001",
+        "name": "家賃",
+        "type": "expense",
+        "amount": 85000,
+        "day": 27,
+        "bankId": "bank-001",
+        "active": true
+      },
+      {
+        "id": "expense-002",
+        "name": "電気代",
+        "type": "expense",
+        "amount": 8000,
+        "day": 10,
+        "bankId": "bank-001",
+        "active": true
+      },
+      {
+        "id": "expense-003",
+        "name": "水道代",
+        "type": "expense",
+        "amount": 4000,
+        "day": 20,
+        "bankId": "bank-001",
+        "active": true
+      },
+      {
+        "id": "expense-004",
+        "name": "通信費",
+        "type": "expense",
+        "amount": 6000,
+        "day": 30,
+        "bankId": "bank-002",
+        "active": true
+      }
+    ],
+    "methods": [],
+    "loans": [
+      {
+        "id": "loan-001",
+        "name": "奨学金",
+        "type": "銀行カードローン",
+        "interestRate": 2.5,
+        "maxLimit": 4000000,
+        "currentBalance": 2500000,
+        "monthlyPayment": 15000,
+        "startDate": "2020-04-01",
+        "active": true
+      },
+      {
+        "id": "loan-002",
+        "name": "楽天カード",
+        "type": "クレジットカード",
+        "interestRate": 15.0,
+        "maxLimit": 500000,
+        "currentBalance": 120000,
+        "monthlyPayment": 10000,
+        "startDate": "2024-01-01",
+        "active": true
+      }
+    ]
+  },
+  "calendar": {
+    "generatedMonths": {}
+  },
+  "settings": {
+    "googleClientId": "45451544416-8nlqo6bhl56arpjuuh4kekfa24ed9np5.apps.googleusercontent.com",
+    "googleApiKey": "",
+    "tutorialCompleted": true,
+    "driveSyncEnabled": false,
+    "calendarSyncEnabled": false,
+    "incomeCalendarId": "primary",
+    "expenseCalendarId": "primary"
+  },
+  "transactions": []
+}

@@ -1,10 +1,11 @@
-const CACHE_NAME = 'budget-app-v2';
+const CACHE_NAME = 'budget-app-v5';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
   './manifest.json',
+  './favicon.ico',
   './src/schema.js',
   './src/store.js',
   './src/router.js',
@@ -18,7 +19,8 @@ const ASSETS = [
   './src/ui/master.js',
   './src/ui/settings.js',
   './img/favicon.png',
-  './img/favicon.ico'
+  './img/favicon.ico',
+  './sample-data.json'
 ];
 
 self.addEventListener('install', (event) => {

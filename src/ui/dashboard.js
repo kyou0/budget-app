@@ -1,4 +1,4 @@
-import { store } from '../store.js';
+import { store as appStore } from '../store.js';
 import { generateMonthEvents } from '../generate.js';
 import { calculatePenalty, calculatePayoffSummary } from '../calc.js';
 import { googleAuth } from '../auth/googleAuth.js';
@@ -10,9 +10,9 @@ let currentMonth = new Date().getMonth() + 1;
 
 export function renderDashboard(container) {
   const yearMonth = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-  const events = store.data.calendar.generatedMonths[yearMonth] || [];
-  const loans = store.data.master.loans || [];
-  const masterItems = store.data.master.items || [];
+  const events = appStore.data.calendar.generatedMonths[yearMonth] || [];
+  const loans = appStore.data.master.loans || [];
+  const masterItems = appStore.data.master.items || [];
   const payoffSummary = calculatePayoffSummary(loans);
 
   // 銀行残高の合計
@@ -39,7 +39,7 @@ export function renderDashboard(container) {
   const delayedEvents = events.filter(e => e.status === 'pending' && e.originalDate < todayStr);
   const thisWeekEvents = events.filter(e => e.status === 'pending' && e.originalDate >= todayStr && e.originalDate <= nextWeekStr);
 
-  const settings = store.data.settings || {};
+  const settings = appStore.data.settings || {};
   const isSyncing = false; // 将来的にローディング状態を管理する場合用
 
   container.innerHTML = `
@@ -49,11 +49,16 @@ export function renderDashboard(container) {
         <h2>${currentYear}年${currentMonth}月</h2>
         <button onclick="changeMonth(1)" class="btn small">&gt;</button>
       </div>
-      <div class="actions" style="display: flex; align-items: center; gap: 5px;">
+      <div class="actions" style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
         ${settings.driveSyncEnabled && googleAuth.isSignedIn() ? `<span class="sync-status" title="Drive同期有効">☁️</span>` : ''}
         <button onclick="generateEvents()" class="btn ${events.length === 0 ? 'primary' : ''}">
           ${currentMonth}月の予定を${events.length === 0 ? '生成' : '再生成'}
         </button>
+        ${events.length > 0 && settings.calendarSyncEnabled ? `
+          <button onclick="syncCurrentMonthToCalendar()" class="btn small success" style="padding: 8px;">
+            GCal同期
+          </button>
+        ` : ''}
       </div>
     </div>
 
@@ -62,7 +67,7 @@ export function renderDashboard(container) {
         <h4 style="margin: 0; font-size: 0.8rem; color: #6b7280;">現在の銀行残高</h4>
         <div class="value" style="font-size: 1.2rem; font-weight: bold;">¥${totalBankBalance.toLocaleString()}</div>
       </div>
-      <div class="summary-card" style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary);">
+      <div class="summary-card" style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary); display: flex; flex-direction: column; justify-content: center;">
         <h4 style="margin: 0; font-size: 0.8rem; color: #6b7280;">月末予想残高</h4>
         <div class="value" style="font-size: 1.2rem; font-weight: bold; color: var(--primary);">¥${estimatedEndBalance.toLocaleString()}</div>
       </div>
@@ -158,27 +163,37 @@ export function renderDashboard(container) {
       : `${currentYear}年${currentMonth}月のイベントを生成しますか？`;
 
     if (confirm(confirmMsg)) {
-      const newEvents = generateMonthEvents(store.data.master.items, loans, currentYear, currentMonth);
-      store.addMonthEvents(yearMonth, newEvents);
+      const newEvents = generateMonthEvents(appStore.data.master.items, loans, currentYear, currentMonth);
+      appStore.addMonthEvents(yearMonth, newEvents);
       
-      // Google Calendar 同期
-      if (store.data.settings?.calendarSyncEnabled) {
-        window.showToast('カレンダー同期中...', 'info');
-        try {
-          await calendarSync.syncMonthEvents(yearMonth);
-          window.showToast('カレンダー同期完了', 'success');
-        } catch (err) {
-          console.error('Initial calendar sync failed', err);
-          window.showToast('カレンダー同期に失敗しました', 'danger');
-        }
+      // Google Calendar 同期 (自動)
+      if (appStore.data.settings?.calendarSyncEnabled) {
+        await window.syncCurrentMonthToCalendar(true);
       }
 
       // Drive 同期
-      if (store.data.settings?.driveSyncEnabled) {
+      if (appStore.data.settings?.driveSyncEnabled) {
         driveSync.push().catch(err => console.error('Auto drive push failed', err));
       }
 
       renderDashboard(container);
+    }
+  };
+
+  window.syncCurrentMonthToCalendar = async (isAuto = false) => {
+    if (!appStore.data.settings?.calendarSyncEnabled) {
+      if (!isAuto) window.showToast('カレンダー同期が無効です', 'warn');
+      return;
+    }
+    
+    window.showToast('カレンダー同期中...', 'info');
+    try {
+      await calendarSync.syncMonthEvents(yearMonth);
+      window.showToast('カレンダー同期完了', 'success');
+      if (!isAuto) renderDashboard(container); // IDが割り当てられた可能性があるので再描画
+    } catch (err) {
+      console.error('Calendar sync failed', err);
+      window.showToast('カレンダー同期に失敗しました', 'danger');
     }
   };
 
@@ -225,25 +240,25 @@ export function renderDashboard(container) {
         status: 'paid',
         bankId: selectedBankId
       };
-      store.updateEvent(yearMonth, eventId, updates);
+      appStore.updateEvent(yearMonth, eventId, updates);
       
       // 銀行残高の更新
       if (selectedBankId) {
         const bank = masterItems.find(i => i.id === selectedBankId);
         if (bank) {
           const delta = event.type === 'income' ? (event.amount - penalty) : -(event.amount + penalty);
-          store.updateMasterItem(selectedBankId, { currentBalance: (bank.currentBalance || 0) + delta });
+          appStore.updateMasterItem(selectedBankId, { currentBalance: (bank.currentBalance || 0) + delta });
         }
       }
       
       // カレンダー同期
-      if (store.data.settings?.calendarSyncEnabled) {
+      if (appStore.data.settings?.calendarSyncEnabled) {
         const updatedEvent = { ...event, ...updates };
         calendarSync.updateEvent(null, updatedEvent).catch(err => console.error('Calendar update failed', err));
       }
 
       // Drive 同期
-      if (store.data.settings?.driveSyncEnabled) {
+      if (appStore.data.settings?.driveSyncEnabled) {
         driveSync.push().catch(err => console.error('Auto drive push failed', err));
       }
 
@@ -323,7 +338,7 @@ export function renderDashboard(container) {
           if (confirm('借入を実行して残高に反映しますか？')) {
             plan.forEach(p => {
               const loan = loans.find(l => l.id === p.id);
-              store.updateLoan(p.id, { currentBalance: loan.currentBalance + p.amount });
+              appStore.updateLoan(p.id, { currentBalance: loan.currentBalance + p.amount });
             });
             hideLoanModal();
             renderDashboard(container);

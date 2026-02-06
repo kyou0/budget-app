@@ -1,8 +1,8 @@
-import { store } from '../store.js';
+import { store as appStore } from '../store.js';
 import { calculatePayoffSummary } from '../calc.js';
 
 export function renderAnalysis(container) {
-  const loans = store.data.master.loans || [];
+  const loans = appStore.data.master.loans || [];
   const payoffSummary = calculatePayoffSummary(loans);
   
   // マイルストーンの計算

@@ -1,4 +1,4 @@
-import { store } from '../store.js';
+import { store as appStore } from '../store.js';
 import { googleAuth } from '../auth/googleAuth.js';
 
 const FILE_NAME = 'budget-app-data.json';
@@ -6,7 +6,7 @@ const MIME_TYPE = 'application/json';
 
 export const driveSync = {
   async findFile(token) {
-    const apiKey = store.data.settings?.googleApiKey;
+    const apiKey = appStore.data.settings?.googleApiKey;
     const q = `name = '${FILE_NAME}' and 'appDataFolder' in parents`;
     const url = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${encodeURIComponent(q)}&fields=files(id,name,updatedTime)`;
     
@@ -39,7 +39,7 @@ export const driveSync = {
       const driveData = await response.json();
       
       // 競合チェック用：Drive側の更新時刻を保存
-      store.updateSettings({ 
+      appStore.updateSettings({ 
         lastDriveUpdatedAt: file.updatedTime,
         lastSyncAt: new Date().toISOString()
       });
@@ -57,13 +57,13 @@ export const driveSync = {
       const file = await this.findFile(token);
 
       // 競合チェック: Push前にDrive上の最新更新時刻を取得
-      if (file && store.data.settings?.lastDriveUpdatedAt) {
-        if (file.updatedTime > store.data.settings.lastDriveUpdatedAt) {
+      if (file && appStore.data.settings?.lastDriveUpdatedAt) {
+        if (file.updatedTime > appStore.data.settings.lastDriveUpdatedAt) {
           if (!confirm('クラウド上のデータがローカルより新しいです。上書きしますか？（キャンセルするとクラウドからプルします）')) {
             const remoteData = await this.pull();
             if (remoteData) {
-              store.data = store.migrate(remoteData);
-              store.save();
+              appStore.data = appStore.migrate(remoteData);
+              appStore.save();
               location.reload();
             }
             return;
@@ -75,7 +75,7 @@ export const driveSync = {
         name: FILE_NAME,
         parents: ['appDataFolder']
       };
-      const data = JSON.stringify(store.data);
+      const data = JSON.stringify(appStore.data);
       const blob = new Blob([data], { type: MIME_TYPE });
 
       let url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
@@ -101,7 +101,7 @@ export const driveSync = {
 
       // アップロード成功後、Drive側の最新状態を反映
       const updatedFile = await this.findFile(token);
-      store.updateSettings({
+      appStore.updateSettings({
         lastDriveUpdatedAt: updatedFile.updatedTime,
         lastSyncAt: new Date().toISOString()
       });

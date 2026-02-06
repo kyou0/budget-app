@@ -1,17 +1,17 @@
-import { store } from '../store.js';
+import { store as appStore } from '../store.js';
 import { googleAuth } from '../auth/googleAuth.js';
 import { driveSync } from '../sync/driveSync.js';
 import { calendarSync } from '../sync/calendarSync.js';
 
 export function renderSettings(container) {
-  const settings = store.data.settings || {};
+  const settings = appStore.data.settings || {};
   
   container.innerHTML = `
     <div class="settings-header">
       <h2>設定</h2>
     </div>
     <div class="settings-content" style="padding: 20px;">
-      <p>バージョン: 1.2.0 (Google Sync対応)</p>
+      <p>バージョン: 1.2.1 (Stability Fix)</p>
       
       <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
         <h3 style="margin-top: 0;">Google 連携設定</h3>
@@ -49,6 +49,7 @@ export function renderSettings(container) {
 
             <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
               <button onclick="loadCalendarList()" class="btn small" style="align-self: flex-start;">カレンダー一覧を読み込む</button>
+              <button onclick="syncAllCalendars(this)" class="btn small success" style="align-self: flex-start;">全月間データを同期 (手動)</button>
               
               <div class="form-group">
                 <label style="font-size: 0.75rem;">収入用カレンダー</label>
@@ -78,9 +79,10 @@ export function renderSettings(container) {
 
       <div style="margin-top: 20px;">
         <h3>データ管理</h3>
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
           <button onclick="exportData()" class="btn primary">エクスポート (JSON)</button>
           <button onclick="document.getElementById('import-file').click()" class="btn">インポート (JSON)</button>
+          <a href="sample-data.json" download class="btn" style="text-decoration: none; color: inherit; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem;">テンプレートをダウンロード</a>
           <input type="file" id="import-file" style="display: none;" accept=".json">
         </div>
         <p style="font-size: 0.8rem; color: #6b7280;">機種変更やバックアップ時にご利用ください。</p>
@@ -97,7 +99,7 @@ export function renderSettings(container) {
   `;
 
   window.exportData = () => {
-    const data = JSON.stringify(store.data, null, 2);
+    const data = JSON.stringify(appStore.data, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -115,8 +117,8 @@ export function renderSettings(container) {
       try {
         const data = JSON.parse(event.target.result);
         if (confirm('データを上書きしますか？現在のデータは失われます。')) {
-          store.data = store.migrate(data);
-          store.save();
+          appStore.data = appStore.migrate(data);
+          appStore.save();
           location.reload();
         }
       } catch (err) {
@@ -126,12 +128,15 @@ export function renderSettings(container) {
     reader.readAsText(file);
   };
 
-  document.getElementById('import-file').onchange = window.importData;
+  const importFile = document.getElementById('import-file');
+  if (importFile) {
+    importFile.onchange = window.importData;
+  }
 
   window.saveGoogleSettings = () => {
     const googleClientId = document.getElementById('google-client-id').value;
     const googleApiKey = document.getElementById('google-api-key').value;
-    store.updateSettings({ googleClientId, googleApiKey });
+    appStore.updateSettings({ googleClientId, googleApiKey });
     
     // 即時初期化を試行
     if (googleClientId) {
@@ -144,7 +149,7 @@ export function renderSettings(container) {
   window.loginGoogle = async () => {
     try {
       await googleAuth.init();
-      await googleAuth.getAccessToken();
+      await googleAuth.getAccessToken([], 'select_account');
       window.showToast('Google ログイン成功', 'success');
       renderSettings(container);
     } catch (err) {
@@ -154,12 +159,12 @@ export function renderSettings(container) {
 
   window.toggleDriveSync = () => {
     const enabled = document.getElementById('drive-sync-enabled').checked;
-    store.updateSettings({ driveSyncEnabled: enabled });
+    appStore.updateSettings({ driveSyncEnabled: enabled });
   };
 
   window.toggleCalendarSync = () => {
     const enabled = document.getElementById('calendar-sync-enabled').checked;
-    store.updateSettings({ calendarSyncEnabled: enabled });
+    appStore.updateSettings({ calendarSyncEnabled: enabled });
   };
 
   window.loadCalendarList = async () => {
@@ -168,15 +173,31 @@ export function renderSettings(container) {
       const incomeSelect = document.getElementById('income-calendar-id');
       const expenseSelect = document.getElementById('expense-calendar-id');
       
-      const currentIncome = store.data.settings.incomeCalendarId || 'primary';
-      const currentExpense = store.data.settings.expenseCalendarId || 'primary';
+      if (!incomeSelect || !expenseSelect) return;
 
-      const options = calendars.map(c => `<option value="${c.id}">${c.summary}${c.primary ? ' (プライマリ)' : ''}</option>`).join('');
+      const currentIncome = appStore.data.settings.incomeCalendarId || 'primary';
+      const currentExpense = appStore.data.settings.expenseCalendarId || 'primary';
+
+      if (calendars.length === 0) {
+        window.showToast('カレンダーが見つかりませんでした。Googleカレンダー側でカレンダーを作成しているか確認してください。', 'warn');
+        return;
+      }
+
+      // 取得したリストをオプションとして生成
+      let optionsHtml = calendars.map(c => `<option value="${c.id}">${c.summary}${c.primary ? ' (プライマリ)' : ''}</option>`).join('');
       
-      incomeSelect.innerHTML = options;
-      expenseSelect.innerHTML = options;
+      // 現在設定されているIDがリストにない場合でも選択肢として維持するための処理
+      if (currentIncome !== 'primary' && !calendars.find(c => c.id === currentIncome)) {
+        optionsHtml += `<option value="${currentIncome}" selected>${currentIncome} (現在の設定)</option>`;
+      }
+      if (currentExpense !== 'primary' && currentExpense !== currentIncome && !calendars.find(c => c.id === currentExpense)) {
+        optionsHtml += `<option value="${currentExpense}" selected>${currentExpense} (現在の設定)</option>`;
+      }
+
+      incomeSelect.innerHTML = optionsHtml;
+      expenseSelect.innerHTML = optionsHtml;
       
-      // 値を再設定（一覧に含まれていれば）
+      // 明示的に値をセット
       incomeSelect.value = currentIncome;
       expenseSelect.value = currentExpense;
       
@@ -189,7 +210,40 @@ export function renderSettings(container) {
   window.updateCalendarSettings = () => {
     const incomeCalendarId = document.getElementById('income-calendar-id').value;
     const expenseCalendarId = document.getElementById('expense-calendar-id').value;
-    store.updateSettings({ incomeCalendarId, expenseCalendarId });
+    appStore.updateSettings({ incomeCalendarId, expenseCalendarId });
+  };
+
+  window.syncAllCalendars = async (btn) => {
+    if (!appStore.data.settings?.calendarSyncEnabled) {
+      window.showToast('カレンダー同期を有効にして下さい', 'warn');
+      return;
+    }
+    const months = Object.keys(appStore.data.calendar.generatedMonths);
+    if (months.length === 0) {
+      window.showToast('同期するデータがありません', 'info');
+      return;
+    }
+    
+    if (confirm(`${months.length} ヶ月分のデータを同期しますか？`)) {
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '同期中...';
+      
+      window.showToast('一括同期中...', 'info');
+      try {
+        const token = await googleAuth.getAccessToken([googleAuth.getScopes().CALENDAR]);
+        for (const ym of months) {
+          await calendarSync.syncMonthEvents(ym, token);
+        }
+        window.showToast('一括同期完了', 'success');
+      } catch (err) {
+        console.error('Batch sync error:', err);
+        window.showToast('同期中にエラーが発生しました', 'danger');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
   };
 
   window.manualDrivePush = async () => {
@@ -207,8 +261,8 @@ export function renderSettings(container) {
       try {
         const remoteData = await driveSync.pull();
         if (remoteData) {
-          store.data = store.migrate(remoteData);
-          store.save();
+          appStore.data = appStore.migrate(remoteData);
+          appStore.save();
           window.showToast('クラウドから読み込みました。', 'success');
           location.reload();
         } else {

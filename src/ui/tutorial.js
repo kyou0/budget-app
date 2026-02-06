@@ -1,4 +1,4 @@
-import { store } from '../store.js';
+import { store as appStore } from '../store.js';
 
 const steps = [
   {
@@ -95,6 +95,6 @@ function finishTutorial() {
   const overlay = document.getElementById('tutorial-overlay');
   if (overlay) overlay.remove();
   
-  store.updateSettings({ tutorialCompleted: true });
+  appStore.updateSettings({ tutorialCompleted: true });
   window.showToast("チュートリアル完了！", "success");
 }

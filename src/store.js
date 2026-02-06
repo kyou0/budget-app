@@ -86,8 +86,21 @@ class Store {
     }
   }
 
-  addMonthEvents(yearMonth, events) {
-    this.data.calendar.generatedMonths[yearMonth] = events;
+  addMonthEvents(yearMonth, newEvents) {
+    const existingEvents = this.data.calendar.generatedMonths[yearMonth] || [];
+    // 既存のイベントからgcalEventIdを引き継ぐ（重複防止）
+    const mergedEvents = newEvents.map(newEvent => {
+      const existing = existingEvents.find(e => e.id === newEvent.id);
+      if (existing && existing.gcalEventId) {
+        return { 
+          ...newEvent, 
+          gcalEventId: existing.gcalEventId, 
+          gcalCalendarId: existing.gcalCalendarId 
+        };
+      }
+      return newEvent;
+    });
+    this.data.calendar.generatedMonths[yearMonth] = mergedEvents;
     this.save();
   }
 
