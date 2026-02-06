@@ -29,10 +29,10 @@ window.showToast = (message, type = 'info') => {
 };
 
 const routes = {
-  '#dashboard': () => renderDashboard(container),
-  '#analysis': () => renderAnalysis(container),
-  '#master': () => renderMaster(container),
-  '#settings': () => renderSettings(container)
+  '#dashboard': () => renderDashboard ? renderDashboard(container) : console.error('renderDashboard is missing'),
+  '#analysis': () => renderAnalysis ? renderAnalysis(container) : console.error('renderAnalysis is missing'),
+  '#master': () => renderMaster ? renderMaster(container) : console.error('renderMaster is missing'),
+  '#settings': () => renderSettings ? renderSettings(container) : console.error('renderSettings is missing')
 };
 
 const router = new Router(routes);

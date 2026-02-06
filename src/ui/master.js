@@ -1,4 +1,6 @@
 import { store as appStore } from '../store.js';
+import { getIcon } from '../utils.js';
+import { driveSync } from '../sync/driveSync.js';
 
 let currentTab = 'items'; // 'items' | 'banks' | 'loans'
 
@@ -177,13 +179,41 @@ export function renderMaster(container) {
   window.toggleMasterItem = (id) => {
     const item = appStore.data.master.items.find(i => i.id === id);
     appStore.updateMasterItem(id, { active: !item.active });
+    if (appStore.data.settings?.driveSyncEnabled) {
+      driveSync.push().catch(err => console.error('Auto drive push failed', err));
+    }
     renderMaster(container);
   };
 
   window.toggleLoan = (id) => {
     const loan = appStore.data.master.loans.find(l => l.id === id);
     appStore.updateLoan(id, { active: !loan.active });
+    if (appStore.data.settings?.driveSyncEnabled) {
+      driveSync.push().catch(err => console.error('Auto drive push failed', err));
+    }
     renderMaster(container);
+  };
+
+  window.deleteMasterItem = (id) => {
+    if (confirm('この項目を完全に削除しますか？')) {
+      appStore.deleteMasterItem(id);
+      if (appStore.data.settings?.driveSyncEnabled) {
+        driveSync.push().catch(err => console.error('Auto drive push failed', err));
+      }
+      window.showToast('削除しました', 'success');
+      renderMaster(container);
+    }
+  };
+
+  window.deleteLoan = (id) => {
+    if (confirm('この借入先を完全に削除しますか？')) {
+      appStore.deleteLoan(id);
+      if (appStore.data.settings?.driveSyncEnabled) {
+        driveSync.push().catch(err => console.error('Auto drive push failed', err));
+      }
+      window.showToast('削除しました', 'success');
+      renderMaster(container);
+    }
   };
 
   window.toggleMasterFormFields = () => {
@@ -226,7 +256,7 @@ function renderItemsList(items) {
     <div class="master-item ${item.active ? '' : 'inactive'}">
       <div class="info">
         <span class="type ${item.type}">
-          ${item.type === 'income' ? '収入' : '支出'}
+          ${getIcon(item.name, item.type)} ${item.type === 'income' ? '収入' : '支出'}
         </span>
         <span class="name">${item.name}</span>
         <span class="amount">
@@ -242,6 +272,7 @@ function renderItemsList(items) {
         <button onclick="toggleMasterItem('${item.id}')" class="btn small ${item.active ? 'warn' : 'success'}">
           ${item.active ? '無効化' : '有効化'}
         </button>
+        <button onclick="deleteMasterItem('${item.id}')" class="btn small danger" style="padding: 4px; font-size: 0.7rem;">削除</button>
       </div>
     </div>
   `).join('');
@@ -263,7 +294,7 @@ function renderBanksList(banks) {
   return banks.map(bank => `
     <div class="master-item ${bank.active ? '' : 'inactive'}">
       <div class="info">
-        <span class="type bank">銀行</span>
+        <span class="type bank">${getIcon(bank.name, 'bank')} 銀行</span>
         <span class="name">${bank.name}</span>
         <span class="amount">残: ¥${(bank.currentBalance || 0).toLocaleString()}</span>
       </div>
@@ -272,6 +303,7 @@ function renderBanksList(banks) {
         <button onclick="toggleMasterItem('${bank.id}')" class="btn small ${bank.active ? 'warn' : 'success'}">
           ${bank.active ? '無効化' : '有効化'}
         </button>
+        <button onclick="deleteMasterItem('${bank.id}')" class="btn small danger" style="padding: 4px; font-size: 0.7rem;">削除</button>
       </div>
     </div>
   `).join('');
@@ -281,7 +313,7 @@ function renderLoansList(loans) {
   return loans.map(loan => `
     <div class="master-item ${loan.active ? '' : 'inactive'}">
       <div class="info">
-        <span class="type expense">${loan.type}</span>
+        <span class="type expense">${getIcon(loan.name, 'loan')} ${loan.type}</span>
         <span class="name">${loan.name}</span>
         <span class="amount">残: ¥${loan.currentBalance.toLocaleString()}</span>
         <span class="day">月: ¥${loan.monthlyPayment.toLocaleString()}</span>
@@ -291,6 +323,7 @@ function renderLoansList(loans) {
         <button onclick="toggleLoan('${loan.id}')" class="btn small ${loan.active ? 'warn' : 'success'}">
           ${loan.active ? '無効化' : '有効化'}
         </button>
+        <button onclick="deleteLoan('${loan.id}')" class="btn small danger" style="padding: 4px; font-size: 0.7rem;">削除</button>
       </div>
     </div>
   `).join('');
@@ -394,6 +427,10 @@ function saveData() {
     };
     if (id) appStore.updateLoan(id, data);
     else appStore.addLoan(data);
+  }
+  
+  if (appStore.data.settings?.driveSyncEnabled) {
+    driveSync.push().catch(err => console.error('Auto drive push failed', err));
   }
   
   hideModal();

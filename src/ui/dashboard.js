@@ -4,6 +4,7 @@ import { calculatePenalty, calculatePayoffSummary } from '../calc.js';
 import { googleAuth } from '../auth/googleAuth.js';
 import { driveSync } from '../sync/driveSync.js';
 import { calendarSync } from '../sync/calendarSync.js';
+import { getIcon } from '../utils.js';
 
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
@@ -372,16 +373,6 @@ export function renderDashboard(container) {
   };
 }
 
-function getIcon(name, type) {
-  if (type === 'income') return '💰';
-  if (name.includes('返済')) return '💸';
-  if (name.includes('家賃') || name.includes('光熱費')) return '🏠';
-  if (name.includes('カード')) return '💳';
-  if (name.includes('銀行') || name.includes('口座')) return '🏦';
-  if (name.includes('税') || name.includes('年金')) return '🏛️';
-  return type === 'expense' ? '🛒' : '❓';
-}
-
 function renderCalendar(year, month, events) {
   const firstDay = new Date(year, month - 1, 1).getDay();
   const lastDate = new Date(year, month, 0).getDate();
@@ -391,13 +382,14 @@ function renderCalendar(year, month, events) {
   const nextWeekStr = nextWeek.toISOString().split('T')[0];
 
   let html = '';
-  // 曜日ヘッダー
-  ['日', '月', '火', '水', '木', '金', '土'].forEach(d => {
+  // 曜日ヘッダー (月曜始まり)
+  ['月', '火', '水', '木', '金', '土', '日'].forEach(d => {
     html += `<div class="calendar-day header">${d}</div>`;
   });
 
-  // 空白
-  for (let i = 0; i < firstDay; i++) {
+  // 空白 (月曜始まりに調整: 日0, 月1, 火2, 水3, 木4, 金5, 土6 -> 月0, 火1, 水2, 木3, 金4, 土5, 日6)
+  const adjustedFirstDay = (firstDay + 6) % 7;
+  for (let i = 0; i < adjustedFirstDay; i++) {
     html += `<div class="calendar-day empty"></div>`;
   }
 

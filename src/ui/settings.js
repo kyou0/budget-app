@@ -117,12 +117,16 @@ export function renderSettings(container) {
       try {
         const data = JSON.parse(event.target.result);
         if (confirm('データを上書きしますか？現在のデータは失われます。')) {
-          appStore.data = appStore.migrate(data);
+          console.log('Importing data...', data);
+          const migratedData = appStore.migrate(data);
+          appStore.data = migratedData;
           appStore.save();
+          console.log('Data saved. Reloading...');
           location.reload();
         }
       } catch (err) {
-        alert('ファイルの読み込みに失敗しました。');
+        console.error('Import failed:', err);
+        alert('ファイルの読み込み、またはマイグレーションに失敗しました。詳細: ' + err.message);
       }
     };
     reader.readAsText(file);
@@ -130,7 +134,7 @@ export function renderSettings(container) {
 
   const importFile = document.getElementById('import-file');
   if (importFile) {
-    importFile.onchange = window.importData;
+    importFile.addEventListener('change', window.importData);
   }
 
   window.saveGoogleSettings = () => {

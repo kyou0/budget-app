@@ -103,6 +103,14 @@ class Store {
     }
   }
 
+  deleteMasterItem(id) {
+    const index = this.data.master.items.findIndex(item => item.id === id);
+    if (index !== -1) {
+      this.data.master.items.splice(index, 1);
+      this.save();
+    }
+  }
+
   // Loan CRUD
   addLoan(loan) {
     const newLoan = { ...loan, id: crypto.randomUUID(), active: true };
@@ -114,6 +122,14 @@ class Store {
     const index = this.data.master.loans.findIndex(l => l.id === id);
     if (index !== -1) {
       this.data.master.loans[index] = { ...this.data.master.loans[index], ...updates };
+      this.save();
+    }
+  }
+
+  deleteLoan(id) {
+    const index = this.data.master.loans.findIndex(loan => loan.id === id);
+    if (index !== -1) {
+      this.data.master.loans.splice(index, 1);
       this.save();
     }
   }
