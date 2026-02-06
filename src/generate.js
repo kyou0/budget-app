@@ -22,6 +22,7 @@ export function generateMonthEvents(masterItems, loans, year, month) {
         name: item.name,
         type: item.type,
         amount: item.amount,
+        bankId: item.bankId || '',
         originalDate: dateStr,
         actualDate: dateStr,
         penaltyFee: 0,
@@ -42,6 +43,7 @@ export function generateMonthEvents(masterItems, loans, year, month) {
         name: `返済: ${loan.name}`,
         type: 'expense',
         amount: loan.monthlyPayment,
+        bankId: '', // 借入返済のデフォルト銀行口座設定が必要ならここに追加
         originalDate: dateStr,
         actualDate: dateStr,
         penaltyFee: 0,

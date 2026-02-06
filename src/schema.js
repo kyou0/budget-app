@@ -5,6 +5,7 @@
  * @property {'income'|'expense'|'bank'} type
  * @property {number} amount
  * @property {number} day - 1-31
+ * @property {string} [bankId] - 紐づく銀行口座のID
  * @property {number} [currentBalance] - 銀行口座などの現在残高
  * @property {boolean} active
  */
@@ -16,6 +17,7 @@
  * @property {string} name
  * @property {'income'|'expense'} type
  * @property {number} amount
+ * @property {string} [bankId] - 紐づく銀行口座のID
  * @property {string} originalDate - YYYY-MM-DD
  * @property {string} actualDate - YYYY-MM-DD
  * @property {number} penaltyFee

@@ -13,7 +13,11 @@ export const driveSync = {
     const response = await fetch(url, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    if (!response.ok) throw new Error('Failed to search Drive file');
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Drive API Error:', response.status, errText);
+      throw new Error(`Failed to search Drive file: ${response.status} ${response.statusText}`);
+    }
     const data = await response.json();
     return data.files.length > 0 ? data.files[0] : null;
   },

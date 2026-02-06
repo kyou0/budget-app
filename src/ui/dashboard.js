@@ -51,10 +51,9 @@ export function renderDashboard(container) {
       </div>
       <div class="actions" style="display: flex; align-items: center; gap: 5px;">
         ${settings.driveSyncEnabled && googleAuth.isSignedIn() ? `<span class="sync-status" title="Drive同期有効">☁️</span>` : ''}
-        ${events.length === 0 
-          ? `<button onclick="generateEvents()" class="btn primary">当月生成</button>`
-          : `<span class="badge success">生成済み</span>`
-        }
+        <button onclick="generateEvents()" class="btn ${events.length === 0 ? 'primary' : ''}">
+          ${currentMonth}月の予定を${events.length === 0 ? '生成' : '再生成'}
+        </button>
       </div>
     </div>
 
@@ -153,8 +152,12 @@ export function renderDashboard(container) {
   };
 
   window.generateEvents = async () => {
-    if (events.length > 0) return;
-    if (confirm(`${currentYear}年${currentMonth}月のイベントを生成しますか？`)) {
+    const hasEvents = events.length > 0;
+    const confirmMsg = hasEvents 
+      ? `${currentYear}年${currentMonth}月のイベントが既に存在します。全ての項目を削除して再生成しますか？（完了済みの項目もリセットされます）`
+      : `${currentYear}年${currentMonth}月のイベントを生成しますか？`;
+
+    if (confirm(confirmMsg)) {
       const newEvents = generateMonthEvents(store.data.master.items, loans, currentYear, currentMonth);
       store.addMonthEvents(yearMonth, newEvents);
       
@@ -190,6 +193,15 @@ export function renderDashboard(container) {
       <p>項目: ${event.name}</p>
       <p>金額: ¥${event.amount.toLocaleString()}</p>
       <p>予定日: ${event.originalDate}</p>
+      <div class="form-group">
+        <label>入出金先銀行</label>
+        <select id="event-bank-id">
+          <option value="">(未選択)</option>
+          ${masterItems.filter(i => i.type === 'bank').map(b => `
+            <option value="${b.id}" ${event.bankId === b.id ? 'selected' : ''}>${b.name}</option>
+          `).join('')}
+        </select>
+      </div>
     `;
     dateInput.value = event.actualDate;
     
@@ -203,12 +215,23 @@ export function renderDashboard(container) {
 
     payBtn.onclick = async () => {
       const penalty = calculatePenalty(event.amount, event.originalDate, dateInput.value);
+      const selectedBankId = document.getElementById('event-bank-id').value;
       const updates = {
         actualDate: dateInput.value,
         penaltyFee: penalty,
-        status: 'paid'
+        status: 'paid',
+        bankId: selectedBankId
       };
       store.updateEvent(yearMonth, eventId, updates);
+      
+      // 銀行残高の更新
+      if (selectedBankId) {
+        const bank = masterItems.find(i => i.id === selectedBankId);
+        if (bank) {
+          const delta = event.type === 'income' ? (event.amount - penalty) : -(event.amount + penalty);
+          store.updateMasterItem(selectedBankId, { currentBalance: (bank.currentBalance || 0) + delta });
+        }
+      }
       
       // カレンダー同期
       if (store.data.settings?.calendarSyncEnabled) {

@@ -53,6 +53,13 @@ export function renderMaster(container) {
               <label>現在残高</label>
               <input type="number" id="master-balance">
             </div>
+            <div id="field-bank-select" class="form-group">
+              <label>入出金先銀行</label>
+              <select id="master-bank-id">
+                <option value="">(未選択)</option>
+                ${items.filter(i => i.type === 'bank').map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
+              </select>
+            </div>
           ` : `
             <div class="form-group">
               <label>種別</label>
@@ -135,10 +142,12 @@ export function renderMaster(container) {
       amountField.classList.add('hidden');
       dayField.classList.add('hidden');
       balanceField.classList.remove('hidden');
+      document.getElementById('field-bank-select').classList.add('hidden');
     } else {
       amountField.classList.remove('hidden');
       dayField.classList.remove('hidden');
       balanceField.classList.add('hidden');
+      document.getElementById('field-bank-select').classList.remove('hidden');
     }
   };
 }
@@ -199,6 +208,7 @@ function showModal(data = null) {
       form['master-amount'].value = data.amount || 0;
       form['master-day'].value = data.day || 1;
       form['master-balance'].value = data.currentBalance || 0;
+      form['master-bank-id'].value = data.bankId || '';
       window.toggleMasterFormFields();
     } else {
       form['loan-type'].value = data.type;
@@ -230,6 +240,7 @@ function saveData() {
       type: type,
       amount: type === 'bank' ? 0 : Number(form['master-amount'].value),
       day: type === 'bank' ? 1 : Number(form['master-day'].value),
+      bankId: type === 'bank' ? '' : form['master-bank-id'].value,
       currentBalance: type === 'bank' ? Number(form['master-balance'].value) : 0
     };
     if (id) store.updateMasterItem(id, data);
