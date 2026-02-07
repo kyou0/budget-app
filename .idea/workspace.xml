@@ -1,14 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AIAssistantCustomInstructionsStorage">
+    <option name="instructions">
+      <map>
+        <entry key="AIAssistant.VCS.GenerateCommitMessage">
+          <value>
+            <AIAssistantStoredInstruction>
+              <option name="actionId" value="AIAssistant.VCS.GenerateCommitMessage" />
+              <option name="content" value="・日本語で&#10;・何をして何が変わったかを&#10;・ある程度簡潔に&#10;・かつわかりやすく改行を&#10;徹底してください。" />
+            </AIAssistantStoredInstruction>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="Add renderSettings import and sync dependencies in dashboard.js">
+    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="カスタム確認ダイアログ`window.showConfirm`を新規実装し、全体で`confirm`を置き換え  &#10;Service Workerのキャッシュを`budget-app-v16`に更新">
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/app.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/auth/googleAuth.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/auth/googleAuth.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/generate.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/generate.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/settings.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/settings.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sw.js" beforeDir="false" afterPath="$PROJECT_DIR$/sw.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -19,7 +35,7 @@
     <execution />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="36" />
+    <option name="cachedIndexableFilesCount" value="34" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -44,7 +60,7 @@
     <urls />
   </component>
   <component name="ProblemsViewState">
-    <option name="selectedTabId" value="CurrentFile" />
+    <option name="selectedTabId" value="AISelfReview" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 3
@@ -54,28 +70,28 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/onuma/PhpstormProjects/budget-app&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;,
-    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "git-widget-placeholder": "main",
+    "junie.onboarding.icon.badge.shown": "true",
+    "last_opened_file_path": "/Users/onuma/PhpstormProjects/budget-app",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "to.speed.mode.migration.done": "true",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/img" />
@@ -107,95 +123,9 @@
       <workItem from="1752008405239" duration="8787000" />
       <workItem from="1752043321720" duration="6342000" />
       <workItem from="1770367781792" duration="119000" />
-      <workItem from="1770367929210" duration="4020000" />
-    </task>
-    <task id="LOCAL-00089" summary="収入に月末とかを追加し、変数ができないって箇所があったので変数に変更">
-      <option name="closed" value="true" />
-      <created>1751999346509</created>
-      <option name="number" value="00089" />
-      <option name="presentableId" value="LOCAL-00089" />
-      <option name="project" value="LOCAL" />
-      <updated>1751999346509</updated>
-    </task>
-    <task id="LOCAL-00090" summary="グループで一部順序変更">
-      <option name="closed" value="true" />
-      <created>1751999524641</created>
-      <option name="number" value="00090" />
-      <option name="presentableId" value="LOCAL-00090" />
-      <option name="project" value="LOCAL" />
-      <updated>1751999524641</updated>
-    </task>
-    <task id="LOCAL-00091" summary="収入でいつ始まっていていつ終わるかを追加">
-      <option name="closed" value="true" />
-      <created>1752000514396</created>
-      <option name="number" value="00091" />
-      <option name="presentableId" value="LOCAL-00091" />
-      <option name="project" value="LOCAL" />
-      <updated>1752000514396</updated>
-    </task>
-    <task id="LOCAL-00092" summary="入力した契約期間がカードに表示されるように変更">
-      <option name="closed" value="true" />
-      <created>1752000619221</created>
-      <option name="number" value="00092" />
-      <option name="presentableId" value="LOCAL-00092" />
-      <option name="project" value="LOCAL" />
-      <updated>1752000619221</updated>
-    </task>
-    <task id="LOCAL-00093" summary="タイポ修正">
-      <option name="closed" value="true" />
-      <created>1752000667468</created>
-      <option name="number" value="00093" />
-      <option name="presentableId" value="LOCAL-00093" />
-      <option name="project" value="LOCAL" />
-      <updated>1752000667468</updated>
-    </task>
-    <task id="LOCAL-00094" summary="index側でカレンダー機能の一部修正">
-      <option name="closed" value="true" />
-      <created>1752001370401</created>
-      <option name="number" value="00094" />
-      <option name="presentableId" value="LOCAL-00094" />
-      <option name="project" value="LOCAL" />
-      <updated>1752001370401</updated>
-    </task>
-    <task id="LOCAL-00095" summary="時給計算できるようにロジックの大幅変更">
-      <option name="closed" value="true" />
-      <created>1752001720151</created>
-      <option name="number" value="00095" />
-      <option name="presentableId" value="LOCAL-00095" />
-      <option name="project" value="LOCAL" />
-      <updated>1752001720151</updated>
-    </task>
-    <task id="LOCAL-00096" summary="固定と時給とそれぞれ解釈が違ったので修正">
-      <option name="closed" value="true" />
-      <created>1752002528602</created>
-      <option name="number" value="00096" />
-      <option name="presentableId" value="LOCAL-00096" />
-      <option name="project" value="LOCAL" />
-      <updated>1752002528603</updated>
-    </task>
-    <task id="LOCAL-00097" summary="remderMasterList更新">
-      <option name="closed" value="true" />
-      <created>1752002607738</created>
-      <option name="number" value="00097" />
-      <option name="presentableId" value="LOCAL-00097" />
-      <option name="project" value="LOCAL" />
-      <updated>1752002607738</updated>
-    </task>
-    <task id="LOCAL-00098" summary="index側でMasterが変更された際の挙動を変更">
-      <option name="closed" value="true" />
-      <created>1752002783345</created>
-      <option name="number" value="00098" />
-      <option name="presentableId" value="LOCAL-00098" />
-      <option name="project" value="LOCAL" />
-      <updated>1752002783345</updated>
-    </task>
-    <task id="LOCAL-00099" summary="shared.jsを作ってそっちに同じ仕組みは移動した">
-      <option name="closed" value="true" />
-      <created>1752003653682</created>
-      <option name="number" value="00099" />
-      <option name="presentableId" value="LOCAL-00099" />
-      <option name="project" value="LOCAL" />
-      <updated>1752003653682</updated>
+      <workItem from="1770367929210" duration="11614000" />
+      <workItem from="1770454206146" duration="250000" />
+      <workItem from="1770454469379" duration="166000" />
     </task>
     <task id="LOCAL-00100" summary="移動した変数をちゃんと呼んでないバグ修正">
       <option name="closed" value="true" />
@@ -501,7 +431,95 @@
       <option name="project" value="LOCAL" />
       <updated>1770371624275</updated>
     </task>
-    <option name="localTasksCounter" value="138" />
+    <task id="LOCAL-00138" summary="トースト通知のスタイルを追加し、DOM操作を用いたトースト表示機能を実装  &#10;Google Authの初期化処理をリファクタリングし、設定保存時やログイン後にトースト通知を表示  &#10;Service Workerのキャッシュバージョンを更新し、新たな同期依存ファイルを登録">
+      <option name="closed" value="true" />
+      <created>1770372254867</created>
+      <option name="number" value="00138" />
+      <option name="presentableId" value="LOCAL-00138" />
+      <option name="project" value="LOCAL" />
+      <updated>1770372254867</updated>
+    </task>
+    <task id="LOCAL-00139" summary="チュートリアル機能を追加&#10;&#10;スタイルシートにチュートリアル用のスタイルを追加  &#10;`settings`に`tutorialCompleted`フラグを追加し、チュートリアル完了状況を管理  &#10;初回起動時、未完了の場合にチュートリアルを開始する処理を実装  &#10;設定画面からチュートリアルを再開できる機能を追加  &#10;favicon.icoを登録し、`index.html`およびService Workerに対応追加">
+      <option name="closed" value="true" />
+      <created>1770372460731</created>
+      <option name="number" value="00139" />
+      <option name="presentableId" value="LOCAL-00139" />
+      <option name="project" value="LOCAL" />
+      <updated>1770372460731</updated>
+    </task>
+    <task id="LOCAL-00140" summary="銀行口座の紐づけ機能を追加し、イベント生成・支払完了時の残高更新を実装&#10;&#10;- `schema` に bankId プロパティを追加&#10;- マスター登録時に入出金先銀行を選択可能に変更&#10;- イベント生成時に bankId 情報を保持&#10;- 支払完了時、紐づく銀行の残高を自動更新&#10;- チュートリアル仕様を更新し、新機能に対応&#10;- Drive API エラー時の詳細ログを追加&#10;- イベント生成処理の UI/UX を改良 (再生成可能に)">
+      <option name="closed" value="true" />
+      <created>1770372768649</created>
+      <option name="number" value="00140" />
+      <option name="presentableId" value="LOCAL-00140" />
+      <option name="project" value="LOCAL" />
+      <updated>1770372768649</updated>
+    </task>
+    <task id="LOCAL-00141" summary="Googleカレンダー同期機能を追加&#10;&#10;- `schema` にカレンダー同期用のプロパティを追加  &#10;  (`driveSyncEnabled`, `calendarSyncEnabled`, `incomeCalendarId`, `expenseCalendarId`)&#10;- 設定画面で同期を有効化し、収入・支出用カレンダーを選択可能に変更&#10;- カレンダー一覧の取得機能とトースト通知を実装&#10;- イベント生成・更新時に、Googleカレンダーへの書き込み処理を追加  &#10;  (収入・支出に応じて別カレンダーに振り分け)&#10;- エラー時のトースト通知およびログ出力を強化">
+      <option name="closed" value="true" />
+      <created>1770373023021</created>
+      <option name="number" value="00141" />
+      <option name="presentableId" value="LOCAL-00141" />
+      <option name="project" value="LOCAL" />
+      <updated>1770373023021</updated>
+    </task>
+    <task id="LOCAL-00142" summary="デフォルトのGoogle Client IDを設定し、未設定時に自動的に適用されるよう変更&#10;&#10;- `schema`にデフォルトの`googleClientId`を追加&#10;- 初期化時に`googleClientId`が未設定の場合、デフォルト値を設定し保存&#10;- マスター管理画面で「銀行口座」タブを追加&#10;- 収入・支出マスターから「銀行口座」項目を分離し、残高表示機能を追加&#10;- カレンダー一覧読み取り時の不要なスコープリクエストを削除&#10;- Google Auth初期化ロジックを改良し、効率的なトークン取得を実装&#10;- チュートリアルの文言をリファインし、新UIに対応">
+      <option name="closed" value="true" />
+      <created>1770373213864</created>
+      <option name="number" value="00142" />
+      <option name="presentableId" value="LOCAL-00142" />
+      <option name="project" value="LOCAL" />
+      <updated>1770373213864</updated>
+    </task>
+    <task id="LOCAL-00143" summary="サンプルデータJSONの追加と`store`から`appStore`へのリファクタリングを実施&#10;&#10;- マスターおよびカレンダー同期機能で使用する初期サンプルデータ`sample-data.json`を追加  &#10;- `store.js` のインスタンスを他モジュールで使用する際に、エイリアス`appStore`を使用するよう変更し可読性を向上  &#10;- Service Worker のキャッシュを`budget-app-v5`に更新し、新依存ファイル`sample-data.json`を登録  &#10;- Googleカレンダーとの一括同期（手動）機能を追加  &#10;- マスター編集画面のUIを調整し、フィールド切り替えロジックを改良  &#10;- トースト通知およびエラーログを強化">
+      <option name="closed" value="true" />
+      <created>1770374908616</created>
+      <option name="number" value="00143" />
+      <option name="presentableId" value="LOCAL-00143" />
+      <option name="project" value="LOCAL" />
+      <updated>1770374908616</updated>
+    </task>
+    <task id="LOCAL-00144" summary="Ver6">
+      <option name="closed" value="true" />
+      <created>1770377077976</created>
+      <option name="number" value="00144" />
+      <option name="presentableId" value="LOCAL-00144" />
+      <option name="project" value="LOCAL" />
+      <updated>1770377077976</updated>
+    </task>
+    <task id="LOCAL-00145" summary="削除機能・UI改善・同期処理ロジックの追加  &#10;&#10;- マスター画面で項目および借入先削除機能を追加  &#10;  （削除時にDrive同期が有効な場合、自動プッシュを実施）  &#10;- `getIcon` 関数を`utils.js`に移動し共通化  &#10;- カレンダーヘッダーを月曜始まりに変更し、余白ロジックを調整  &#10;- Service Workerのキャッシュバージョンを`budget-app-v9`に更新し、新依存ファイルを登録  &#10;  （`src/utils.js`、`src/ui/tutorial.js` 等）  &#10;- データインポート時のマイグレーション失敗エラー通知を強化  &#10;- faviconの参照パス修正（相対パス`./favicon.ico`に変更）&#10;- マスター画面で各ボタンにスタイル`btn.danger`を適用">
+      <option name="closed" value="true" />
+      <created>1770377529525</created>
+      <option name="number" value="00145" />
+      <option name="presentableId" value="LOCAL-00145" />
+      <option name="project" value="LOCAL" />
+      <updated>1770377529525</updated>
+    </task>
+    <task id="LOCAL-00146" summary="マスター管理・スキーマ拡張・UI改善&#10;&#10;- マスターリストにタグ分類機能を追加し、UIを改良&#10;  （タグ表示や金額モードの識別色を導入）&#10;- 借入管理で「支払元銀行」および「メモ」項目を追加&#10;  （残り回数や元金合計のサポートも強化）&#10;- データマイグレーション処理で新項目を追加し、初期値を設定&#10;- モーダルのスタイルを調整し、可読性を改善&#10;- フォームフィールドをグリッド構造に再整理&#10;- データインポート時、Drive同期有効な場合は自動プッシュ機能を追加&#10;- その他軽微なスタイル調整やコード整理">
+      <option name="closed" value="true" />
+      <created>1770377639863</created>
+      <option name="number" value="00146" />
+      <option name="presentableId" value="LOCAL-00146" />
+      <option name="project" value="LOCAL" />
+      <updated>1770377639863</updated>
+    </task>
+    <task id="LOCAL-00147" summary="- `getIcon`関数を新規作成し`utils.js`に共通化  &#10;- Service Workerのキャッシュを`budget-app-v12`に更新  &#10;- データ破損時のバックアップ保存・削除機能およびトースト通知を追加  &#10;- データインポート機能を改良し、インポート確認モーダルを実装  &#10;- `settings.js`にエクスポート・トリガー付きインポート機能を追加">
+      <option name="closed" value="true" />
+      <created>1770452856443</created>
+      <option name="number" value="00147" />
+      <option name="presentableId" value="LOCAL-00147" />
+      <option name="project" value="LOCAL" />
+      <updated>1770452856443</updated>
+    </task>
+    <task id="LOCAL-00148" summary="カスタム確認ダイアログ`window.showConfirm`を新規実装し、全体で`confirm`を置き換え  &#10;Service Workerのキャッシュを`budget-app-v16`に更新">
+      <option name="closed" value="true" />
+      <created>1770453302920</created>
+      <option name="number" value="00148" />
+      <option name="presentableId" value="LOCAL-00148" />
+      <option name="project" value="LOCAL" />
+      <updated>1770453302920</updated>
+    </task>
+    <option name="localTasksCounter" value="149" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -519,18 +537,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="基礎部分の修正 Ver2" />
-    <MESSAGE value="master.js変更" />
-    <MESSAGE value="デザイン修正漏れを対応" />
-    <MESSAGE value="onclick必要なくなったから削除" />
-    <MESSAGE value="不要なCSSの修正" />
-    <MESSAGE value="masterhtml修正" />
-    <MESSAGE value="大バグ修正" />
-    <MESSAGE value="index.js修正" />
-    <MESSAGE value="クライアントIDの変更" />
-    <MESSAGE value="settings同期できるように変更" />
-    <MESSAGE value="一部同期ボタンについて修正" />
-    <MESSAGE value="master.js差し替え" />
     <MESSAGE value="indexのjs読み込みの仕方を変更" />
     <MESSAGE value="スポット収入について＋ボタンにて追加するように変更" />
     <MESSAGE value="同期したデータがindexに行くたびに勝手に初期化する処理を修正" />
@@ -544,7 +550,19 @@
     <MESSAGE value="不要な`.output.txt`を削除" />
     <MESSAGE value="初期実装: 機能追加（ダッシュボード、分析画面、Google Drive / Calendar同期、イベント生成）" />
     <MESSAGE value="Add renderSettings import and sync dependencies in dashboard.js" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add renderSettings import and sync dependencies in dashboard.js" />
+    <MESSAGE value="トースト通知のスタイルを追加し、DOM操作を用いたトースト表示機能を実装  &#10;Google Authの初期化処理をリファクタリングし、設定保存時やログイン後にトースト通知を表示  &#10;Service Workerのキャッシュバージョンを更新し、新たな同期依存ファイルを登録" />
+    <MESSAGE value="チュートリアル機能を追加&#10;&#10;スタイルシートにチュートリアル用のスタイルを追加  &#10;`settings`に`tutorialCompleted`フラグを追加し、チュートリアル完了状況を管理  &#10;初回起動時、未完了の場合にチュートリアルを開始する処理を実装  &#10;設定画面からチュートリアルを再開できる機能を追加  &#10;favicon.icoを登録し、`index.html`およびService Workerに対応追加" />
+    <MESSAGE value="銀行口座の紐づけ機能を追加し、イベント生成・支払完了時の残高更新を実装&#10;&#10;- `schema` に bankId プロパティを追加&#10;- マスター登録時に入出金先銀行を選択可能に変更&#10;- イベント生成時に bankId 情報を保持&#10;- 支払完了時、紐づく銀行の残高を自動更新&#10;- チュートリアル仕様を更新し、新機能に対応&#10;- Drive API エラー時の詳細ログを追加&#10;- イベント生成処理の UI/UX を改良 (再生成可能に)" />
+    <MESSAGE value="Googleカレンダー同期機能を追加&#10;&#10;- `schema` にカレンダー同期用のプロパティを追加  &#10;  (`driveSyncEnabled`, `calendarSyncEnabled`, `incomeCalendarId`, `expenseCalendarId`)&#10;- 設定画面で同期を有効化し、収入・支出用カレンダーを選択可能に変更&#10;- カレンダー一覧の取得機能とトースト通知を実装&#10;- イベント生成・更新時に、Googleカレンダーへの書き込み処理を追加  &#10;  (収入・支出に応じて別カレンダーに振り分け)&#10;- エラー時のトースト通知およびログ出力を強化" />
+    <MESSAGE value="デフォルトのGoogle Client IDを設定し、未設定時に自動的に適用されるよう変更&#10;&#10;- `schema`にデフォルトの`googleClientId`を追加&#10;- 初期化時に`googleClientId`が未設定の場合、デフォルト値を設定し保存&#10;- マスター管理画面で「銀行口座」タブを追加&#10;- 収入・支出マスターから「銀行口座」項目を分離し、残高表示機能を追加&#10;- カレンダー一覧読み取り時の不要なスコープリクエストを削除&#10;- Google Auth初期化ロジックを改良し、効率的なトークン取得を実装&#10;- チュートリアルの文言をリファインし、新UIに対応" />
+    <MESSAGE value="サンプルデータJSONの追加と`store`から`appStore`へのリファクタリングを実施&#10;&#10;- マスターおよびカレンダー同期機能で使用する初期サンプルデータ`sample-data.json`を追加  &#10;- `store.js` のインスタンスを他モジュールで使用する際に、エイリアス`appStore`を使用するよう変更し可読性を向上  &#10;- Service Worker のキャッシュを`budget-app-v5`に更新し、新依存ファイル`sample-data.json`を登録  &#10;- Googleカレンダーとの一括同期（手動）機能を追加  &#10;- マスター編集画面のUIを調整し、フィールド切り替えロジックを改良  &#10;- トースト通知およびエラーログを強化" />
+    <MESSAGE value="`.output.txt`ファイルを削除し、不要な出力ファイルを整理" />
+    <MESSAGE value="Ver6" />
+    <MESSAGE value="削除機能・UI改善・同期処理ロジックの追加  &#10;&#10;- マスター画面で項目および借入先削除機能を追加  &#10;  （削除時にDrive同期が有効な場合、自動プッシュを実施）  &#10;- `getIcon` 関数を`utils.js`に移動し共通化  &#10;- カレンダーヘッダーを月曜始まりに変更し、余白ロジックを調整  &#10;- Service Workerのキャッシュバージョンを`budget-app-v9`に更新し、新依存ファイルを登録  &#10;  （`src/utils.js`、`src/ui/tutorial.js` 等）  &#10;- データインポート時のマイグレーション失敗エラー通知を強化  &#10;- faviconの参照パス修正（相対パス`./favicon.ico`に変更）&#10;- マスター画面で各ボタンにスタイル`btn.danger`を適用" />
+    <MESSAGE value="マスター管理・スキーマ拡張・UI改善&#10;&#10;- マスターリストにタグ分類機能を追加し、UIを改良&#10;  （タグ表示や金額モードの識別色を導入）&#10;- 借入管理で「支払元銀行」および「メモ」項目を追加&#10;  （残り回数や元金合計のサポートも強化）&#10;- データマイグレーション処理で新項目を追加し、初期値を設定&#10;- モーダルのスタイルを調整し、可読性を改善&#10;- フォームフィールドをグリッド構造に再整理&#10;- データインポート時、Drive同期有効な場合は自動プッシュ機能を追加&#10;- その他軽微なスタイル調整やコード整理" />
+    <MESSAGE value="- `getIcon`関数を新規作成し`utils.js`に共通化  &#10;- Service Workerのキャッシュを`budget-app-v12`に更新  &#10;- データ破損時のバックアップ保存・削除機能およびトースト通知を追加  &#10;- データインポート機能を改良し、インポート確認モーダルを実装  &#10;- `settings.js`にエクスポート・トリガー付きインポート機能を追加" />
+    <MESSAGE value="カスタム確認ダイアログ`window.showConfirm`を新規実装し、全体で`confirm`を置き換え  &#10;Service Workerのキャッシュを`budget-app-v16`に更新" />
+    <option name="LAST_COMMIT_MESSAGE" value="カスタム確認ダイアログ`window.showConfirm`を新規実装し、全体で`confirm`を置き換え  &#10;Service Workerのキャッシュを`budget-app-v16`に更新" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

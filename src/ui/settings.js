@@ -1,5 +1,7 @@
 import { store as appStore } from '../store.js';
 import { googleAuth } from '../auth/googleAuth.js';
+
+console.log('settings.js module loaded (appStore version)');
 import { driveSync } from '../sync/driveSync.js';
 import { calendarSync } from '../sync/calendarSync.js';
 

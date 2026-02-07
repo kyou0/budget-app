@@ -11,14 +11,7 @@ export function generateMonthEvents(masterItems, loans, year, month) {
   const targetMonthStart = new Date(year, month - 1, 1);
   const targetMonthEnd = new Date(year, month - 1, lastDay);
 
-  const formatDate = (date) => {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`; // ここで day が未定義だったので修正
-  };
-  
-  // 修正版 formatDate
+  // 日付フォーマット関数 (YYYY-MM-DD)
   const formatYMD = (date) => {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');

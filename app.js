@@ -71,10 +71,27 @@ window.showConfirm = (message, title = '確認') => {
 };
 
 const routes = {
-  '#dashboard': () => renderDashboard ? renderDashboard(container) : console.error('renderDashboard is missing'),
-  '#analysis': () => renderAnalysis ? renderAnalysis(container) : console.error('renderAnalysis is missing'),
-  '#master': () => renderMaster ? renderMaster(container) : console.error('renderMaster is missing'),
-  '#settings': () => renderSettings ? renderSettings(container) : console.error('renderSettings is missing')
+  '#dashboard': () => {
+    console.log('Routing to #dashboard');
+    return renderDashboard ? renderDashboard(container) : console.error('renderDashboard is missing');
+  },
+  '#analysis': () => {
+    console.log('Routing to #analysis');
+    return renderAnalysis ? renderAnalysis(container) : console.error('renderAnalysis is missing');
+  },
+  '#master': () => {
+    console.log('Routing to #master');
+    return renderMaster ? renderMaster(container) : console.error('renderMaster is missing');
+  },
+  '#settings': () => {
+    console.log('Routing to #settings');
+    if (typeof renderSettings === 'function') {
+      return renderSettings(container);
+    } else {
+      console.error('renderSettings is not a function or missing. Type:', typeof renderSettings);
+      window.showToast('設定画面の読み込みに失敗しました。リロードしてください。', 'danger');
+    }
+  }
 };
 
 const router = new Router(routes);
