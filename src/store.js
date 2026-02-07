@@ -118,6 +118,7 @@ class Store {
     if (typeof data.settings.userDisplayName !== 'string') data.settings.userDisplayName = '';
     if (typeof data.settings.userAge !== 'number') data.settings.userAge = null;
     if (typeof data.settings.userBirthdate !== 'string') data.settings.userBirthdate = '';
+    if (!Array.isArray(data.settings.analysisHistory)) data.settings.analysisHistory = [];
     if (!data.transactions) data.transactions = [];
 
     return data;

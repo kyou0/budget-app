@@ -107,6 +107,21 @@ const renderBarChart = (rows) => {
   `).join('');
 };
 
+const renderSparkBars = (rows) => {
+  if (rows.length === 0) return '';
+  const max = Math.max(...rows.map((r) => r.value), 1);
+  return `
+    <div class="sparkline">
+      ${rows.map((row) => `
+        <div class="sparkbar">
+          <div class="sparkbar-fill" style="height: ${Math.max(6, Math.round((row.value / max) * 100))}%"></div>
+          <div class="sparkbar-label">${row.label}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+};
+
 const renderPieChart = (rows) => {
   const total = rows.reduce((sum, row) => sum + row.value, 0);
   if (total <= 0) return '<div style="font-size: 0.8rem; color: #6b7280;">データがありません。</div>';
@@ -129,6 +144,51 @@ const renderPieChart = (rows) => {
       `).join('')}
     </div>
   `;
+};
+
+const getTotalInterestEstimate = (loans) => {
+  return loans.reduce((sum, loan) => {
+    const sim = simulateLoanSchedule(loan, { scheduleLimit: 0 });
+    return sum + (sim.totalInterest || 0);
+  }, 0);
+};
+
+const getNextPayoffLoan = (loans) => {
+  const candidates = loans
+    .filter((loan) => loan.active && Number(loan.currentBalance) > 0)
+    .map((loan) => ({ loan, payoff: calculateLoanPayoff(loan) }))
+    .filter((item) => item.payoff.status === 'ok' && Number.isFinite(item.payoff.months));
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => a.payoff.months - b.payoff.months);
+  return candidates[0];
+};
+
+const getPayoffStrategy = (loans) => {
+  const active = loans.filter((loan) => loan.active && Number(loan.currentBalance) > 0);
+  if (active.length === 0) return [];
+  return [...active]
+    .sort((a, b) => (Number(b.interestRate) || 0) - (Number(a.interestRate) || 0))
+    .slice(0, 5)
+    .map((loan, index) => ({
+      rank: index + 1,
+      name: loan.name,
+      rate: Number(loan.interestRate) || 0,
+      balance: Number(loan.currentBalance) || 0
+    }));
+};
+
+const buildTrend = (history, current) => {
+  if (!Array.isArray(history) || history.length === 0) return null;
+  const sorted = [...history].sort((a, b) => (a.yearMonth > b.yearMonth ? 1 : -1));
+  const recent = sorted.slice(-4);
+  const first = recent[0];
+  const last = current || recent[recent.length - 1];
+  if (!first || !last || !Number.isFinite(first.totalBalance) || !Number.isFinite(last.totalBalance)) return null;
+  const balanceDiff = first.totalBalance - last.totalBalance;
+  const monthsDiff = Number.isFinite(first.payoffMonths) && Number.isFinite(last.payoffMonths)
+    ? first.payoffMonths - last.payoffMonths
+    : null;
+  return { balanceDiff, monthsDiff, points: recent.length };
 };
 
 const renderOverview = ({
@@ -282,6 +342,99 @@ const renderSimulation = ({
         `).join('')}
       </div>
     </details>
+    <details class="collapsible">
+      <summary>完済年齢（+1万 / +5万 / +10万）</summary>
+      <div class="collapsible-body">
+        ${activeLoans.length === 0 ? `
+          <div style="font-size: 0.8rem; color: #6b7280;">借入データがありません。</div>
+        ` : `
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+            ${EXTRA_OPTIONS.map((extra) => {
+              const simulatedLoans = buildSimulatedLoans(loans, activeLoans, extra);
+              const simSummary = calculatePayoffSummary(simulatedLoans);
+              const ageLabel = ageBaseMonths !== null ? ageAtPayoff(ageBaseMonths, simSummary.totalMonths) : '';
+              return `
+                <div class="highlight-card">
+                  <div class="highlight-title">月 +${formatCurrency(extra)}</div>
+                  <div class="highlight-value">${simSummary.payoffDate}</div>
+                  <div class="highlight-sub">${formatMonthsToYears(simSummary.totalMonths)} / 完済時${ageLabel || '不明'}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+      </div>
+    </details>
+    <details class="collapsible">
+      <summary>効果比較（短縮＋利息削減）</summary>
+      <div class="collapsible-body">
+        ${activeLoans.length === 0 ? `
+          <div style="font-size: 0.8rem; color: #6b7280;">借入データがありません。</div>
+        ` : `
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            ${EXTRA_OPTIONS.map((extra) => {
+              const simulatedLoans = buildSimulatedLoans(loans, activeLoans, extra);
+              const simSummary = calculatePayoffSummary(simulatedLoans);
+              const baseInterest = getTotalInterestEstimate(activeLoans);
+              const simInterest = simulatedLoans.reduce((sum, loan) => {
+                const sim = simulateLoanSchedule(loan, { scheduleLimit: 0 });
+                return sum + (sim.totalInterest || 0);
+              }, 0);
+              const savedMonths = payoffSummary.totalMonths === Infinity || simSummary.totalMonths === Infinity
+                ? null
+                : payoffSummary.totalMonths - simSummary.totalMonths;
+              const savedInterest = baseInterest - simInterest;
+              return `
+                <div style="padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                  <div style="font-weight: 700;">月 +${formatCurrency(extra)}</div>
+                  <div style="font-size: 0.85rem; color: #334155; margin-top: 4px;">
+                    ${savedMonths && savedMonths > 0 ? `${formatMonthsToYears(savedMonths)}短縮` : '短縮計算不可'}
+                    / 利息削減 ${formatCurrency(Math.max(0, savedInterest))}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+      </div>
+    </details>
+    <details class="collapsible">
+      <summary>借入ごとの年表（12ヶ月）</summary>
+      <div class="collapsible-body">
+        ${activeLoans.length === 0 ? `
+          <div style="font-size: 0.8rem; color: #6b7280;">借入データがありません。</div>
+        ` : activeLoans.map((loan) => {
+          const schedule = simulateLoanSchedule(loan, { scheduleLimit: 12 }).schedule;
+          return `
+            <div style="margin-bottom: 14px;">
+              <div style="font-weight: 700; margin-bottom: 6px;">${loan.name}</div>
+              <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+                  <thead>
+                    <tr style="text-align: left; border-bottom: 1px solid #eee;">
+                      <th style="padding: 6px;">月</th>
+                      <th style="padding: 6px;">残高</th>
+                      <th style="padding: 6px;">利息</th>
+                      <th style="padding: 6px;">返済</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${schedule.map((row) => `
+                      <tr style="border-bottom: 1px solid #f3f4f6;">
+                        <td style="padding: 6px;">${row.month}</td>
+                        <td style="padding: 6px;">${formatCurrency(row.remaining)}</td>
+                        <td style="padding: 6px;">${formatCurrency(row.interest)}</td>
+                        <td style="padding: 6px;">${formatCurrency(row.payment)}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </details>
   </div>
 `;
 
@@ -422,6 +575,89 @@ const renderLoanBreakdown = ({ activeLoans }) => {
   `;
 };
 
+const renderTrend = ({ history, yearMonth }) => {
+  const sorted = [...history].sort((a, b) => (a.yearMonth > b.yearMonth ? 1 : -1));
+  const recent = sorted.slice(-6);
+  if (recent.length === 0) {
+    return `
+      <div class="card" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        <h3 style="margin-top: 0;">📉 進捗トレンド</h3>
+        <div style="font-size: 0.8rem; color: #6b7280;">履歴がありません。</div>
+      </div>
+    `;
+  }
+  const balanceRows = recent.map((r) => ({ label: r.yearMonth.slice(5), value: r.totalBalance }));
+  const payoffRows = recent
+    .filter((r) => Number.isFinite(r.payoffMonths))
+    .map((r) => ({ label: r.yearMonth.slice(5), value: r.payoffMonths }));
+  return `
+    <div class="card" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px;">
+      <h3 style="margin-top: 0;">📉 進捗トレンド（直近6ヶ月）</h3>
+      <div class="spark-section">
+        <div class="spark-title">総借入残高</div>
+        ${renderSparkBars(balanceRows)}
+      </div>
+      <div class="spark-section">
+        <div class="spark-title">完済までの月数</div>
+        ${renderSparkBars(payoffRows)}
+      </div>
+      <div style="font-size: 0.75rem; color: #6b7280;">最新: ${yearMonth}</div>
+    </div>
+  `;
+};
+
+const renderCashflow = ({ items, events, yearMonth }) => {
+  const monthKeys = Object.keys(appStore.data.calendar?.generatedMonths || {}).sort();
+  if (monthKeys.length === 0) {
+    return `
+      <div class="card" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        <h3 style="margin-top: 0;">💸 キャッシュフロー予測</h3>
+        <div style="font-size: 0.8rem; color: #6b7280;">データがありません。先に予定を生成してください。</div>
+      </div>
+    `;
+  }
+  const banks = items.filter((item) => item.type === 'bank' && item.active);
+  const startingBalance = banks.reduce((sum, bank) => sum + (Number(bank.currentBalance) || 0), 0);
+  const rows = [];
+  monthKeys.slice(0, 6).forEach((key, index) => {
+    const monthEvents = appStore.data.calendar.generatedMonths[key] || [];
+    const income = monthEvents.filter((e) => e.type === 'income').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const expense = monthEvents.filter((e) => e.type === 'expense').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const net = income - expense;
+    const prevTotal = index === 0 ? startingBalance : rows[index - 1].netTotal;
+    rows.push({ key, income, expense, net, netTotal: prevTotal + net });
+  });
+  return `
+    <div class="card" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+      <h3 style="margin-top: 0;">💸 キャッシュフロー予測（6ヶ月）</h3>
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+          <thead>
+            <tr style="text-align: left; border-bottom: 1px solid #eee;">
+              <th style="padding: 6px;">月</th>
+              <th style="padding: 6px;">収入</th>
+              <th style="padding: 6px;">支出</th>
+              <th style="padding: 6px;">差引</th>
+              <th style="padding: 6px;">予想残高</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((row) => `
+              <tr style="border-bottom: 1px solid #f3f4f6;">
+                <td style="padding: 6px;">${row.key}</td>
+                <td style="padding: 6px;">${formatCurrency(row.income)}</td>
+                <td style="padding: 6px;">${formatCurrency(row.expense)}</td>
+                <td style="padding: 6px; color: ${row.net >= 0 ? '#166534' : '#991b1b'};">${formatCurrency(row.net)}</td>
+                <td style="padding: 6px;">${formatCurrency(row.netTotal)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+};
+
 export function renderAnalysis(container) {
   const settings = appStore.data.settings || {};
   const loans = appStore.data.master.loans || [];
@@ -476,6 +712,38 @@ export function renderAnalysis(container) {
     })
     .filter(Boolean);
 
+  const totalInterestEstimate = getTotalInterestEstimate(activeLoans);
+  const baseline = settings.analysisHistory?.[0]?.baselineTotalBalance || settings.analysisHistory?.[0]?.totalBalance || payoffSummary.totalBalance;
+  const achievementRate = baseline > 0 ? Math.min(100, Math.max(0, (1 - payoffSummary.totalBalance / baseline) * 100)) : 0;
+  const nextPayoff = getNextPayoffLoan(loans);
+  const payoffStrategy = getPayoffStrategy(loans);
+
+  const history = settings.analysisHistory || [];
+  if (!history.find((h) => h.yearMonth === yearMonth)) {
+    const entry = {
+      yearMonth,
+      totalBalance: payoffSummary.totalBalance,
+      payoffMonths: payoffSummary.totalMonths,
+      totalInterest: totalInterestEstimate,
+      baselineTotalBalance: history[0]?.baselineTotalBalance || history[0]?.totalBalance || payoffSummary.totalBalance
+    };
+    appStore.updateSettings({ analysisHistory: [...history, entry] });
+  }
+  const nextHistory = history.find((h) => h.yearMonth === yearMonth)
+    ? history
+    : [...history, {
+      yearMonth,
+      totalBalance: payoffSummary.totalBalance,
+      payoffMonths: payoffSummary.totalMonths,
+      totalInterest: totalInterestEstimate,
+      baselineTotalBalance: history[0]?.baselineTotalBalance || history[0]?.totalBalance || payoffSummary.totalBalance
+    }];
+  const trend = buildTrend(nextHistory, {
+    yearMonth,
+    totalBalance: payoffSummary.totalBalance,
+    payoffMonths: payoffSummary.totalMonths
+  });
+
   container.innerHTML = `
     <div class="analysis-header" style="padding: 15px; background: white; border-bottom: 1px solid #eee;">
       <h2>分析・モチベーション</h2>
@@ -484,8 +752,10 @@ export function renderAnalysis(container) {
       <button class="analysis-tab ${currentAnalysisTab === 'overview' ? 'active' : ''}" onclick="switchAnalysisTab('overview')">概要</button>
       <button class="analysis-tab ${currentAnalysisTab === 'simulation' ? 'active' : ''}" onclick="switchAnalysisTab('simulation')">シミュレーション</button>
       <button class="analysis-tab ${currentAnalysisTab === 'timeline' ? 'active' : ''}" onclick="switchAnalysisTab('timeline')">年表</button>
-      <button class="analysis-tab ${currentAnalysisTab === 'composition' ? 'active' : ''}" onclick="switchAnalysisTab('composition')">支出構成</button>
+      <button class="analysis-tab ${currentAnalysisTab === 'composition' ? 'active' : ''}" onclick="switchAnalysisTab('composition')">収支構成</button>
       <button class="analysis-tab ${currentAnalysisTab === 'breakdown' ? 'active' : ''}" onclick="switchAnalysisTab('breakdown')">借入内訳</button>
+      <button class="analysis-tab ${currentAnalysisTab === 'trend' ? 'active' : ''}" onclick="switchAnalysisTab('trend')">トレンド</button>
+      <button class="analysis-tab ${currentAnalysisTab === 'cashflow' ? 'active' : ''}" onclick="switchAnalysisTab('cashflow')">予測</button>
     </div>
     <div class="analysis-content" style="padding: 15px;">
       ${currentAnalysisTab === 'overview' ? renderOverview({
@@ -511,6 +781,52 @@ export function renderAnalysis(container) {
         yearMonth
       }) : ''}
       ${currentAnalysisTab === 'breakdown' ? renderLoanBreakdown({ activeLoans }) : ''}
+      ${currentAnalysisTab === 'trend' ? renderTrend({ history, yearMonth }) : ''}
+      ${currentAnalysisTab === 'cashflow' ? renderCashflow({
+        items,
+        events: monthEvents,
+        yearMonth
+      }) : ''}
+      ${currentAnalysisTab === 'overview' ? `
+        <div class="card" style="background: white; padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+          <h3 style="margin-top: 0;">🔥 モチベーション</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+            <div style="padding: 12px; background: #f9fafb; border-radius: 10px; border-left: 4px solid var(--success);">
+              <div style="font-size: 0.8rem; color: #6b7280;">達成率</div>
+              <div style="font-size: 1.2rem; font-weight: 700;">${achievementRate.toFixed(1)}%</div>
+            </div>
+            <div style="padding: 12px; background: #f9fafb; border-radius: 10px; border-left: 4px solid var(--primary);">
+              <div style="font-size: 0.8rem; color: #6b7280;">利息の見込み</div>
+              <div style="font-size: 1.2rem; font-weight: 700;">${formatCurrency(totalInterestEstimate)}</div>
+            </div>
+            ${nextPayoff ? `
+              <div style="padding: 12px; background: #f9fafb; border-radius: 10px; border-left: 4px solid var(--warn);">
+                <div style="font-size: 0.8rem; color: #6b7280;">次に完済できる借入</div>
+                <div style="font-size: 1.05rem; font-weight: 700;">${nextPayoff.loan.name}</div>
+                <div style="font-size: 0.8rem; color: #6b7280;">あと ${formatMonthsToYears(nextPayoff.payoff.months)}</div>
+              </div>
+            ` : ''}
+          </div>
+          ${trend ? `
+            <div style="margin-top: 12px; font-size: 0.85rem; color: #6b7280;">
+              過去${trend.points}ヶ月で総借入が ${formatCurrency(trend.balanceDiff)} 減少
+              ${trend.monthsDiff !== null ? ` / 完済予定が ${formatMonthsToYears(trend.monthsDiff)}短縮` : ''}
+            </div>
+          ` : ''}
+        </div>
+        ${payoffStrategy.length > 0 ? `
+          <div class="card" style="background: #f8fafc; padding: 18px; border-radius: 12px; margin-top: 16px; border: 1px solid #e2e8f0;">
+            <h4 style="margin: 0 0 10px 0;">📌 返済優先ルート（高金利優先）</h4>
+            <ol style="margin: 0; padding-left: 18px; font-size: 0.85rem; color: #374151;">
+              ${payoffStrategy.map((item) => `
+                <li style="margin-bottom: 6px;">
+                  ${item.name}（年利 ${item.rate}% / 残高 ${formatCurrency(item.balance)}）
+                </li>
+              `).join('')}
+            </ol>
+          </div>
+        ` : ''}
+      ` : ''}
     </div>
   `;
 

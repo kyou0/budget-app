@@ -18,11 +18,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="年齢および生年月日設定機能を追加&#10;&#10;- 生年月日および年齢を入力するUIを設定画面に追加&#10;  （入力値を用いて完済時年齢を表示可能に）&#10;- 月数を「X年Yヶ月」に変換するロジックを`utils.js`に実装&#10;- サンプルデータに年齢と生年月日を初期値として追加&#10;- 年齢／完済時の計算結果を分析画面やダッシュボードに反映">
+    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="**分析タブを改善し、新たなグラフUIおよび完済予測を追加**&#10;&#10;- 各分析タブのUIを一新し、視覚的に分かりやすいグラフを実装&#10;  （棒グラフと円グラフの構成で収入・支出を視覚化）&#10;- 月ごとのイベントデータを元に構成された「収支構成」セクションを追加&#10;- 借入ごとの完済見込み、マイルストーンデータを形式的に統一&#10;- 完済状況や返済不可状態の原因候補を明確に表示するUIを作成&#10;- #budget-app-v21にService Workerのキャッシュを更新">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/schema.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/schema.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/store.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/store.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/analysis.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/analysis.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/dashboard.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/dashboard.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/master.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/master.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/settings.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/settings.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sw.js" beforeDir="false" afterPath="$PROJECT_DIR$/sw.js" afterDir="false" />
     </list>
@@ -126,15 +127,7 @@
       <workItem from="1770367929210" duration="11614000" />
       <workItem from="1770454206146" duration="250000" />
       <workItem from="1770454469379" duration="166000" />
-      <workItem from="1770454654269" duration="7408000" />
-    </task>
-    <task id="LOCAL-00107" summary="デザイン修正漏れを対応">
-      <option name="closed" value="true" />
-      <created>1752005753814</created>
-      <option name="number" value="00107" />
-      <option name="presentableId" value="LOCAL-00107" />
-      <option name="project" value="LOCAL" />
-      <updated>1752005753815</updated>
+      <workItem from="1770454654269" duration="8369000" />
     </task>
     <task id="LOCAL-00108" summary="onclick必要なくなったから削除">
       <option name="closed" value="true" />
@@ -520,7 +513,15 @@
       <option name="project" value="LOCAL" />
       <updated>1770475998210</updated>
     </task>
-    <option name="localTasksCounter" value="156" />
+    <task id="LOCAL-00156" summary="**分析タブを改善し、新たなグラフUIおよび完済予測を追加**&#10;&#10;- 各分析タブのUIを一新し、視覚的に分かりやすいグラフを実装&#10;  （棒グラフと円グラフの構成で収入・支出を視覚化）&#10;- 月ごとのイベントデータを元に構成された「収支構成」セクションを追加&#10;- 借入ごとの完済見込み、マイルストーンデータを形式的に統一&#10;- 完済状況や返済不可状態の原因候補を明確に表示するUIを作成&#10;- #budget-app-v21にService Workerのキャッシュを更新">
+      <option name="closed" value="true" />
+      <created>1770476878915</created>
+      <option name="number" value="00156" />
+      <option name="presentableId" value="LOCAL-00156" />
+      <option name="project" value="LOCAL" />
+      <updated>1770476878916</updated>
+    </task>
+    <option name="localTasksCounter" value="157" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -538,7 +539,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Google認証修正" />
     <MESSAGE value="css読み込み" />
     <MESSAGE value="GOOGLE_CLIENT_ID変更した" />
     <MESSAGE value="不要ファイル削除" />
@@ -563,7 +563,8 @@
     <MESSAGE value="デモモード機能を実装し、体験とUIを強化  &#10;&#10;- デモモードを追加し、サンプルデータでアプリの全体体験を可能に  &#10;  （ログイン不要でチュートリアルやマスター、カレンダーの一連の動作を確認可能）  &#10;- チュートリアルにデモ向けガイドを新規実装  &#10;- Googleログイン時にユーザープロフィールを取得し、表示名を設定に反映  &#10;- 設定画面やカレンダーのUIを改善しモバイル対応を強化（スクロール対応や最適幅設定）  &#10;- Service Workerのキャッシュバージョンを`budget-app-v20`に更新  &#10;- サンプルデータを拡張し、より直感的に体験可能なデフォルト設定を追加" />
     <MESSAGE value="デモモード終了後のログイン遷移機能を実装&#10;&#10;- デモモードを終了してログイン画面に戻る確認ダイアログを追加&#10;- デモデータのクリア処理と初期データの再設定を実装&#10;- 設定画面でデモ終了ボタンを表示し、操作性を向上" />
     <MESSAGE value="年齢および生年月日設定機能を追加&#10;&#10;- 生年月日および年齢を入力するUIを設定画面に追加&#10;  （入力値を用いて完済時年齢を表示可能に）&#10;- 月数を「X年Yヶ月」に変換するロジックを`utils.js`に実装&#10;- サンプルデータに年齢と生年月日を初期値として追加&#10;- 年齢／完済時の計算結果を分析画面やダッシュボードに反映" />
-    <option name="LAST_COMMIT_MESSAGE" value="年齢および生年月日設定機能を追加&#10;&#10;- 生年月日および年齢を入力するUIを設定画面に追加&#10;  （入力値を用いて完済時年齢を表示可能に）&#10;- 月数を「X年Yヶ月」に変換するロジックを`utils.js`に実装&#10;- サンプルデータに年齢と生年月日を初期値として追加&#10;- 年齢／完済時の計算結果を分析画面やダッシュボードに反映" />
+    <MESSAGE value="**分析タブを改善し、新たなグラフUIおよび完済予測を追加**&#10;&#10;- 各分析タブのUIを一新し、視覚的に分かりやすいグラフを実装&#10;  （棒グラフと円グラフの構成で収入・支出を視覚化）&#10;- 月ごとのイベントデータを元に構成された「収支構成」セクションを追加&#10;- 借入ごとの完済見込み、マイルストーンデータを形式的に統一&#10;- 完済状況や返済不可状態の原因候補を明確に表示するUIを作成&#10;- #budget-app-v21にService Workerのキャッシュを更新" />
+    <option name="LAST_COMMIT_MESSAGE" value="**分析タブを改善し、新たなグラフUIおよび完済予測を追加**&#10;&#10;- 各分析タブのUIを一新し、視覚的に分かりやすいグラフを実装&#10;  （棒グラフと円グラフの構成で収入・支出を視覚化）&#10;- 月ごとのイベントデータを元に構成された「収支構成」セクションを追加&#10;- 借入ごとの完済見込み、マイルストーンデータを形式的に統一&#10;- 完済状況や返済不可状態の原因候補を明確に表示するUIを作成&#10;- #budget-app-v21にService Workerのキャッシュを更新" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

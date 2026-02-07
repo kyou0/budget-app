@@ -88,6 +88,7 @@ export const INITIAL_DATA = {
     userDisplayName: '',
     userAge: null,
     userBirthdate: '',
+    analysisHistory: [],
     loanTypeOptions: [
       '消費者金融',
       '銀行カードローン',

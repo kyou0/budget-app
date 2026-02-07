@@ -373,6 +373,24 @@ window.getAgeFromBirthdate = (birthdate) => {
   return Math.max(0, years);
 };
 
+window.resetServiceWorkerAndCache = async () => {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    window.showToast('キャッシュをリセットしました', 'success');
+    location.reload();
+  } catch (err) {
+    console.error('SW reset failed', err);
+    window.showToast('キャッシュのリセットに失敗しました', 'danger');
+  }
+};
+
 window.exitDemoToLogin = async () => {
   const ok = await window.showConfirm('デモデータを終了してログイン画面に戻ります。よろしいですか？');
   if (!ok) return;
@@ -547,6 +565,11 @@ container.innerHTML = `
           <input type="file" id="import-file" style="position:absolute; opacity:0; pointer-events:none; width:1px; height:1px;" accept=".json" onchange="importData(event)">
         </div>
         <p style="font-size: 0.8rem; color: #6b7280;">機種変更やバックアップ時にご利用ください。</p>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <h3>開発用</h3>
+        <button onclick="resetServiceWorkerAndCache()" class="btn">キャッシュをリセット</button>
       </div>
 
       <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
