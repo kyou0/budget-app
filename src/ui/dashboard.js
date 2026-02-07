@@ -57,6 +57,12 @@ export function renderDashboard(container) {
 
   const settings = appStore.data.settings || {};
   const isSyncing = false; // 将来的にローディング状態を管理する場合用
+  const analysisHistory = settings.analysisHistory || [];
+  const baselineTotal = analysisHistory[0]?.baselineTotalBalance || analysisHistory[0]?.totalBalance || payoffSummary.totalBalance || 0;
+  const progressPercent = baselineTotal > 0 ? Math.max(0, Math.round((1 - payoffSummary.totalBalance / baselineTotal) * 100)) : 0;
+  const nextRepayment = events
+    .filter(e => e.status === 'pending' && e.name.startsWith('返済:'))
+    .sort((a, b) => a.originalDate.localeCompare(b.originalDate))[0];
 
   container.innerHTML = `
     <div class="dashboard-header">
@@ -121,10 +127,13 @@ export function renderDashboard(container) {
               ✅ ¥${events.filter(e => e.status === 'paid' && e.name.startsWith('返済:')).reduce((sum, e) => sum + e.amount, 0).toLocaleString()} 返済済み
             </div>
             <div style="font-size: 0.8rem; color: #6b7280;">完済まであと ${payoffMonthsLabel}</div>
+            ${progressPercent === 0 ? `
+              <div style="font-size: 0.8rem; color: #6b7280;">これからがんばりましょう！${nextRepayment ? ` 次の返済: ${nextRepayment.originalDate}` : ''}</div>
+            ` : ''}
           </div>
           <div style="text-align: right;">
-            <div style="font-size: 1.2rem; font-weight: bold;">${Math.round((1 - payoffSummary.totalBalance / 2000000) * 100)}%</div>
-            <div style="font-size: 0.7rem; color: #6b7280;">達成率(仮)</div>
+            <div style="font-size: 1.2rem; font-weight: bold;">${progressPercent}%</div>
+            <div style="font-size: 0.7rem; color: #6b7280;">達成率</div>
           </div>
         </div>
       </div>
