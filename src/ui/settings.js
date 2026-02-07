@@ -235,9 +235,21 @@ window.syncAllCalendars = async (btn) => {
     for (const ym of months) {
       await calendarSync.syncMonthEvents(ym, token);
     }
+    appStore.addSyncLog({
+      type: 'calendar',
+      mode: 'manual',
+      status: 'success',
+      message: `Calendar sync: ${months.length}ヶ月`
+    });
     window.showToast('一括同期完了', 'success');
   } catch (err) {
     console.error('Batch sync error:', err);
+    appStore.addSyncLog({
+      type: 'calendar',
+      mode: 'manual',
+      status: 'error',
+      message: `Calendar sync: ${err.message || '失敗'}`
+    });
     window.showToast('同期中にエラーが発生しました', 'danger');
   } finally {
     btn.disabled = false;
@@ -248,7 +260,7 @@ window.syncAllCalendars = async (btn) => {
 
 window.manualDrivePush = async () => {
 try {
-  await driveSync.push();
+  await driveSync.push({ mode: 'manual' });
   window.showToast('クラウドに保存しました', 'success');
   location.reload();
 } catch (err) {
@@ -259,7 +271,7 @@ try {
 window.manualDrivePull = async () => {
   if (await window.showConfirm('クラウドからデータを読み込みます。現在のローカルデータは上書きされます。よろしいですか？')) {
     try {
-      const remoteData = await driveSync.pull();
+      const remoteData = await driveSync.pull({ mode: 'manual' });
     if (remoteData) {
       appStore.data = appStore.migrate(remoteData);
       appStore.save();
@@ -294,6 +306,7 @@ import('./tutorial.js').then(m => m.startTutorial());
 
 export function renderSettings(container) {
 const settings = appStore.data.settings || {};
+const syncHistory = settings.syncHistory || [];
 
 container.innerHTML = `
     <div class="settings-header">
@@ -364,6 +377,31 @@ container.innerHTML = `
             最終同期: ${settings.lastSyncAt ? new Date(settings.lastSyncAt).toLocaleString() : 'なし'}
           </div>
         </div>
+      </div>
+
+      <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+        <h3 style="margin-top: 0;">同期履歴</h3>
+        ${syncHistory.length === 0 ? `
+          <div style="font-size: 0.8rem; color: #6b7280;">履歴はまだありません。</div>
+        ` : `
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            ${syncHistory.slice(0, 10).map(log => `
+              <div style="display: flex; justify-content: space-between; gap: 10px; font-size: 0.8rem; background: #f9fafb; padding: 8px 10px; border-radius: 6px;">
+                <div>
+                  <strong>${log.type === 'drive' ? 'Drive' : 'Calendar'}</strong>
+                  <span style="margin-left: 6px; color: ${log.status === 'success' ? 'var(--success)' : 'var(--danger)'};">
+                    ${log.status === 'success' ? '成功' : '失敗'}
+                  </span>
+                  <span style="margin-left: 6px; color: #6b7280;">(${log.mode === 'manual' ? '手動' : '自動'})</span>
+                  <div style="color: #6b7280; margin-top: 2px;">${log.message || ''}</div>
+                </div>
+                <div style="color: #6b7280; white-space: nowrap;">
+                  ${new Date(log.timestamp).toLocaleString()}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `}
       </div>
 
       <div style="margin-top: 20px;">

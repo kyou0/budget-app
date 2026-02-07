@@ -8,6 +8,7 @@ import { startTutorial } from './src/ui/tutorial.js';
 import { store as appStore } from './src/store.js';
 import { googleAuth, initGoogleAuth } from './src/auth/googleAuth.js';
 import { driveSync } from './src/sync/driveSync.js';
+import { calendarSync } from './src/sync/calendarSync.js';
 
 const container = document.getElementById('app-container');
 
@@ -150,26 +151,14 @@ async function initApp() {
     } catch (err) {
       console.warn('GIS init failed', err);
     }
-    
-    // ログイン済みならバックグラウンドでDriveからPullを試行
-    if (googleAuth.isSignedIn() && appStore.data.settings.driveSyncEnabled) {
-      try {
-        const remoteData = await driveSync.pull();
-        if (remoteData) {
-          if (await window.showConfirm('Google Driveから新しいデータが見つかりました。読み込みますか？')) {
-            appStore.data = appStore.migrate(remoteData);
-            appStore.save();
-            location.reload();
-          }
-        }
-      } catch (err) {
-        console.warn('Initial drive sync failed', err);
-      }
-    }
   }
 
   document.querySelector('.bottom-nav').style.display = 'flex';
   try {
+    if (googleAuth.isSignedIn()) {
+      await runAutoSync();
+    }
+
     router.init();
     
     // チュートリアルが必要な場合
@@ -178,6 +167,53 @@ async function initApp() {
     }
   } catch (err) {
     console.error('Router init failed', err);
+  }
+}
+
+async function runAutoSync() {
+  const settings = appStore.data.settings || {};
+
+  if (settings.driveSyncEnabled) {
+    try {
+      window.showToast('Drive同期中...', 'info');
+      const remoteData = await driveSync.pull({ mode: 'auto' });
+      if (remoteData) {
+        appStore.data = appStore.migrate(remoteData);
+        appStore.save();
+      }
+      await driveSync.push({ mode: 'auto' });
+      window.showToast('Drive同期完了', 'success');
+    } catch (err) {
+      console.warn('Auto drive sync failed', err);
+      window.showToast('Drive同期に失敗しました', 'danger');
+    }
+  }
+
+  if (settings.calendarSyncEnabled) {
+    const months = Object.keys(appStore.data.calendar?.generatedMonths || {});
+    if (months.length === 0) return;
+    try {
+      window.showToast('カレンダー同期中...', 'info');
+      for (const ym of months) {
+        await calendarSync.syncMonthEvents(ym);
+      }
+      appStore.addSyncLog({
+        type: 'calendar',
+        mode: 'auto',
+        status: 'success',
+        message: `Calendar sync: ${months.length}ヶ月`
+      });
+      window.showToast('カレンダー同期完了', 'success');
+    } catch (err) {
+      console.warn('Auto calendar sync failed', err);
+      appStore.addSyncLog({
+        type: 'calendar',
+        mode: 'auto',
+        status: 'error',
+        message: `Calendar sync: ${err.message || '失敗'}`
+      });
+      window.showToast('カレンダー同期に失敗しました', 'danger');
+    }
   }
 }
 

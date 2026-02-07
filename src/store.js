@@ -110,6 +110,7 @@ class Store {
     if (!data.calendar) data.calendar = { generatedMonths: {} };
     if (!data.calendar.generatedMonths) data.calendar.generatedMonths = {};
     if (!data.settings) data.settings = { ...INITIAL_DATA.settings };
+    if (!Array.isArray(data.settings.syncHistory)) data.settings.syncHistory = [];
     if (!data.transactions) data.transactions = [];
 
     return data;
@@ -204,6 +205,23 @@ class Store {
 
   updateSettings(updates) {
     this.data.settings = { ...this.data.settings, ...updates };
+    this.save();
+  }
+
+  addSyncLog(entry) {
+    if (!this.data.settings) this.data.settings = { ...INITIAL_DATA.settings };
+    if (!Array.isArray(this.data.settings.syncHistory)) {
+      this.data.settings.syncHistory = [];
+    }
+    const logEntry = {
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      ...entry
+    };
+    this.data.settings.syncHistory.unshift(logEntry);
+    if (this.data.settings.syncHistory.length > 50) {
+      this.data.settings.syncHistory = this.data.settings.syncHistory.slice(0, 50);
+    }
     this.save();
   }
 }

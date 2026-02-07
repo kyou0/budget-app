@@ -22,12 +22,19 @@ export const driveSync = {
     return data.files.length > 0 ? data.files[0] : null;
   },
 
-  async pull() {
+  async pull(options = {}) {
+    const mode = options.mode || 'auto';
     try {
       const token = await googleAuth.getAccessToken([googleAuth.getScopes().DRIVE]);
       const file = await this.findFile(token);
       if (!file) {
         console.log('No sync file found on Drive.');
+        appStore.addSyncLog({
+          type: 'drive',
+          mode,
+          status: 'success',
+          message: 'Drive pull: ファイルなし'
+        });
         return null;
       }
 
@@ -44,14 +51,27 @@ export const driveSync = {
         lastSyncAt: new Date().toISOString()
       });
 
+      appStore.addSyncLog({
+        type: 'drive',
+        mode,
+        status: 'success',
+        message: 'Drive pull: 成功'
+      });
       return driveData;
     } catch (err) {
       console.error('Drive pull error:', err);
+      appStore.addSyncLog({
+        type: 'drive',
+        mode,
+        status: 'error',
+        message: `Drive pull: ${err.message || '失敗'}`
+      });
       throw err;
     }
   },
 
-  async push() {
+  async push(options = {}) {
+    const mode = options.mode || 'auto';
     try {
       const token = await googleAuth.getAccessToken([googleAuth.getScopes().DRIVE]);
       const file = await this.findFile(token);
@@ -72,8 +92,7 @@ export const driveSync = {
       }
 
       const metadata = {
-        name: FILE_NAME,
-        parents: ['appDataFolder']
+        name: FILE_NAME
       };
       const data = JSON.stringify(appStore.data);
       const blob = new Blob([data], { type: MIME_TYPE });
@@ -84,6 +103,8 @@ export const driveSync = {
       if (file) {
         url = `https://www.googleapis.com/upload/drive/v3/files/${file.id}?uploadType=multipart`;
         method = 'PATCH';
+      } else {
+        metadata.parents = ['appDataFolder'];
       }
 
       const form = new FormData();
@@ -107,8 +128,20 @@ export const driveSync = {
       });
       
       console.log('Drive push success');
+      appStore.addSyncLog({
+        type: 'drive',
+        mode,
+        status: 'success',
+        message: 'Drive push: 成功'
+      });
     } catch (err) {
       console.error('Drive push error:', err);
+      appStore.addSyncLog({
+        type: 'drive',
+        mode,
+        status: 'error',
+        message: `Drive push: ${err.message || '失敗'}`
+      });
       throw err;
     }
   }

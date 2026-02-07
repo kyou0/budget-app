@@ -18,12 +18,15 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="カスタム確認ダイアログ`window.showConfirm`を新規実装し、全体で`confirm`を置き換え  &#10;Service Workerのキャッシュを`budget-app-v16`に更新">
+    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="- マスター管理にタグバッジを追加し、UIを改良  &#10;  （タグの分類色やラベル表示を導入）  &#10;- 借入項目に「奨学金」カテゴリを追加  &#10;- Drive API のレスポンスプロパティを `modifiedTime` に変更  &#10;- タップイベント対応の処理を追加して UI 操作を最適化  &#10;- Service Worker のキャッシュバージョンを `budget-app-v19` に更新">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/app.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/schema.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/schema.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/store.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/store.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/sync/driveSync.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/sync/driveSync.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/dashboard.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/dashboard.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/master.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/master.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sw.js" beforeDir="false" afterPath="$PROJECT_DIR$/sw.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/settings.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/settings.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -125,15 +128,7 @@
       <workItem from="1770367929210" duration="11614000" />
       <workItem from="1770454206146" duration="250000" />
       <workItem from="1770454469379" duration="166000" />
-      <workItem from="1770454654269" duration="992000" />
-    </task>
-    <task id="LOCAL-00101" summary="移動した変数をちゃんと呼んでないバグ修正">
-      <option name="closed" value="true" />
-      <created>1752003954952</created>
-      <option name="number" value="00101" />
-      <option name="presentableId" value="LOCAL-00101" />
-      <option name="project" value="LOCAL" />
-      <updated>1752003954952</updated>
+      <workItem from="1770454654269" duration="1762000" />
     </task>
     <task id="LOCAL-00102" summary="shared.jsの一時保存をMasterに移動">
       <option name="closed" value="true" />
@@ -519,7 +514,15 @@
       <option name="project" value="LOCAL" />
       <updated>1770454828055</updated>
     </task>
-    <option name="localTasksCounter" value="150" />
+    <task id="LOCAL-00150" summary="- マスター管理にタグバッジを追加し、UIを改良  &#10;  （タグの分類色やラベル表示を導入）  &#10;- 借入項目に「奨学金」カテゴリを追加  &#10;- Drive API のレスポンスプロパティを `modifiedTime` に変更  &#10;- タップイベント対応の処理を追加して UI 操作を最適化  &#10;- Service Worker のキャッシュバージョンを `budget-app-v19` に更新">
+      <option name="closed" value="true" />
+      <created>1770455699702</created>
+      <option name="number" value="00150" />
+      <option name="presentableId" value="LOCAL-00150" />
+      <option name="project" value="LOCAL" />
+      <updated>1770455699702</updated>
+    </task>
+    <option name="localTasksCounter" value="151" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -537,7 +540,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="indexのjs読み込みの仕方を変更" />
     <MESSAGE value="スポット収入について＋ボタンにて追加するように変更" />
     <MESSAGE value="同期したデータがindexに行くたびに勝手に初期化する処理を修正" />
     <MESSAGE value="認証二重エラー修正" />
@@ -562,7 +564,8 @@
     <MESSAGE value="マスター管理・スキーマ拡張・UI改善&#10;&#10;- マスターリストにタグ分類機能を追加し、UIを改良&#10;  （タグ表示や金額モードの識別色を導入）&#10;- 借入管理で「支払元銀行」および「メモ」項目を追加&#10;  （残り回数や元金合計のサポートも強化）&#10;- データマイグレーション処理で新項目を追加し、初期値を設定&#10;- モーダルのスタイルを調整し、可読性を改善&#10;- フォームフィールドをグリッド構造に再整理&#10;- データインポート時、Drive同期有効な場合は自動プッシュ機能を追加&#10;- その他軽微なスタイル調整やコード整理" />
     <MESSAGE value="- `getIcon`関数を新規作成し`utils.js`に共通化  &#10;- Service Workerのキャッシュを`budget-app-v12`に更新  &#10;- データ破損時のバックアップ保存・削除機能およびトースト通知を追加  &#10;- データインポート機能を改良し、インポート確認モーダルを実装  &#10;- `settings.js`にエクスポート・トリガー付きインポート機能を追加" />
     <MESSAGE value="カスタム確認ダイアログ`window.showConfirm`を新規実装し、全体で`confirm`を置き換え  &#10;Service Workerのキャッシュを`budget-app-v16`に更新" />
-    <option name="LAST_COMMIT_MESSAGE" value="カスタム確認ダイアログ`window.showConfirm`を新規実装し、全体で`confirm`を置き換え  &#10;Service Workerのキャッシュを`budget-app-v16`に更新" />
+    <MESSAGE value="- マスター管理にタグバッジを追加し、UIを改良  &#10;  （タグの分類色やラベル表示を導入）  &#10;- 借入項目に「奨学金」カテゴリを追加  &#10;- Drive API のレスポンスプロパティを `modifiedTime` に変更  &#10;- タップイベント対応の処理を追加して UI 操作を最適化  &#10;- Service Worker のキャッシュバージョンを `budget-app-v19` に更新" />
+    <option name="LAST_COMMIT_MESSAGE" value="- マスター管理にタグバッジを追加し、UIを改良  &#10;  （タグの分類色やラベル表示を導入）  &#10;- 借入項目に「奨学金」カテゴリを追加  &#10;- Drive API のレスポンスプロパティを `modifiedTime` に変更  &#10;- タップイベント対応の処理を追加して UI 操作を最適化  &#10;- Service Worker のキャッシュバージョンを `budget-app-v19` に更新" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

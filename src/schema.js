@@ -82,7 +82,8 @@ export const INITIAL_DATA = {
     driveSyncEnabled: false,
     calendarSyncEnabled: false,
     incomeCalendarId: 'primary',
-    expenseCalendarId: 'primary'
+    expenseCalendarId: 'primary',
+    syncHistory: []
   },
   transactions: []
 };

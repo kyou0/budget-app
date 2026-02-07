@@ -181,7 +181,7 @@ export function renderDashboard(container) {
 
       // Drive 同期
       if (appStore.data.settings?.driveSyncEnabled) {
-        driveSync.push().catch(err => console.error('Auto drive push failed', err));
+        driveSync.push({ mode: 'auto' }).catch(err => console.error('Auto drive push failed', err));
       }
 
       window.showToast(`${currentMonth}月の予定を${hasEvents ? '再生成' : '生成'}しました`, 'success');

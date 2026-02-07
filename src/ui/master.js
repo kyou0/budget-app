@@ -224,7 +224,7 @@ export function renderMaster(container) {
     const item = appStore.data.master.items.find(i => i.id === id);
     appStore.updateMasterItem(id, { active: !item.active });
     if (appStore.data.settings?.driveSyncEnabled) {
-      driveSync.push().catch(err => console.error('Auto drive push failed', err));
+      driveSync.push({ mode: 'auto' }).catch(err => console.error('Auto drive push failed', err));
     }
     renderMaster(container);
   };
