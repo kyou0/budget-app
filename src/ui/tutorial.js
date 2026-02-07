@@ -1,6 +1,6 @@
 import { store as appStore } from '../store.js';
 
-const steps = [
+const baseSteps = [
   {
     title: "💰 ようこそ Budget App へ！",
     content: "このアプリは、滞納を未然に防ぎ、借金完済をサポートするための家計簿です。<br>まずは使い方の基本をマスターしましょう。",
@@ -38,15 +38,56 @@ const steps = [
   }
 ];
 
-let currentStep = 0;
+const demoSteps = [
+  {
+    title: "✨ デモツアーへようこそ",
+    content: "サンプルデータで全体の流れを体験できます。<br>気になる場所を見ながら操作イメージを掴みましょう。",
+    target: null
+  },
+  {
+    title: "⚙️ マスター編集",
+    content: "「マスター」タブで、銀行・収支・借入を追加/編集できます。<br>現実の項目に合わせてカスタムしましょう。",
+    target: "#master"
+  },
+  {
+    title: "📅 カレンダーの予定",
+    content: "「カレンダー」で月次予定を生成し、支払い/入金の流れを確認できます。",
+    target: "#dashboard"
+  },
+  {
+    title: "✅ 完了処理",
+    content: "カレンダーの項目をクリックして、日付や金額を調整し、完了にできます。",
+    target: "#dashboard"
+  },
+  {
+    title: "📈 分析",
+    content: "「分析」タブで、借入ごとの完済見込みや返済ペースを確認できます。",
+    target: "#analysis"
+  },
+  {
+    title: "☁️ 同期とリマインド",
+    content: "「設定」で Google 連携をすると、Drive同期やカレンダー連携が使えます。<br>Googleカレンダーの通知でリマインドとしても活用できます。",
+    target: "#settings"
+  },
+  {
+    title: "🚀 体験完了",
+    content: "このまま続けて編集してもOKです。<br>本番利用時はGoogleログインを有効にしてください。",
+    target: null
+  }
+];
 
-export function startTutorial() {
+let currentStep = 0;
+let currentSteps = baseSteps;
+
+export function startTutorial(options = {}) {
+  const mode = options.mode || 'default';
+  currentSteps = mode === 'demo' ? demoSteps : baseSteps;
   currentStep = 0;
   showStep(currentStep);
 }
 
 function showStep(index) {
-  const step = steps[index];
+  const step = currentSteps[index];
   const overlay = document.createElement('div');
   overlay.id = 'tutorial-overlay';
   overlay.className = 'tutorial-overlay';
@@ -58,10 +99,10 @@ function showStep(index) {
       <div class="tutorial-actions">
         ${index > 0 ? `<button onclick="window.prevTutorialStep()" class="btn">戻る</button>` : ''}
         <button onclick="window.nextTutorialStep()" class="btn primary">
-          ${index === steps.length - 1 ? '始める！' : '次へ'}
+          ${index === currentSteps.length - 1 ? '始める！' : '次へ'}
         </button>
       </div>
-      <div class="tutorial-progress">${index + 1} / ${steps.length}</div>
+      <div class="tutorial-progress">${index + 1} / ${currentSteps.length}</div>
     </div>
   `;
 
@@ -77,7 +118,7 @@ function showStep(index) {
 
 window.nextTutorialStep = () => {
   currentStep++;
-  if (currentStep < steps.length) {
+  if (currentStep < currentSteps.length) {
     showStep(currentStep);
   } else {
     finishTutorial();

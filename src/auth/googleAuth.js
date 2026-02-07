@@ -168,5 +168,16 @@ export const googleAuth = {
       CALENDAR: CALENDAR_SCOPE,
       CALENDAR_LIST: CALENDAR_LIST_SCOPE
     };
+  },
+
+  async fetchUserProfile() {
+    const token = await this.getAccessToken(['openid', 'profile', 'email']);
+    const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch user profile');
+    }
+    return await response.json();
   }
 };

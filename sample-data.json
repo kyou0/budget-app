@@ -63,10 +63,10 @@
     "loans": [
       {
         "id": "loan-001",
-        "name": "楽天カード",
-        "type": "クレジットカード",
-        "interestRate": 15.0,
-        "maxLimit": 500000,
+        "name": "デバイス分割",
+        "type": "分割払い",
+        "interestRate": 0.0,
+        "maxLimit": 200000,
         "currentBalance": 120000,
         "monthlyPayment": 10000,
         "scheduleRule": { "type": "monthly", "day": 27 },
@@ -85,7 +85,22 @@
     "driveSyncEnabled": false,
     "calendarSyncEnabled": false,
     "incomeCalendarId": "primary",
-    "expenseCalendarId": "primary"
+    "expenseCalendarId": "primary",
+    "syncHistory": [],
+    "demoMode": true,
+    "userDisplayName": "サンプルさん",
+    "loanTypeOptions": [
+      "消費者金融",
+      "銀行カードローン",
+      "分割払い",
+      "奨学金",
+      "デバイス",
+      "Mac",
+      "iPad",
+      "iPhone",
+      "親族",
+      "友人"
+    ]
   },
   "transactions": []
 }

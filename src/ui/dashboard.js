@@ -109,8 +109,10 @@ export function renderDashboard(container) {
       </div>
     ` : ''}
 
-    <div class="calendar-grid">
-      ${renderCalendar(currentYear, currentMonth, events)}
+    <div class="calendar-grid-wrapper">
+      <div class="calendar-grid">
+        ${renderCalendar(currentYear, currentMonth, events)}
+      </div>
     </div>
 
     <div class="actions-panel" style="padding: 10px; display: flex; gap: 10px;">

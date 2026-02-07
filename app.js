@@ -106,6 +106,9 @@ function renderLogin() {
         <button id="login-btn" class="btn primary" style="width: 100%; padding: 15px; margin-top: 20px;">
           Googleアカウントでログイン
         </button>
+        <button id="demo-btn" class="btn" style="width: 100%; padding: 12px; margin-top: 10px;">
+          デモで確認する
+        </button>
         <p style="font-size: 0.8rem; color: #6b7280; margin-top: 20px;">
           クラウド同期を利用するにはGoogleログインが必要です。
         </p>
@@ -120,7 +123,13 @@ function renderLogin() {
       try {
         // initGoogleAuth は DOMContentLoaded で呼ばれているはずだが念のため
         initGoogleAuth(clientId);
-        await googleAuth.getAccessToken([], 'select_account'); // ログイン試行
+        await googleAuth.getAccessToken(['openid', 'profile', 'email'], 'select_account'); // ログイン試行
+        try {
+          const profile = await googleAuth.fetchUserProfile();
+          appStore.updateSettings({ userDisplayName: profile.name || profile.email || '' });
+        } catch (err) {
+          console.warn('User profile fetch failed', err);
+        }
         sessionStorage.setItem('isLoggedIn', 'true');
         initApp();
       } catch (err) {
@@ -133,10 +142,39 @@ function renderLogin() {
       initApp();
     }
   };
+
+  document.getElementById('demo-btn').onclick = async () => {
+    try {
+      const response = await fetch('sample-data.json');
+      if (!response.ok) throw new Error('Failed to load sample data');
+      const sample = await response.json();
+      const migrated = appStore.migrate(sample);
+      migrated.settings = {
+        ...migrated.settings,
+        demoMode: true,
+        userDisplayName: 'サンプルさん',
+        tutorialCompleted: false,
+        driveSyncEnabled: false,
+        calendarSyncEnabled: false
+      };
+      appStore.data = migrated;
+      appStore.save();
+      sessionStorage.setItem('isLoggedIn', 'true');
+      initApp();
+    } catch (err) {
+      console.error('Demo init failed', err);
+      window.showToast('デモデータの読み込みに失敗しました', 'danger');
+    }
+  };
 }
 
 async function initApp() {
   const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+  const demoMode = appStore.data.settings?.demoMode;
+  const demoTutorialShown = sessionStorage.getItem('demoTutorialShown');
+  if (!isLoggedIn && demoMode) {
+    sessionStorage.setItem('isLoggedIn', 'true');
+  }
   if (!isLoggedIn) {
     renderLogin();
     return;
@@ -155,14 +193,17 @@ async function initApp() {
 
   document.querySelector('.bottom-nav').style.display = 'flex';
   try {
-    if (googleAuth.isSignedIn()) {
+    if (googleAuth.isSignedIn() && !appStore.data.settings?.demoMode) {
       await runAutoSync();
     }
 
     router.init();
     
     // チュートリアルが必要な場合
-    if (!appStore.data.settings?.tutorialCompleted) {
+    if (demoMode && !demoTutorialShown) {
+      sessionStorage.setItem('demoTutorialShown', 'true');
+      setTimeout(() => startTutorial({ mode: 'demo' }), 500);
+    } else if (!appStore.data.settings?.tutorialCompleted) {
       setTimeout(() => startTutorial(), 1000);
     }
   } catch (err) {

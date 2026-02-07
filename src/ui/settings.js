@@ -142,7 +142,13 @@ window.showToast('API設定を保存しました。', 'success');
 window.loginGoogle = async () => {
 try {
   await googleAuth.init();
-  await googleAuth.getAccessToken([], 'select_account');
+  await googleAuth.getAccessToken(['openid', 'profile', 'email'], 'select_account');
+  try {
+    const profile = await googleAuth.fetchUserProfile();
+    appStore.updateSettings({ userDisplayName: profile.name || profile.email || '' });
+  } catch (err) {
+    console.warn('User profile fetch failed', err);
+  }
   window.showToast('Google ログイン成功', 'success');
   // 画面更新が必要な場合は reload または 再描画
   location.reload();
@@ -334,77 +340,83 @@ export function renderSettings(container) {
 const settings = appStore.data.settings || {};
 const syncHistory = settings.syncHistory || [];
 const loanTypeOptions = settings.loanTypeOptions || [];
+const rawName = settings.userDisplayName || (settings.demoMode ? 'サンプルさん' : '');
+const welcomeName = rawName ? (rawName.endsWith('さん') ? rawName : `${rawName}さん`) : '';
 
 container.innerHTML = `
     <div class="settings-header">
       <h2>設定</h2>
+      ${welcomeName ? `<div style="margin-top: 4px; font-size: 0.85rem; color: #6b7280;">ようこそ、${welcomeName}</div>` : ''}
+      ${settings.demoMode ? `<div style="margin-top: 6px; font-size: 0.8rem; color: #b45309;">デモモード（同期・ログインは無効）</div>` : ''}
     </div>
     <div class="settings-content" style="padding: 20px;">
       <p>バージョン: 1.2.3 (Modal Import)</p>
       
-      <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-        <h3 style="margin-top: 0;">Google 連携設定</h3>
-        <div class="form-group">
-          <label>Google Client ID</label>
-          <input type="text" id="google-client-id" value="${settings.googleClientId || ''}" placeholder="Client IDを入力">
-        </div>
-        <div class="form-group" style="display: none;">
-          <label>Google API Key</label>
-          <input type="password" id="google-api-key" value="${settings.googleApiKey || ''}" placeholder="API Keyを入力">
-        </div>
-        
-        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-          <button onclick="saveGoogleSettings()" class="btn primary">API設定を保存</button>
-          <button onclick="loginGoogle()" class="btn">${googleAuth.isSignedIn() ? '再ログイン' : 'Google ログイン'}</button>
-        </div>
-
-        <div style="padding: 10px; background: #f9fafb; border-radius: 6px; font-size: 0.85rem;">
-          <div style="margin-bottom: 10px;">
-            <strong>Drive 同期</strong><br>
-            <label style="display: flex; align-items: center; gap: 5px; margin-top: 5px;">
-              <input type="checkbox" id="drive-sync-enabled" ${settings.driveSyncEnabled ? 'checked' : ''} onchange="toggleDriveSync()"> 
-              自動同期を有効化
-            </label>
-            <button onclick="manualDrivePush()" class="btn small" style="margin-top: 5px;">今すぐクラウドに保存</button>
-            <button onclick="manualDrivePull()" class="btn small" style="margin-top: 5px;">クラウドから読み込み</button>
+      ${settings.demoMode ? '' : `
+        <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+          <h3 style="margin-top: 0;">Google 連携設定</h3>
+          <div class="form-group">
+            <label>Google Client ID</label>
+            <input type="text" id="google-client-id" value="${settings.googleClientId || ''}" placeholder="Client IDを入力">
+          </div>
+          <div class="form-group" style="display: none;">
+            <label>Google API Key</label>
+            <input type="password" id="google-api-key" value="${settings.googleApiKey || ''}" placeholder="API Keyを入力">
           </div>
           
-          <div style="border-top: 1px solid #eee; padding-top: 10px;">
-            <strong>Calendar 連携</strong><br>
-            <label style="display: flex; align-items: center; gap: 5px; margin-top: 5px;">
-              <input type="checkbox" id="calendar-sync-enabled" ${settings.calendarSyncEnabled ? 'checked' : ''} onchange="toggleCalendarSync()"> 
-              カレンダー同期を有効化
-            </label>
+          <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <button onclick="saveGoogleSettings()" class="btn primary">API設定を保存</button>
+            <button onclick="loginGoogle()" class="btn">${googleAuth.isSignedIn() ? '再ログイン' : 'Google ログイン'}</button>
+          </div>
 
-            <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
-              <button onclick="loadCalendarList()" class="btn small" style="align-self: flex-start;">カレンダー一覧を読み込む</button>
-              <button onclick="syncAllCalendars(this)" class="btn small success" style="align-self: flex-start;">全月間データを同期 (手動)</button>
-              
-              <div class="form-group">
-                <label style="font-size: 0.75rem;">収入用カレンダー</label>
-                <select id="income-calendar-id" onchange="updateCalendarSettings()" style="width: 100%; font-size: 0.8rem;">
-                  <option value="primary" ${settings.incomeCalendarId === 'primary' ? 'selected' : ''}>プライマリ (標準)</option>
-                  ${settings.incomeCalendarId && settings.incomeCalendarId !== 'primary' ? `<option value="${settings.incomeCalendarId}" selected>${settings.incomeCalendarId}</option>` : ''}
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label style="font-size: 0.75rem;">支出用カレンダー</label>
-                <select id="expense-calendar-id" onchange="updateCalendarSettings()" style="width: 100%; font-size: 0.8rem;">
-                  <option value="primary" ${settings.expenseCalendarId === 'primary' ? 'selected' : ''}>プライマリ (標準)</option>
-                  ${settings.expenseCalendarId && settings.expenseCalendarId !== 'primary' ? `<option value="${settings.expenseCalendarId}" selected>${settings.expenseCalendarId}</option>` : ''}
-                </select>
-              </div>
+          <div style="padding: 10px; background: #f9fafb; border-radius: 6px; font-size: 0.85rem;">
+            <div style="margin-bottom: 10px;">
+              <strong>Drive 同期</strong><br>
+              <label style="display: flex; align-items: center; gap: 5px; margin-top: 5px;">
+                <input type="checkbox" id="drive-sync-enabled" ${settings.driveSyncEnabled ? 'checked' : ''} onchange="toggleDriveSync()"> 
+                自動同期を有効化
+              </label>
+              <button onclick="manualDrivePush()" class="btn small" style="margin-top: 5px;">今すぐクラウドに保存</button>
+              <button onclick="manualDrivePull()" class="btn small" style="margin-top: 5px;">クラウドから読み込み</button>
             </div>
             
-            <p style="font-size: 0.7rem; color: #6b7280; margin-top: 10px;">※有効にすると、生成・完了時にGoogleカレンダーも同期されます。</p>
-          </div>
-          
-          <div style="margin-top: 10px; font-size: 0.75rem; color: #6b7280;">
-            最終同期: ${settings.lastSyncAt ? new Date(settings.lastSyncAt).toLocaleString() : 'なし'}
+            <div style="border-top: 1px solid #eee; padding-top: 10px;">
+              <strong>Calendar 連携</strong><br>
+              <label style="display: flex; align-items: center; gap: 5px; margin-top: 5px;">
+                <input type="checkbox" id="calendar-sync-enabled" ${settings.calendarSyncEnabled ? 'checked' : ''} onchange="toggleCalendarSync()"> 
+                カレンダー同期を有効化
+              </label>
+
+              <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+                <button onclick="loadCalendarList()" class="btn small" style="align-self: flex-start;">カレンダー一覧を読み込む</button>
+                <button onclick="syncAllCalendars(this)" class="btn small success" style="align-self: flex-start;">全月間データを同期 (手動)</button>
+                
+                <div class="form-group">
+                  <label style="font-size: 0.75rem;">収入用カレンダー</label>
+                  <select id="income-calendar-id" onchange="updateCalendarSettings()" style="width: 100%; font-size: 0.8rem;">
+                    <option value="primary" ${settings.incomeCalendarId === 'primary' ? 'selected' : ''}>プライマリ (標準)</option>
+                    ${settings.incomeCalendarId && settings.incomeCalendarId !== 'primary' ? `<option value="${settings.incomeCalendarId}" selected>${settings.incomeCalendarId}</option>` : ''}
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label style="font-size: 0.75rem;">支出用カレンダー</label>
+                  <select id="expense-calendar-id" onchange="updateCalendarSettings()" style="width: 100%; font-size: 0.8rem;">
+                    <option value="primary" ${settings.expenseCalendarId === 'primary' ? 'selected' : ''}>プライマリ (標準)</option>
+                    ${settings.expenseCalendarId && settings.expenseCalendarId !== 'primary' ? `<option value="${settings.expenseCalendarId}" selected>${settings.expenseCalendarId}</option>` : ''}
+                  </select>
+                </div>
+              </div>
+              
+              <p style="font-size: 0.7rem; color: #6b7280; margin-top: 10px;">※有効にすると、生成・完了時にGoogleカレンダーも同期されます。</p>
+            </div>
+            
+            <div style="margin-top: 10px; font-size: 0.75rem; color: #6b7280;">
+              最終同期: ${settings.lastSyncAt ? new Date(settings.lastSyncAt).toLocaleString() : 'なし'}
+            </div>
           </div>
         </div>
-      </div>
+      `}
 
       <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
         <h3 style="margin-top: 0;">同期履歴</h3>

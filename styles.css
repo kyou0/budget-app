@@ -60,6 +60,12 @@ body {
   gap: 1px;
   background: #ddd;
   border: 1px solid #ddd;
+  width: 100%;
+  min-width: 640px;
+}
+.calendar-grid-wrapper {
+  overflow-x: auto;
+  padding-bottom: 4px;
 }
 .calendar-day {
   background: var(--card);
@@ -164,6 +170,19 @@ body {
 }
 .blink {
   animation: blink 1s infinite;
+}
+
+@media (max-width: 640px) {
+  .calendar-grid {
+    min-width: 560px;
+  }
+  .calendar-day {
+    min-height: 70px;
+  }
+  .event-item {
+    font-size: 0.65rem;
+    white-space: normal;
+  }
 }
 
 /* Master List */

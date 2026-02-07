@@ -114,6 +114,8 @@ class Store {
     if (!Array.isArray(data.settings.loanTypeOptions)) {
       data.settings.loanTypeOptions = [...INITIAL_DATA.settings.loanTypeOptions];
     }
+    if (typeof data.settings.demoMode !== 'boolean') data.settings.demoMode = false;
+    if (typeof data.settings.userDisplayName !== 'string') data.settings.userDisplayName = '';
     if (!data.transactions) data.transactions = [];
 
     return data;

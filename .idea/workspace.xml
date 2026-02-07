@@ -18,16 +18,16 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="カレンダー同期機能とDrive同期処理の自動化を実装&#10;&#10;- Driveおよびカレンダー同期の自動実行ロジックを新規作成  &#10;  （設定に応じて実行される`runAutoSync`を追加）&#10;- 同期履歴をスキーマに追加し、エントリ最大50件まで保存  &#10;  （各同期処理で記録を自動的に更新）&#10;- 設定画面に同期履歴を表示するUIを新規実装&#10;- 手動および自動同期時のトースト通知を強化&#10;- Drive同期（Pull/Push）のエラーログ追加  &#10;  （設定に基づく記録・エラーメッセージ出力を改善）">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/calc.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/calc.js" afterDir="false" />
+    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="借入管理・マスターリストUIを改良&#10;&#10;- 借入種別のカスタム管理機能を追加（UI上で追加/削除可能）&#10;- マスターリストをタグごとにグループ化し、見やすさを向上&#10;- 借入計算ロジックを改善し、不正入力や計算エラーを回避&#10;- 必須フィールド未入力時の警告処理を追加&#10;- レスポンス時の文言を調整（例: &quot;完済まであと不明/月数&quot;）&#10;- CSSを最適化し、マスター画面でのレイアウト崩れを修正">
+      <change beforePath="$PROJECT_DIR$/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/app.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sample-data.json" beforeDir="false" afterPath="$PROJECT_DIR$/sample-data.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/auth/googleAuth.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/auth/googleAuth.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/schema.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/schema.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/store.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/store.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/analysis.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/analysis.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/dashboard.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/dashboard.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/master.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/master.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/settings.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/settings.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sw.js" beforeDir="false" afterPath="$PROJECT_DIR$/sw.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -129,15 +129,7 @@
       <workItem from="1770367929210" duration="11614000" />
       <workItem from="1770454206146" duration="250000" />
       <workItem from="1770454469379" duration="166000" />
-      <workItem from="1770454654269" duration="4638000" />
-    </task>
-    <task id="LOCAL-00103" summary="common.jsの簡略化">
-      <option name="closed" value="true" />
-      <created>1752004683511</created>
-      <option name="number" value="00103" />
-      <option name="presentableId" value="LOCAL-00103" />
-      <option name="project" value="LOCAL" />
-      <updated>1752004683511</updated>
+      <workItem from="1770454654269" duration="5556000" />
     </task>
     <task id="LOCAL-00104" summary="基礎部分の修正">
       <option name="closed" value="true" />
@@ -523,7 +515,15 @@
       <option name="project" value="LOCAL" />
       <updated>1770456537500</updated>
     </task>
-    <option name="localTasksCounter" value="152" />
+    <task id="LOCAL-00152" summary="借入管理・マスターリストUIを改良&#10;&#10;- 借入種別のカスタム管理機能を追加（UI上で追加/削除可能）&#10;- マスターリストをタグごとにグループ化し、見やすさを向上&#10;- 借入計算ロジックを改善し、不正入力や計算エラーを回避&#10;- 必須フィールド未入力時の警告処理を追加&#10;- レスポンス時の文言を調整（例: &quot;完済まであと不明/月数&quot;）&#10;- CSSを最適化し、マスター画面でのレイアウト崩れを修正">
+      <option name="closed" value="true" />
+      <created>1770466591512</created>
+      <option name="number" value="00152" />
+      <option name="presentableId" value="LOCAL-00152" />
+      <option name="project" value="LOCAL" />
+      <updated>1770466591512</updated>
+    </task>
+    <option name="localTasksCounter" value="153" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -541,7 +541,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="同期したデータがindexに行くたびに勝手に初期化する処理を修正" />
     <MESSAGE value="認証二重エラー修正" />
     <MESSAGE value="URI変更" />
     <MESSAGE value="CSS修正" />
@@ -566,7 +565,8 @@
     <MESSAGE value="カスタム確認ダイアログ`window.showConfirm`を新規実装し、全体で`confirm`を置き換え  &#10;Service Workerのキャッシュを`budget-app-v16`に更新" />
     <MESSAGE value="- マスター管理にタグバッジを追加し、UIを改良  &#10;  （タグの分類色やラベル表示を導入）  &#10;- 借入項目に「奨学金」カテゴリを追加  &#10;- Drive API のレスポンスプロパティを `modifiedTime` に変更  &#10;- タップイベント対応の処理を追加して UI 操作を最適化  &#10;- Service Worker のキャッシュバージョンを `budget-app-v19` に更新" />
     <MESSAGE value="カレンダー同期機能とDrive同期処理の自動化を実装&#10;&#10;- Driveおよびカレンダー同期の自動実行ロジックを新規作成  &#10;  （設定に応じて実行される`runAutoSync`を追加）&#10;- 同期履歴をスキーマに追加し、エントリ最大50件まで保存  &#10;  （各同期処理で記録を自動的に更新）&#10;- 設定画面に同期履歴を表示するUIを新規実装&#10;- 手動および自動同期時のトースト通知を強化&#10;- Drive同期（Pull/Push）のエラーログ追加  &#10;  （設定に基づく記録・エラーメッセージ出力を改善）" />
-    <option name="LAST_COMMIT_MESSAGE" value="カレンダー同期機能とDrive同期処理の自動化を実装&#10;&#10;- Driveおよびカレンダー同期の自動実行ロジックを新規作成  &#10;  （設定に応じて実行される`runAutoSync`を追加）&#10;- 同期履歴をスキーマに追加し、エントリ最大50件まで保存  &#10;  （各同期処理で記録を自動的に更新）&#10;- 設定画面に同期履歴を表示するUIを新規実装&#10;- 手動および自動同期時のトースト通知を強化&#10;- Drive同期（Pull/Push）のエラーログ追加  &#10;  （設定に基づく記録・エラーメッセージ出力を改善）" />
+    <MESSAGE value="借入管理・マスターリストUIを改良&#10;&#10;- 借入種別のカスタム管理機能を追加（UI上で追加/削除可能）&#10;- マスターリストをタグごとにグループ化し、見やすさを向上&#10;- 借入計算ロジックを改善し、不正入力や計算エラーを回避&#10;- 必須フィールド未入力時の警告処理を追加&#10;- レスポンス時の文言を調整（例: &quot;完済まであと不明/月数&quot;）&#10;- CSSを最適化し、マスター画面でのレイアウト崩れを修正" />
+    <option name="LAST_COMMIT_MESSAGE" value="借入管理・マスターリストUIを改良&#10;&#10;- 借入種別のカスタム管理機能を追加（UI上で追加/削除可能）&#10;- マスターリストをタグごとにグループ化し、見やすさを向上&#10;- 借入計算ロジックを改善し、不正入力や計算エラーを回避&#10;- 必須フィールド未入力時の警告処理を追加&#10;- レスポンス時の文言を調整（例: &quot;完済まであと不明/月数&quot;）&#10;- CSSを最適化し、マスター画面でのレイアウト崩れを修正" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

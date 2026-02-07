@@ -84,6 +84,8 @@ export const INITIAL_DATA = {
     incomeCalendarId: 'primary',
     expenseCalendarId: 'primary',
     syncHistory: [],
+    demoMode: false,
+    userDisplayName: '',
     loanTypeOptions: [
       '消費者金融',
       '銀行カードローン',
