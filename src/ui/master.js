@@ -7,6 +7,10 @@ let currentTab = 'items'; // 'items' | 'banks' | 'loans'
 export function renderMaster(container) {
   const items = appStore.data.master.items;
   const loans = appStore.data.master.loans || [];
+  const loanTypeOptions = appStore.data.settings?.loanTypeOptions || [];
+  const loanTypeOptionsHtml = loanTypeOptions
+    .map(option => `<option value="${option}">${option}</option>`)
+    .join('');
 
   container.innerHTML = `
     <div class="tabs">
@@ -56,6 +60,8 @@ export function renderMaster(container) {
                   <option value="loan">借入返済</option>
                   <option value="tax">税金/保険</option>
                   <option value="service">サブスク</option>
+                  <option value="vehicle">車両</option>
+                  <option value="business">事業</option>
                 </select>
               </div>
             </div>
@@ -132,13 +138,7 @@ export function renderMaster(container) {
               <div class="form-group">
                 <label>種別</label>
                 <select id="loan-type">
-                  <option value="消費者金融">消費者金融</option>
-                  <option value="銀行カードローン">銀行カードローン</option>
-                  <option value="クレジットカード">クレジットカード</option>
-                  <option value="分割払い">分割払い</option>
-                  <option value="奨学金">奨学金</option>
-                  <option value="親族">親族</option>
-                  <option value="友人">友人</option>
+                  ${loanTypeOptionsHtml}
                 </select>
               </div>
               <div class="form-group">
@@ -187,6 +187,14 @@ export function renderMaster(container) {
               <label>メモ</label>
               <textarea id="loan-notes" rows="2" placeholder="備考など"></textarea>
             </div>
+            <div class="form-group">
+              <label>借入種別を追加</label>
+              <div class="form-row">
+                <input type="text" id="loan-type-custom" placeholder="例: 車/リフォーム/家電">
+                <button type="button" onclick="addLoanTypeOption()" class="btn small">追加</button>
+              </div>
+              <div style="font-size: 0.75rem; color: #6b7280; margin-top: 6px;">追加後、種別のプルダウンに反映されます。</div>
+            </div>
           `}
           
           <div class="modal-actions">
@@ -218,6 +226,29 @@ export function renderMaster(container) {
   window.editLoan = (id) => {
     const loan = appStore.data.master.loans.find(l => l.id === id);
     showModal(loan);
+  };
+
+  window.addLoanTypeOption = () => {
+    const input = document.getElementById('loan-type-custom');
+    const select = document.getElementById('loan-type');
+    if (!input || !select) return;
+    const value = input.value.trim();
+    if (!value) {
+      window.showToast('借入種別を入力してください', 'warn');
+      return;
+    }
+    const existing = Array.from(select.options).some(opt => opt.value === value);
+    if (!existing) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value;
+      select.appendChild(option);
+      const nextOptions = [...(appStore.data.settings?.loanTypeOptions || []), value];
+      appStore.updateSettings({ loanTypeOptions: nextOptions });
+    }
+    select.value = value;
+    input.value = '';
+    window.showToast('借入種別を追加しました', 'success');
   };
 
   window.toggleMasterItem = (id) => {
@@ -301,39 +332,80 @@ function renderItemsList(items) {
     card: 'カード',
     loan: '借入返済',
     tax: '税金/保険',
-    service: 'サブスク'
+    service: 'サブスク',
+    vehicle: '車両',
+    business: '事業',
+    car: '車両',
+    bike: '車両'
   };
+  const tagGroups = [
+    { key: 'card', label: 'カード' },
+    { key: 'business', label: '事業' },
+    { key: 'fixed', label: '固定費' },
+    { key: 'variable', label: '変動費' },
+    { key: 'tax', label: '税金/保険' },
+    { key: 'service', label: 'サブスク' },
+    { key: 'loan', label: '借入返済' },
+    { key: 'vehicle', label: '車両' },
+    { key: 'uncategorized', label: '未分類' }
+  ];
+
+  const normalizeTag = (tag) => {
+    if (!tag) return 'uncategorized';
+    if (['car', 'bike', 'vehicle'].includes(tag)) return 'vehicle';
+    if (tagLabels[tag]) return tag;
+    return 'uncategorized';
+  };
+
+  const grouped = {};
+  items.forEach(item => {
+    const groupKey = normalizeTag(item.tag);
+    if (!grouped[groupKey]) grouped[groupKey] = [];
+    grouped[groupKey].push(item);
+  });
   
-  return items.map(item => `
-    <div class="master-item ${item.active ? '' : 'inactive'}" onclick="editMasterItem('${item.id}')">
-      <div class="info">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span class="type ${item.type}">
-            ${item.type === 'income' ? '収入' : '支出'}
-          </span>
-          ${item.tag ? `<span class="tag-badge tag-${item.tag}">${tagLabels[item.tag] || item.tag}</span>` : ''}
+  return tagGroups
+    .filter(group => grouped[group.key] && grouped[group.key].length > 0)
+    .map(group => `
+      <div class="master-group">
+        <div class="master-group-title">
+          <span>${group.label}</span>
+          <span class="master-group-count">${grouped[group.key].length}</span>
         </div>
-        <span class="name">${getIcon(item.name, item.type)} ${item.name}</span>
-        <span class="amount">
-          ${item.amountMode === 'variable' ? '<span style="color:var(--warn)">見積</span> ' : ''}¥${item.amount.toLocaleString()}
-        </span>
-        <div style="font-size: 0.8rem; color: #4b5563; margin-top: 4px;">
-          📅 ${formatRule(item.scheduleRule || {type:'monthly', day:item.day})}
-          ${item.adjustment !== 'none' ? ` (${item.adjustment === 'prev_weekday' ? '前倒し' : '後倒し'})` : ''}
-        </div>
-        <div class="bank-link" style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">
-          🏦 ${bankMap[item.bankId] || '(銀行未設定)'}
+        <div class="master-group-grid">
+          ${grouped[group.key].map(item => `
+            <div class="master-item master-item-card ${item.active ? '' : 'inactive'}" onclick="editMasterItem('${item.id}')">
+              <div class="info">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="type ${item.type}">
+                    ${item.type === 'income' ? '収入' : '支出'}
+                  </span>
+                  ${item.tag ? `<span class="tag-badge tag-${normalizeTag(item.tag)}">${tagLabels[item.tag] || tagLabels[normalizeTag(item.tag)] || item.tag}</span>` : ''}
+                </div>
+                <span class="name">${getIcon(item.name, item.type)} ${item.name}</span>
+                <span class="amount">
+                  ${item.amountMode === 'variable' ? '<span style="color:var(--warn)">見積</span> ' : ''}¥${item.amount.toLocaleString()}
+                </span>
+                <div style="font-size: 0.8rem; color: #4b5563; margin-top: 4px;">
+                  📅 ${formatRule(item.scheduleRule || {type:'monthly', day:item.day})}
+                  ${item.adjustment !== 'none' ? ` (${item.adjustment === 'prev_weekday' ? '前倒し' : '後倒し'})` : ''}
+                </div>
+                <div class="bank-link" style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">
+                  🏦 ${bankMap[item.bankId] || '(銀行未設定)'}
+                </div>
+              </div>
+              <div class="actions">
+                <button onclick="event.stopPropagation(); editMasterItem('${item.id}')" class="btn small">編集</button>
+                <button onclick="event.stopPropagation(); toggleMasterItem('${item.id}')" class="btn small ${item.active ? 'warn' : 'success'}">
+                  ${item.active ? '無効化' : '有効化'}
+                </button>
+                <button onclick="event.stopPropagation(); deleteMasterItem('${item.id}')" class="btn small danger">削除</button>
+              </div>
+            </div>
+          `).join('')}
         </div>
       </div>
-      <div class="actions">
-        <button onclick="event.stopPropagation(); editMasterItem('${item.id}')" class="btn small">編集</button>
-        <button onclick="event.stopPropagation(); toggleMasterItem('${item.id}')" class="btn small ${item.active ? 'warn' : 'success'}">
-          ${item.active ? '無効化' : '有効化'}
-        </button>
-        <button onclick="event.stopPropagation(); deleteMasterItem('${item.id}')" class="btn small danger">削除</button>
-      </div>
-    </div>
-  `).join('');
+    `).join('');
 }
 
 function formatRule(rule) {
@@ -349,51 +421,80 @@ function formatRule(rule) {
 }
 
 function renderBanksList(banks) {
-  return banks.map(bank => `
-    <div class="master-item ${bank.active ? '' : 'inactive'}" onclick="editMasterItem('${bank.id}')">
-      <div class="info">
-        <span class="type bank">${getIcon(bank.name, 'bank')} 銀行</span>
-        <span class="name">${bank.name}</span>
-        <span class="amount">残: ¥${(bank.currentBalance || 0).toLocaleString()}</span>
+  return `
+    <div class="master-group">
+      <div class="master-group-title">
+        <span>銀行口座</span>
+        <span class="master-group-count">${banks.length}</span>
       </div>
-      <div class="actions">
-        <button onclick="event.stopPropagation(); editMasterItem('${bank.id}')" class="btn small">編集</button>
-        <button onclick="event.stopPropagation(); toggleMasterItem('${bank.id}')" class="btn small ${bank.active ? 'warn' : 'success'}">
-          ${bank.active ? '無効化' : '有効化'}
-        </button>
-        <button onclick="event.stopPropagation(); deleteMasterItem('${bank.id}')" class="btn small danger" style="padding: 4px; font-size: 0.7rem;">削除</button>
+      <div class="master-group-grid">
+        ${banks.map(bank => `
+          <div class="master-item master-item-card ${bank.active ? '' : 'inactive'}" onclick="editMasterItem('${bank.id}')">
+            <div class="info">
+              <span class="type bank">${getIcon(bank.name, 'bank')} 銀行</span>
+              <span class="name">${bank.name}</span>
+              <span class="amount">残: ¥${(bank.currentBalance || 0).toLocaleString()}</span>
+            </div>
+            <div class="actions">
+              <button onclick="event.stopPropagation(); editMasterItem('${bank.id}')" class="btn small">編集</button>
+              <button onclick="event.stopPropagation(); toggleMasterItem('${bank.id}')" class="btn small ${bank.active ? 'warn' : 'success'}">
+                ${bank.active ? '無効化' : '有効化'}
+              </button>
+              <button onclick="event.stopPropagation(); deleteMasterItem('${bank.id}')" class="btn small danger" style="padding: 4px; font-size: 0.7rem;">削除</button>
+            </div>
+          </div>
+        `).join('')}
       </div>
     </div>
-  `).join('');
+  `;
 }
 
 function renderLoansList(loans) {
   const bankMap = Object.fromEntries(appStore.data.master.items.filter(i => i.type === 'bank').map(b => [b.id, b.name]));
-  
-  return loans.map(loan => `
-    <div class="master-item ${loan.active ? '' : 'inactive'}" style="border-left-color: var(--danger);" onclick="editLoan('${loan.id}')">
-      <div class="info">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span class="type expense">借入</span>
-          <span style="font-size: 0.7rem; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; color: #6b7280;">${loan.type}</span>
-        </div>
-        <span class="name">${getIcon(loan.name, 'loan')} ${loan.name}</span>
-        <div style="display: flex; gap: 15px; font-size: 0.9rem;">
-          <span class="amount">残: ¥${(loan.currentBalance || 0).toLocaleString()}</span>
-          <span class="day">返済: ¥${(loan.monthlyPayment || 0).toLocaleString()}</span>
-        </div>
-        <div style="font-size: 0.8rem; color: #4b5563; margin-top: 4px;">
-          📅 ${formatRule(loan.scheduleRule || {type:'monthly', day:loan.paymentDay})} 
-          (${bankMap[loan.bankId] || '銀行未設定'})
-        </div>
-        ${loan.notes ? `<div style="font-size: 0.7rem; color: #6b7280; margin-top: 4px; font-style: italic;">📝 ${loan.notes}</div>` : ''}
+  const grouped = {};
+  loans.forEach(loan => {
+    const key = loan.type || '未分類';
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(loan);
+  });
+
+  const groupKeys = Object.keys(grouped).sort((a, b) => a.localeCompare(b, 'ja'));
+
+  return groupKeys.map(type => `
+    <div class="master-group">
+      <div class="master-group-title">
+        <span>${type}</span>
+        <span class="master-group-count">${grouped[type].length}</span>
       </div>
-      <div class="actions">
-        <button onclick="event.stopPropagation(); editLoan('${loan.id}')" class="btn small">編集</button>
-        <button onclick="event.stopPropagation(); toggleLoan('${loan.id}')" class="btn small ${loan.active ? 'warn' : 'success'}">
-          ${loan.active ? '無効化' : '有効化'}
-        </button>
-        <button onclick="event.stopPropagation(); deleteLoan('${loan.id}')" class="btn small danger">削除</button>
+      <div class="master-group-grid">
+        ${grouped[type].map(loan => `
+          <div class="master-item master-item-card ${loan.active ? '' : 'inactive'}" style="border-left-color: var(--danger);" onclick="editLoan('${loan.id}')">
+            <div class="info">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="type expense">借入</span>
+                <span style="font-size: 0.7rem; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; color: #6b7280;">${loan.type || '未分類'}</span>
+                ${loan.type === 'クレジットカード' ? '<span class="tag-badge tag-card">要移行</span>' : ''}
+              </div>
+              <span class="name">${getIcon(loan.name, 'loan')} ${loan.name}</span>
+              <div style="display: flex; gap: 15px; font-size: 0.9rem;">
+                <span class="amount">残: ¥${(loan.currentBalance || 0).toLocaleString()}</span>
+                <span class="day">返済: ¥${(loan.monthlyPayment || 0).toLocaleString()}</span>
+              </div>
+              <div style="font-size: 0.8rem; color: #4b5563; margin-top: 4px;">
+                📅 ${formatRule(loan.scheduleRule || {type:'monthly', day:loan.paymentDay})} 
+                (${bankMap[loan.bankId] || '銀行未設定'})
+              </div>
+              ${loan.notes ? `<div style="font-size: 0.7rem; color: #6b7280; margin-top: 4px; font-style: italic;">📝 ${loan.notes}</div>` : ''}
+            </div>
+            <div class="actions">
+              <button onclick="event.stopPropagation(); editLoan('${loan.id}')" class="btn small">編集</button>
+              <button onclick="event.stopPropagation(); toggleLoan('${loan.id}')" class="btn small ${loan.active ? 'warn' : 'success'}">
+                ${loan.active ? '無効化' : '有効化'}
+              </button>
+              <button onclick="event.stopPropagation(); deleteLoan('${loan.id}')" class="btn small danger">削除</button>
+            </div>
+          </div>
+        `).join('')}
       </div>
     </div>
   `).join('');
@@ -432,7 +533,16 @@ function showModal(data = null) {
 
       window.toggleMasterFormFields();
     } else if (currentTab === 'loans') {
-      if (form['loan-type']) form['loan-type'].value = data.type;
+      if (form['loan-type']) {
+        const options = Array.from(form['loan-type'].options).map(o => o.value);
+        if (!options.includes(data.type)) {
+          const option = document.createElement('option');
+          option.value = data.type;
+          option.textContent = data.type;
+          form['loan-type'].appendChild(option);
+        }
+        form['loan-type'].value = data.type;
+      }
       if (form['loan-rate']) form['loan-rate'].value = data.interestRate;
       if (form['loan-balance']) form['loan-balance'].value = data.currentBalance;
       if (form['loan-payment']) form['loan-payment'].value = data.monthlyPayment;
@@ -454,13 +564,61 @@ window.hideModal = () => {
   document.getElementById('master-modal').classList.add('hidden');
 }
 
+function clearValidation(form) {
+  form.querySelectorAll('.field-error').forEach(el => el.classList.remove('field-error'));
+  form.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+}
+
+function markError(el) {
+  if (!el) return;
+  const group = el.closest('.form-group');
+  if (group) group.classList.add('field-error');
+  el.classList.add('input-error');
+}
+
+function requireText(el) {
+  if (!el || el.value.trim() === '') {
+    markError(el);
+    return false;
+  }
+  return true;
+}
+
+function requireNumber(el) {
+  if (!el || el.value === '' || Number.isNaN(Number(el.value))) {
+    markError(el);
+    return false;
+  }
+  return true;
+}
+
 function saveData() {
   const form = document.getElementById('master-form');
   const id = form['edit-id'].value;
+  clearValidation(form);
+  let firstInvalid = null;
+
+  const requireField = (fn, el) => {
+    const ok = fn(el);
+    if (!ok && !firstInvalid && el) firstInvalid = el;
+    return ok;
+  };
   
   if (currentTab === 'items' || currentTab === 'banks') {
     const typeEl = form['master-type'];
     const type = typeEl ? typeEl.value : (currentTab === 'banks' ? 'bank' : 'expense');
+
+    requireField(requireText, form['master-name']);
+    if (type === 'bank') {
+      requireField(requireNumber, form['master-balance']);
+    } else {
+      requireField(requireNumber, form['master-amount']);
+    }
+    if (firstInvalid) {
+      window.showToast('必須項目を入力してください', 'warn');
+      firstInvalid.focus();
+      return;
+    }
     
     const ruleType = form['master-rule-type'] ? form['master-rule-type'].value : 'monthly';
     const scheduleRule = {
@@ -489,6 +647,21 @@ function saveData() {
     if (id) appStore.updateMasterItem(id, data);
     else appStore.addMasterItem(data);
   } else if (currentTab === 'loans') {
+    if (form['loan-type'] && form['loan-type'].value === 'クレジットカード') {
+      window.showToast('クレジットカードは借入ではなく、収支マスターの支出(カード)で管理してください', 'warn');
+      return;
+    }
+
+    requireField(requireText, form['master-name']);
+    requireField(requireNumber, form['loan-rate']);
+    requireField(requireNumber, form['loan-balance']);
+    requireField(requireNumber, form['loan-payment']);
+    if (firstInvalid) {
+      window.showToast('必須項目を入力してください', 'warn');
+      firstInvalid.focus();
+      return;
+    }
+
     const data = {
       name: form['master-name'] ? form['master-name'].value : '',
       type: form['loan-type'] ? form['loan-type'].value : '消費者金融',

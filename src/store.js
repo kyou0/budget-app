@@ -111,6 +111,9 @@ class Store {
     if (!data.calendar.generatedMonths) data.calendar.generatedMonths = {};
     if (!data.settings) data.settings = { ...INITIAL_DATA.settings };
     if (!Array.isArray(data.settings.syncHistory)) data.settings.syncHistory = [];
+    if (!Array.isArray(data.settings.loanTypeOptions)) {
+      data.settings.loanTypeOptions = [...INITIAL_DATA.settings.loanTypeOptions];
+    }
     if (!data.transactions) data.transactions = [];
 
     return data;

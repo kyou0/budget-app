@@ -83,7 +83,19 @@ export const INITIAL_DATA = {
     calendarSyncEnabled: false,
     incomeCalendarId: 'primary',
     expenseCalendarId: 'primary',
-    syncHistory: []
+    syncHistory: [],
+    loanTypeOptions: [
+      '消費者金融',
+      '銀行カードローン',
+      '分割払い',
+      '奨学金',
+      'デバイス',
+      'Mac',
+      'iPad',
+      'iPhone',
+      '親族',
+      '友人'
+    ]
   },
   transactions: []
 };

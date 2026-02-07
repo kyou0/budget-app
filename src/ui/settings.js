@@ -304,9 +304,36 @@ window.startTutorialFromSettings = () => {
 import('./tutorial.js').then(m => m.startTutorial());
 };
 
+window.addLoanTypeOptionFromSettings = () => {
+  const input = document.getElementById('loan-type-new');
+  if (!input) return;
+  const value = input.value.trim();
+  if (!value) {
+    window.showToast('借入種別を入力してください', 'warn');
+    return;
+  }
+  const options = appStore.data.settings?.loanTypeOptions || [];
+  if (options.includes(value)) {
+    window.showToast('同じ種別が既にあります', 'warn');
+    return;
+  }
+  appStore.updateSettings({ loanTypeOptions: [...options, value] });
+  window.showToast('借入種別を追加しました', 'success');
+  renderSettings(document.getElementById('app-container'));
+};
+
+window.removeLoanTypeOption = (value) => {
+  const options = appStore.data.settings?.loanTypeOptions || [];
+  const next = options.filter(o => o !== value);
+  appStore.updateSettings({ loanTypeOptions: next });
+  window.showToast('借入種別を削除しました', 'success');
+  renderSettings(document.getElementById('app-container'));
+};
+
 export function renderSettings(container) {
 const settings = appStore.data.settings || {};
 const syncHistory = settings.syncHistory || [];
+const loanTypeOptions = settings.loanTypeOptions || [];
 
 container.innerHTML = `
     <div class="settings-header">
@@ -402,6 +429,29 @@ container.innerHTML = `
             `).join('')}
           </div>
         `}
+      </div>
+
+      <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+        <h3 style="margin-top: 0;">借入種別の管理</h3>
+        ${loanTypeOptions.length === 0 ? `
+          <div style="font-size: 0.8rem; color: #6b7280;">種別がありません。追加してください。</div>
+        ` : `
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            ${loanTypeOptions.map(type => `
+              <div style="display: inline-flex; align-items: center; gap: 6px; background: #f3f4f6; border-radius: 999px; padding: 4px 10px; font-size: 0.8rem;">
+                <span>${type}</span>
+                <button class="btn small danger" style="padding: 2px 6px;" onclick="removeLoanTypeOption('${type}')">削除</button>
+              </div>
+            `).join('')}
+          </div>
+        `}
+        <div class="form-group" style="margin-top: 12px;">
+          <label>新しい借入種別</label>
+          <div class="form-row">
+            <input type="text" id="loan-type-new" placeholder="例: 車 / リフォーム">
+            <button type="button" onclick="addLoanTypeOptionFromSettings()" class="btn small">追加</button>
+          </div>
+        </div>
       </div>
 
       <div style="margin-top: 20px;">

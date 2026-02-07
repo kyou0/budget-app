@@ -15,6 +15,7 @@ export function renderDashboard(container) {
   const loans = appStore.data.master.loans || [];
   const masterItems = appStore.data.master.items || [];
   const payoffSummary = calculatePayoffSummary(loans);
+  const payoffMonthsLabel = payoffSummary.totalMonths === Infinity ? '不明' : `${payoffSummary.totalMonths} ヶ月`;
 
   // 銀行残高の合計
   const totalBankBalance = masterItems
@@ -98,7 +99,7 @@ export function renderDashboard(container) {
             <div style="font-size: 1.1rem; font-weight: bold; color: var(--success);">
               ✅ ¥${events.filter(e => e.status === 'paid' && e.name.startsWith('返済:')).reduce((sum, e) => sum + e.amount, 0).toLocaleString()} 返済済み
             </div>
-            <div style="font-size: 0.8rem; color: #6b7280;">完済まであと ${payoffSummary.totalMonths} ヶ月</div>
+            <div style="font-size: 0.8rem; color: #6b7280;">完済まであと ${payoffMonthsLabel}</div>
           </div>
           <div style="text-align: right;">
             <div style="font-size: 1.2rem; font-weight: bold;">${Math.round((1 - payoffSummary.totalBalance / 2000000) * 100)}%</div>
@@ -235,6 +236,12 @@ export function renderDashboard(container) {
           `).join('')}
         </select>
       </div>
+      <div class="form-group">
+        <label class="inline-check">
+          <input type="checkbox" id="mark-paid" ${event.status === 'paid' ? 'checked' : ''}>
+          <span>完了にする</span>
+        </label>
+      </div>
     `;
     dateInput.value = event.actualDate;
     
@@ -246,22 +253,32 @@ export function renderDashboard(container) {
     dateInput.onchange = updatePenalty;
     updatePenalty();
 
+    const markPaidEl = document.getElementById('mark-paid');
+    payBtn.textContent = '保存する';
+    if (markPaidEl) {
+      markPaidEl.onchange = () => {
+        payBtn.textContent = markPaidEl.checked ? '完了にする' : '保存する';
+      };
+      payBtn.textContent = markPaidEl.checked ? '完了にする' : '保存する';
+    }
+
     payBtn.onclick = async () => {
       const actualAmountEl = document.getElementById('actual-amount');
       const finalAmount = actualAmountEl ? Number(actualAmountEl.value) : event.amount;
       const penalty = calculatePenalty(finalAmount, event.originalDate, dateInput.value);
       const selectedBankId = document.getElementById('event-bank-id').value;
+      const markPaid = markPaidEl ? markPaidEl.checked : false;
       const updates = {
         amount: finalAmount,
         actualDate: dateInput.value,
-        penaltyFee: penalty,
-        status: 'paid',
+        penaltyFee: markPaid ? penalty : 0,
+        status: markPaid ? 'paid' : 'pending',
         bankId: selectedBankId
       };
       appStore.updateEvent(yearMonth, eventId, updates);
       
       // 銀行残高の更新
-      if (selectedBankId) {
+      if (selectedBankId && markPaid) {
         const bank = masterItems.find(i => i.id === selectedBankId);
         if (bank) {
           const delta = event.type === 'income' ? (finalAmount - penalty) : -(finalAmount + penalty);
