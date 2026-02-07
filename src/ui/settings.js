@@ -3,6 +3,127 @@ import { googleAuth } from '../auth/googleAuth.js';
 import { driveSync } from '../sync/driveSync.js';
 import { calendarSync } from '../sync/calendarSync.js';
 
+// グローバル関数として定義（インポート/エクスポート等）
+window.exportData = () => {
+  console.log('Exporting data...');
+  const data = JSON.stringify(appStore.data, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `budget_app_backup_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+window.triggerImport = () => {
+  const fileInput = document.getElementById('import-file');
+  if (fileInput) {
+    console.log('Triggering file input click');
+    fileInput.click();
+  } else {
+    console.error('Import file input not found');
+  }
+};
+
+window.importData = (e) => {
+  console.log('importData event fired', e);
+  const file = e.target.files[0];
+  if (!file) {
+    console.warn('No file selected');
+    return;
+  }
+  
+  console.log('File selected:', file.name, file.size);
+  const reader = new FileReader();
+  
+  reader.onload = (event) => {
+    console.log('File read successfully');
+    try {
+      const data = JSON.parse(event.target.result);
+      console.log('Parsed JSON data:', data);
+      
+      // スキーマ検証 (簡易)
+      if (!data.schemaVersion || !data.master) {
+        throw new Error('無効な家計簿データ形式です。');
+      }
+
+      // 保留データとして保存
+      window.pendingImportData = data;
+      
+      // 確認モーダルを表示
+      const modal = document.getElementById('import-confirm-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+      } else {
+        // フォールバック (万が一モーダルがない場合)
+        if (confirm('データを上書きしますか？')) {
+          window.executeImport(false);
+        }
+      }
+    } catch (err) {
+      console.error('Import failed during processing:', err);
+      alert('ファイルの読み込み、またはマイグレーションに失敗しました。詳細: ' + err.message);
+    }
+  };
+  
+  reader.onerror = (err) => {
+    console.error('FileReader error:', err);
+    alert('ファイルの読み取り中にエラーが発生しました。');
+  };
+  
+  reader.readAsText(file);
+  // Reset file input
+  e.target.value = '';
+};
+
+window.executeImport = async (backupFirst = false) => {
+  const data = window.pendingImportData;
+  if (!data) return;
+
+  try {
+    if (backupFirst) {
+      const currentRaw = localStorage.getItem('budget_app_data');
+      if (currentRaw) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 16);
+        const backupKey = `backup_${timestamp}`;
+        localStorage.setItem(backupKey, currentRaw);
+        console.log('Local backup created:', backupKey);
+      }
+    }
+
+    console.log('Executing import...');
+    // Migrate schema if necessary
+    const migratedData = appStore.migrate(data);
+    
+    // Force apply data to store
+    appStore.data = migratedData;
+    appStore.save();
+    
+    window.showToast('インポートが完了しました。', 'success');
+    
+    // Hide modal
+    window.closeImportModal();
+
+    // Push to drive if enabled
+    if (appStore.data.settings?.driveSyncEnabled) {
+      window.showToast('クラウド同期中...', 'info');
+      await driveSync.push().catch(err => console.error('Drive push failed:', err));
+    }
+    
+    setTimeout(() => location.reload(), 1000);
+  } catch (err) {
+    console.error('Import execution failed:', err);
+    alert('インポートの実行に失敗しました: ' + err.message);
+  }
+};
+
+window.closeImportModal = () => {
+  const modal = document.getElementById('import-confirm-modal');
+  if (modal) modal.classList.add('hidden');
+  window.pendingImportData = null;
+};
+
 export function renderSettings(container) {
   const settings = appStore.data.settings || {};
   
@@ -11,7 +132,7 @@ export function renderSettings(container) {
       <h2>設定</h2>
     </div>
     <div class="settings-content" style="padding: 20px;">
-      <p>バージョン: 1.2.1 (Stability Fix)</p>
+      <p>バージョン: 1.2.3 (Modal Import)</p>
       
       <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
         <h3 style="margin-top: 0;">Google 連携設定</h3>
@@ -81,9 +202,9 @@ export function renderSettings(container) {
         <h3>データ管理</h3>
         <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
           <button onclick="exportData()" class="btn primary">エクスポート (JSON)</button>
-          <button onclick="document.getElementById('import-file').click()" class="btn">インポート (JSON)</button>
+          <button onclick="triggerImport()" class="btn">インポート (JSON)</button>
           <a href="sample-data.json" download class="btn" style="text-decoration: none; color: inherit; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem;">テンプレートをダウンロード</a>
-          <input type="file" id="import-file" style="display: none;" accept=".json">
+          <input type="file" id="import-file" style="position:absolute; opacity:0; pointer-events:none; width:1px; height:1px;" accept=".json" onchange="importData(event)">
         </div>
         <p style="font-size: 0.8rem; color: #6b7280;">機種変更やバックアップ時にご利用ください。</p>
       </div>
@@ -95,66 +216,30 @@ export function renderSettings(container) {
       </div>
 
       <button onclick="clearAllData()" class="btn warn">全データ削除（リセット）</button>
+      
+      ${localStorage.getItem('budget_app_data_corrupted_backup') ? `
+        <div style="margin-top: 20px; padding: 15px; background: #fee2e2; border-radius: 8px; border: 1px solid var(--danger);">
+          <h4 style="margin: 0; color: #991b1b;">⚠️ 壊れたデータのバックアップがあります</h4>
+          <p style="font-size: 0.8rem; margin: 10px 0;">起動時に破損が検知されたため、データを退避しました。</p>
+          <button onclick="clearCorruptedBackup()" class="btn danger small">バックアップを完全に削除</button>
+        </div>
+      ` : ''}
+    </div>
+
+    <!-- インポート確認モーダル -->
+    <div id="import-confirm-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3>インポートの確認</h3>
+        <p>新しいデータをインポートしますか？現在のデータは上書きされます。</p>
+        <p style="font-size: 0.8rem; color: #6b7280;">※「バックアップして上書き」を選択すると、現在のデータをブラウザ内に保存してからインポートします。</p>
+        <div class="modal-actions" style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+          <button onclick="executeImport(true)" class="btn success">バックアップして上書き</button>
+          <button onclick="executeImport(false)" class="btn primary">そのまま上書き</button>
+          <button onclick="closeImportModal()" class="btn">キャンセル</button>
+        </div>
+      </div>
     </div>
   `;
-
-  window.exportData = () => {
-    const data = JSON.stringify(appStore.data, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `budget_app_backup_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  window.importData = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = JSON.parse(event.target.result);
-        if (confirm('データを上書きしますか？現在のデータは失われます。')) {
-          console.log('Importing data...', data);
-          
-          // Migrate schema if necessary
-          const migratedData = appStore.migrate(data);
-          
-          // Force apply data to store
-          appStore.data = migratedData;
-          appStore.save();
-          
-          window.showToast('インポートが完了しました。リロードします。', 'success');
-          console.log('Data saved. Reloading...');
-          
-          // Push to drive if enabled
-          if (appStore.data.settings?.driveSyncEnabled) {
-            driveSync.push().then(() => {
-              setTimeout(() => location.reload(), 500);
-            }).catch(err => {
-              console.error('Drive push failed after import:', err);
-              setTimeout(() => location.reload(), 500);
-            });
-          } else {
-            setTimeout(() => location.reload(), 500);
-          }
-        }
-      } catch (err) {
-        console.error('Import failed:', err);
-        alert('ファイルの読み込み、またはマイグレーションに失敗しました。詳細: ' + err.message);
-      }
-    };
-    reader.readAsText(file);
-    // Reset file input so same file can be imported again
-    e.target.value = '';
-  };
-
-  const importFile = document.getElementById('import-file');
-  if (importFile) {
-    importFile.addEventListener('change', window.importData);
-  }
 
   window.saveGoogleSettings = () => {
     const googleClientId = document.getElementById('google-client-id').value;
@@ -301,6 +386,14 @@ export function renderSettings(container) {
     if (confirm('全てのデータを削除して初期化しますか？この操作は取り消せません。')) {
       localStorage.removeItem('budget_app_data');
       location.reload();
+    }
+  };
+
+  window.clearCorruptedBackup = () => {
+    if (confirm('退避された壊れたデータを完全に削除しますか？')) {
+      localStorage.removeItem('budget_app_data_corrupted_backup');
+      renderSettings(container);
+      window.showToast('バックアップを削除しました', 'success');
     }
   };
 

@@ -9,15 +9,39 @@ class Store {
   }
 
   load() {
-    const json = localStorage.getItem(STORAGE_KEY);
-    if (!json) return INITIAL_DATA;
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return INITIAL_DATA;
     try {
-      const data = JSON.parse(json);
+      const data = JSON.parse(raw);
+      this.validateSchema(data);
       return this.migrate(data);
     } catch (e) {
-      console.error('Failed to load data', e);
+      console.error('Failed to load data (corrupted):', e);
+      // バックアップを保存
+      localStorage.setItem(`${STORAGE_KEY}_corrupted_backup`, raw);
+      // 壊れたデータを削除
+      localStorage.removeItem(STORAGE_KEY);
+      
+      // トースト通知（window.showToastが利用可能であることを期待、または遅延実行）
+      if (window.showToast) {
+        window.showToast('データが壊れていたため初期化しました（バックアップを保存済み）', 'danger');
+      } else {
+        // まだDOM構築前などの場合
+        setTimeout(() => {
+          if (window.showToast) window.showToast('データが壊れていたため初期化しました（バックアップを保存済み）', 'danger');
+        }, 1000);
+      }
+      
       return INITIAL_DATA;
     }
+  }
+
+  validateSchema(data) {
+    if (!data || typeof data !== 'object') throw new Error('Data is not an object');
+    if (!data.master || typeof data.master !== 'object') throw new Error('Missing master object');
+    if (!Array.isArray(data.master.items)) throw new Error('master.items must be an array');
+    if (!Array.isArray(data.master.loans)) throw new Error('master.loans must be an array');
+    if (!data.calendar || typeof data.calendar !== 'object') throw new Error('Missing calendar object');
   }
 
   save() {
@@ -81,7 +105,10 @@ class Store {
 
     // Ensure all required top-level structures exist (for safer imports)
     if (!data.master) data.master = { items: [], loans: [] };
+    if (!data.master.items) data.master.items = [];
+    if (!data.master.loans) data.master.loans = [];
     if (!data.calendar) data.calendar = { generatedMonths: {} };
+    if (!data.calendar.generatedMonths) data.calendar.generatedMonths = {};
     if (!data.settings) data.settings = { ...INITIAL_DATA.settings };
     if (!data.transactions) data.transactions = [];
 
