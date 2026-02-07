@@ -4,7 +4,7 @@ import { calculatePenalty, calculatePayoffSummary } from '../calc.js';
 import { googleAuth } from '../auth/googleAuth.js';
 import { driveSync } from '../sync/driveSync.js';
 import { calendarSync } from '../sync/calendarSync.js';
-import { formatMonthsToYears, getIcon } from '../utils.js';
+import { formatAgeMonths, formatMonthsToYears, getAgeMonthsFromBirthdate, getIcon } from '../utils.js';
 
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
@@ -16,6 +16,13 @@ export function renderDashboard(container) {
   const masterItems = appStore.data.master.items || [];
   const payoffSummary = calculatePayoffSummary(loans);
   const payoffMonthsLabel = formatMonthsToYears(payoffSummary.totalMonths);
+  const ageMonthsFromBirth = getAgeMonthsFromBirthdate(appStore.data.settings?.userBirthdate || '');
+  const ageMonthsBase = Number.isFinite(ageMonthsFromBirth)
+    ? ageMonthsFromBirth
+    : (Number.isFinite(appStore.data.settings?.userAge) ? appStore.data.settings.userAge * 12 : null);
+  const ageAtPayoffLabel = ageMonthsBase === null || !Number.isFinite(payoffSummary.totalMonths)
+    ? ''
+    : formatAgeMonths(ageMonthsBase + payoffSummary.totalMonths);
 
   // 銀行残高の合計
   const totalBankBalance = masterItems
@@ -103,6 +110,7 @@ export function renderDashboard(container) {
         <div class="summary-card">
           <h4>完済予定</h4>
           <div class="value">${payoffSummary.payoffDate}</div>
+          ${ageAtPayoffLabel ? `<div style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">完済時: ${ageAtPayoffLabel}</div>` : ''}
         </div>
       </div>
       <div class="motivation-card" style="margin: 0 10px 10px 10px; padding: 15px; background: white; border-radius: 8px;">
@@ -176,7 +184,7 @@ export function renderDashboard(container) {
   window.generateEvents = async () => {
     const hasEvents = events.length > 0;
     const confirmMsg = hasEvents 
-      ? `${currentYear}年${currentMonth}月のイベントが既に存在します。全ての項目を削除して再生成しますか？（完了済みの項目もリセットされます）`
+      ? `${currentYear}年${currentMonth}月のイベントが既に存在します。再生成しますか？（完了済みは保持されます）`
       : `${currentYear}年${currentMonth}月のイベントを生成しますか？`;
 
     if (await window.showConfirm(confirmMsg)) {
@@ -188,7 +196,40 @@ export function renderDashboard(container) {
         window.showToast('生成される項目がありません。マスター登録を確認してください。', 'warn');
       }
 
-      appStore.addMonthEvents(yearMonth, newEvents);
+      const existingEvents = appStore.data.calendar.generatedMonths[yearMonth] || [];
+      const existingById = new Map(existingEvents.map(e => [e.id, e]));
+      const mergedEvents = [];
+      const usedIds = new Set();
+
+      const mergeEvent = (existing, fresh) => {
+        if (existing.status === 'paid') return existing;
+        const merged = { ...fresh };
+        if (existing.actualDate && existing.actualDate !== fresh.actualDate) merged.actualDate = existing.actualDate;
+        if (Number.isFinite(existing.amount) && existing.amount !== fresh.amount) merged.amount = existing.amount;
+        if (existing.amountMode) merged.amountMode = existing.amountMode;
+        if (existing.bankId) merged.bankId = existing.bankId;
+        if (existing.penaltyFee) merged.penaltyFee = existing.penaltyFee;
+        if (existing.status === 'pending') merged.status = 'pending';
+        return merged;
+      };
+
+      for (const event of newEvents) {
+        const existing = existingById.get(event.id);
+        if (existing) {
+          mergedEvents.push(mergeEvent(existing, event));
+          usedIds.add(event.id);
+        } else {
+          mergedEvents.push(event);
+        }
+      }
+
+      for (const existing of existingEvents) {
+        if (!usedIds.has(existing.id) && existing.status === 'paid') {
+          mergedEvents.push(existing);
+        }
+      }
+
+      appStore.addMonthEvents(yearMonth, mergedEvents);
       
       // Google Calendar 同期 (自動)
       if (appStore.data.settings?.calendarSyncEnabled) {

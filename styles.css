@@ -195,6 +195,24 @@ body {
 .master-list {
   padding: 0 16px 16px;
 }
+.sub-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.sub-tab {
+  border: none;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.sub-tab.active {
+  background: var(--primary);
+  color: #fff;
+}
 .master-group {
   margin-bottom: 18px;
 }
@@ -427,6 +445,102 @@ body {
   font-weight: bold;
 }
 .badge.success { background: #d1fae5; color: #065f46; }
+.analysis-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 10px 15px 0;
+  flex-wrap: wrap;
+}
+.analysis-tab {
+  border: none;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.analysis-tab.active {
+  background: var(--primary);
+  color: #fff;
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 110px;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.bar-label {
+  font-size: 0.8rem;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bar-track {
+  height: 10px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+.bar-value {
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-align: right;
+}
+.chart-grid {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.pie-chart {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  margin: 0 auto 10px;
+}
+.pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+.pie-legend-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.pie-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.pie-legend-value {
+  color: #6b7280;
+}
+@media (max-width: 640px) {
+  .bar-row {
+    grid-template-columns: 1fr;
+  }
+  .bar-value {
+    text-align: left;
+  }
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
+  .pie-chart {
+    width: 160px;
+    height: 160px;
+  }
+}
 
 /* Login */
 .login-screen {

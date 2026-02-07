@@ -3,6 +3,7 @@ import { getIcon } from '../utils.js';
 import { driveSync } from '../sync/driveSync.js';
 
 let currentTab = 'items'; // 'items' | 'banks' | 'loans'
+let currentItemType = 'income'; // 'income' | 'expense'
 
 export function renderMaster(container) {
   const items = appStore.data.master.items;
@@ -11,6 +12,7 @@ export function renderMaster(container) {
   const loanTypeOptionsHtml = loanTypeOptions
     .map(option => `<option value="${option}">${option}</option>`)
     .join('');
+  const visibleItems = items.filter(i => i.type !== 'bank' && i.type === currentItemType);
 
   container.innerHTML = `
     <div class="tabs">
@@ -25,7 +27,13 @@ export function renderMaster(container) {
     </div>
 
     <div class="master-list">
-      ${currentTab === 'items' ? renderItemsList(items.filter(i => i.type !== 'bank')) : 
+      ${currentTab === 'items' ? `
+        <div class="sub-tabs">
+          <button class="sub-tab ${currentItemType === 'income' ? 'active' : ''}" onclick="switchItemType('income')">収入</button>
+          <button class="sub-tab ${currentItemType === 'expense' ? 'active' : ''}" onclick="switchItemType('expense')">支出</button>
+        </div>
+        ${renderItemsList(visibleItems)}
+      ` : 
         currentTab === 'banks' ? renderBanksList(items.filter(i => i.type === 'bank')) : 
         renderLoansList(loans)}
     </div>
@@ -218,6 +226,11 @@ export function renderMaster(container) {
     renderMaster(container);
   };
 
+  window.switchItemType = (type) => {
+    currentItemType = type;
+    renderMaster(container);
+  };
+
   window.editMasterItem = (id) => {
     const item = appStore.data.master.items.find(i => i.id === id);
     showModal(item);
@@ -363,7 +376,11 @@ function renderItemsList(items) {
     if (!grouped[groupKey]) grouped[groupKey] = [];
     grouped[groupKey].push(item);
   });
-  
+
+  if (items.length === 0) {
+    return `<div style="font-size: 0.85rem; color: #6b7280; padding: 10px 0;">項目がありません。</div>`;
+  }
+
   return tagGroups
     .filter(group => grouped[group.key] && grouped[group.key].length > 0)
     .map(group => `

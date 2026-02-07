@@ -18,7 +18,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="デモモード終了後のログイン遷移機能を実装&#10;&#10;- デモモードを終了してログイン画面に戻る確認ダイアログを追加&#10;- デモデータのクリア処理と初期データの再設定を実装&#10;- 設定画面でデモ終了ボタンを表示し、操作性を向上" />
+    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="年齢および生年月日設定機能を追加&#10;&#10;- 生年月日および年齢を入力するUIを設定画面に追加&#10;  （入力値を用いて完済時年齢を表示可能に）&#10;- 月数を「X年Yヶ月」に変換するロジックを`utils.js`に実装&#10;- サンプルデータに年齢と生年月日を初期値として追加&#10;- 年齢／完済時の計算結果を分析画面やダッシュボードに反映">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/analysis.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/analysis.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/dashboard.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/dashboard.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/master.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/master.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sw.js" beforeDir="false" afterPath="$PROJECT_DIR$/sw.js" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -119,15 +126,7 @@
       <workItem from="1770367929210" duration="11614000" />
       <workItem from="1770454206146" duration="250000" />
       <workItem from="1770454469379" duration="166000" />
-      <workItem from="1770454654269" duration="6250000" />
-    </task>
-    <task id="LOCAL-00106" summary="master.js変更">
-      <option name="closed" value="true" />
-      <created>1752005375341</created>
-      <option name="number" value="00106" />
-      <option name="presentableId" value="LOCAL-00106" />
-      <option name="project" value="LOCAL" />
-      <updated>1752005375342</updated>
+      <workItem from="1770454654269" duration="7408000" />
     </task>
     <task id="LOCAL-00107" summary="デザイン修正漏れを対応">
       <option name="closed" value="true" />
@@ -513,7 +512,15 @@
       <option name="project" value="LOCAL" />
       <updated>1770475364996</updated>
     </task>
-    <option name="localTasksCounter" value="155" />
+    <task id="LOCAL-00155" summary="年齢および生年月日設定機能を追加&#10;&#10;- 生年月日および年齢を入力するUIを設定画面に追加&#10;  （入力値を用いて完済時年齢を表示可能に）&#10;- 月数を「X年Yヶ月」に変換するロジックを`utils.js`に実装&#10;- サンプルデータに年齢と生年月日を初期値として追加&#10;- 年齢／完済時の計算結果を分析画面やダッシュボードに反映">
+      <option name="closed" value="true" />
+      <created>1770475998209</created>
+      <option name="number" value="00155" />
+      <option name="presentableId" value="LOCAL-00155" />
+      <option name="project" value="LOCAL" />
+      <updated>1770475998210</updated>
+    </task>
+    <option name="localTasksCounter" value="156" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -531,7 +538,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="CSS修正" />
     <MESSAGE value="Google認証修正" />
     <MESSAGE value="css読み込み" />
     <MESSAGE value="GOOGLE_CLIENT_ID変更した" />
@@ -556,7 +562,8 @@
     <MESSAGE value="借入管理・マスターリストUIを改良&#10;&#10;- 借入種別のカスタム管理機能を追加（UI上で追加/削除可能）&#10;- マスターリストをタグごとにグループ化し、見やすさを向上&#10;- 借入計算ロジックを改善し、不正入力や計算エラーを回避&#10;- 必須フィールド未入力時の警告処理を追加&#10;- レスポンス時の文言を調整（例: &quot;完済まであと不明/月数&quot;）&#10;- CSSを最適化し、マスター画面でのレイアウト崩れを修正" />
     <MESSAGE value="デモモード機能を実装し、体験とUIを強化  &#10;&#10;- デモモードを追加し、サンプルデータでアプリの全体体験を可能に  &#10;  （ログイン不要でチュートリアルやマスター、カレンダーの一連の動作を確認可能）  &#10;- チュートリアルにデモ向けガイドを新規実装  &#10;- Googleログイン時にユーザープロフィールを取得し、表示名を設定に反映  &#10;- 設定画面やカレンダーのUIを改善しモバイル対応を強化（スクロール対応や最適幅設定）  &#10;- Service Workerのキャッシュバージョンを`budget-app-v20`に更新  &#10;- サンプルデータを拡張し、より直感的に体験可能なデフォルト設定を追加" />
     <MESSAGE value="デモモード終了後のログイン遷移機能を実装&#10;&#10;- デモモードを終了してログイン画面に戻る確認ダイアログを追加&#10;- デモデータのクリア処理と初期データの再設定を実装&#10;- 設定画面でデモ終了ボタンを表示し、操作性を向上" />
-    <option name="LAST_COMMIT_MESSAGE" value="デモモード終了後のログイン遷移機能を実装&#10;&#10;- デモモードを終了してログイン画面に戻る確認ダイアログを追加&#10;- デモデータのクリア処理と初期データの再設定を実装&#10;- 設定画面でデモ終了ボタンを表示し、操作性を向上" />
+    <MESSAGE value="年齢および生年月日設定機能を追加&#10;&#10;- 生年月日および年齢を入力するUIを設定画面に追加&#10;  （入力値を用いて完済時年齢を表示可能に）&#10;- 月数を「X年Yヶ月」に変換するロジックを`utils.js`に実装&#10;- サンプルデータに年齢と生年月日を初期値として追加&#10;- 年齢／完済時の計算結果を分析画面やダッシュボードに反映" />
+    <option name="LAST_COMMIT_MESSAGE" value="年齢および生年月日設定機能を追加&#10;&#10;- 生年月日および年齢を入力するUIを設定画面に追加&#10;  （入力値を用いて完済時年齢を表示可能に）&#10;- 月数を「X年Yヶ月」に変換するロジックを`utils.js`に実装&#10;- サンプルデータに年齢と生年月日を初期値として追加&#10;- 年齢／完済時の計算結果を分析画面やダッシュボードに反映" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
