@@ -19,13 +19,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="**分析タブを改善し、新たなグラフUIおよび完済予測を追加**&#10;&#10;- 各分析タブのUIを一新し、視覚的に分かりやすいグラフを実装&#10;  （棒グラフと円グラフの構成で収入・支出を視覚化）&#10;- 月ごとのイベントデータを元に構成された「収支構成」セクションを追加&#10;- 借入ごとの完済見込み、マイルストーンデータを形式的に統一&#10;- 完済状況や返済不可状態の原因候補を明確に表示するUIを作成&#10;- #budget-app-v21にService Workerのキャッシュを更新">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/schema.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/schema.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/store.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/store.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/analysis.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/analysis.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/settings.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/settings.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sw.js" beforeDir="false" afterPath="$PROJECT_DIR$/sw.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -127,15 +123,7 @@
       <workItem from="1770367929210" duration="11614000" />
       <workItem from="1770454206146" duration="250000" />
       <workItem from="1770454469379" duration="166000" />
-      <workItem from="1770454654269" duration="8369000" />
-    </task>
-    <task id="LOCAL-00108" summary="onclick必要なくなったから削除">
-      <option name="closed" value="true" />
-      <created>1752005819687</created>
-      <option name="number" value="00108" />
-      <option name="presentableId" value="LOCAL-00108" />
-      <option name="project" value="LOCAL" />
-      <updated>1752005819687</updated>
+      <workItem from="1770454654269" duration="8702000" />
     </task>
     <task id="LOCAL-00109" summary="不要なCSSの修正">
       <option name="closed" value="true" />
@@ -521,7 +509,15 @@
       <option name="project" value="LOCAL" />
       <updated>1770476878916</updated>
     </task>
-    <option name="localTasksCounter" value="157" />
+    <task id="LOCAL-00157" summary="**分析タブを改善し、新たなグラフUIおよび完済予測を追加**&#10;&#10;- 各分析タブのUIを一新し、視覚的に分かりやすいグラフを実装&#10;  （棒グラフと円グラフの構成で収入・支出を視覚化）&#10;- 月ごとのイベントデータを元に構成された「収支構成」セクションを追加&#10;- 借入ごとの完済見込み、マイルストーンデータを形式的に統一&#10;- 完済状況や返済不可状態の原因候補を明確に表示するUIを作成&#10;- #budget-app-v21にService Workerのキャッシュを更新">
+      <option name="closed" value="true" />
+      <created>1770477825342</created>
+      <option name="number" value="00157" />
+      <option name="presentableId" value="LOCAL-00157" />
+      <option name="project" value="LOCAL" />
+      <updated>1770477825343</updated>
+    </task>
+    <option name="localTasksCounter" value="158" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

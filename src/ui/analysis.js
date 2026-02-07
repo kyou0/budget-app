@@ -2,7 +2,7 @@ import { store as appStore } from '../store.js';
 import { calculateLoanPayoff, calculatePayoffSummary, simulateLoanSchedule } from '../calc.js';
 import { formatAgeMonths, formatMonthsToYears, getAgeMonthsFromBirthdate } from '../utils.js';
 
-let currentAnalysisTab = 'overview';
+let currentAnalysisTab = appStore.data.settings?.analysisTab || 'overview';
 
 const TAG_LABELS = {
   fixed: '固定費',
@@ -593,6 +593,7 @@ const renderTrend = ({ history, yearMonth }) => {
   return `
     <div class="card" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px;">
       <h3 style="margin-top: 0;">📉 進捗トレンド（直近6ヶ月）</h3>
+      ${recent.length < 2 ? `<div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 6px;">履歴が少ないため簡易表示です。</div>` : ''}
       <div class="spark-section">
         <div class="spark-title">総借入残高</div>
         ${renderSparkBars(balanceRows)}
@@ -660,6 +661,9 @@ const renderCashflow = ({ items, events, yearMonth }) => {
 
 export function renderAnalysis(container) {
   const settings = appStore.data.settings || {};
+  if (settings.analysisTab) {
+    currentAnalysisTab = settings.analysisTab;
+  }
   const loans = appStore.data.master.loans || [];
   const items = appStore.data.master.items || [];
   const payoffSummary = calculatePayoffSummary(loans);
@@ -832,6 +836,7 @@ export function renderAnalysis(container) {
 
   window.switchAnalysisTab = (tab) => {
     currentAnalysisTab = tab;
+    appStore.updateSettings({ analysisTab: tab });
     renderAnalysis(container);
   };
 }
