@@ -136,6 +136,7 @@ export function renderMaster(container) {
                   <option value="銀行カードローン">銀行カードローン</option>
                   <option value="クレジットカード">クレジットカード</option>
                   <option value="分割払い">分割払い</option>
+                  <option value="奨学金">奨学金</option>
                   <option value="親族">親族</option>
                   <option value="友人">友人</option>
                 </select>
@@ -294,15 +295,23 @@ export function renderMaster(container) {
 
 function renderItemsList(items) {
   const bankMap = Object.fromEntries(appStore.data.master.items.filter(i => i.type === 'bank').map(b => [b.id, b.name]));
+  const tagLabels = {
+    fixed: '固定費',
+    variable: '変動費',
+    card: 'カード',
+    loan: '借入返済',
+    tax: '税金/保険',
+    service: 'サブスク'
+  };
   
   return items.map(item => `
-    <div class="master-item ${item.active ? '' : 'inactive'}">
+    <div class="master-item ${item.active ? '' : 'inactive'}" onclick="editMasterItem('${item.id}')">
       <div class="info">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span class="type ${item.type}">
             ${item.type === 'income' ? '収入' : '支出'}
           </span>
-          ${item.tag ? `<span style="font-size: 0.7rem; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; color: #6b7280;">${item.tag}</span>` : ''}
+          ${item.tag ? `<span class="tag-badge tag-${item.tag}">${tagLabels[item.tag] || item.tag}</span>` : ''}
         </div>
         <span class="name">${getIcon(item.name, item.type)} ${item.name}</span>
         <span class="amount">
@@ -317,11 +326,11 @@ function renderItemsList(items) {
         </div>
       </div>
       <div class="actions">
-        <button onclick="editMasterItem('${item.id}')" class="btn small">編集</button>
-        <button onclick="toggleMasterItem('${item.id}')" class="btn small ${item.active ? 'warn' : 'success'}">
+        <button onclick="event.stopPropagation(); editMasterItem('${item.id}')" class="btn small">編集</button>
+        <button onclick="event.stopPropagation(); toggleMasterItem('${item.id}')" class="btn small ${item.active ? 'warn' : 'success'}">
           ${item.active ? '無効化' : '有効化'}
         </button>
-        <button onclick="deleteMasterItem('${item.id}')" class="btn small danger">削除</button>
+        <button onclick="event.stopPropagation(); deleteMasterItem('${item.id}')" class="btn small danger">削除</button>
       </div>
     </div>
   `).join('');
@@ -341,18 +350,18 @@ function formatRule(rule) {
 
 function renderBanksList(banks) {
   return banks.map(bank => `
-    <div class="master-item ${bank.active ? '' : 'inactive'}">
+    <div class="master-item ${bank.active ? '' : 'inactive'}" onclick="editMasterItem('${bank.id}')">
       <div class="info">
         <span class="type bank">${getIcon(bank.name, 'bank')} 銀行</span>
         <span class="name">${bank.name}</span>
         <span class="amount">残: ¥${(bank.currentBalance || 0).toLocaleString()}</span>
       </div>
       <div class="actions">
-        <button onclick="editMasterItem('${bank.id}')" class="btn small">編集</button>
-        <button onclick="toggleMasterItem('${bank.id}')" class="btn small ${bank.active ? 'warn' : 'success'}">
+        <button onclick="event.stopPropagation(); editMasterItem('${bank.id}')" class="btn small">編集</button>
+        <button onclick="event.stopPropagation(); toggleMasterItem('${bank.id}')" class="btn small ${bank.active ? 'warn' : 'success'}">
           ${bank.active ? '無効化' : '有効化'}
         </button>
-        <button onclick="deleteMasterItem('${bank.id}')" class="btn small danger" style="padding: 4px; font-size: 0.7rem;">削除</button>
+        <button onclick="event.stopPropagation(); deleteMasterItem('${bank.id}')" class="btn small danger" style="padding: 4px; font-size: 0.7rem;">削除</button>
       </div>
     </div>
   `).join('');
@@ -362,7 +371,7 @@ function renderLoansList(loans) {
   const bankMap = Object.fromEntries(appStore.data.master.items.filter(i => i.type === 'bank').map(b => [b.id, b.name]));
   
   return loans.map(loan => `
-    <div class="master-item ${loan.active ? '' : 'inactive'}" style="border-left-color: var(--danger);">
+    <div class="master-item ${loan.active ? '' : 'inactive'}" style="border-left-color: var(--danger);" onclick="editLoan('${loan.id}')">
       <div class="info">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span class="type expense">借入</span>
@@ -370,8 +379,8 @@ function renderLoansList(loans) {
         </div>
         <span class="name">${getIcon(loan.name, 'loan')} ${loan.name}</span>
         <div style="display: flex; gap: 15px; font-size: 0.9rem;">
-          <span class="amount">残: ¥${loan.currentBalance.toLocaleString()}</span>
-          <span class="day">返済: ¥${loan.monthlyPayment.toLocaleString()}</span>
+          <span class="amount">残: ¥${(loan.currentBalance || 0).toLocaleString()}</span>
+          <span class="day">返済: ¥${(loan.monthlyPayment || 0).toLocaleString()}</span>
         </div>
         <div style="font-size: 0.8rem; color: #4b5563; margin-top: 4px;">
           📅 ${formatRule(loan.scheduleRule || {type:'monthly', day:loan.paymentDay})} 
@@ -380,11 +389,11 @@ function renderLoansList(loans) {
         ${loan.notes ? `<div style="font-size: 0.7rem; color: #6b7280; margin-top: 4px; font-style: italic;">📝 ${loan.notes}</div>` : ''}
       </div>
       <div class="actions">
-        <button onclick="editLoan('${loan.id}')" class="btn small">編集</button>
-        <button onclick="toggleLoan('${loan.id}')" class="btn small ${loan.active ? 'warn' : 'success'}">
+        <button onclick="event.stopPropagation(); editLoan('${loan.id}')" class="btn small">編集</button>
+        <button onclick="event.stopPropagation(); toggleLoan('${loan.id}')" class="btn small ${loan.active ? 'warn' : 'success'}">
           ${loan.active ? '無効化' : '有効化'}
         </button>
-        <button onclick="deleteLoan('${loan.id}')" class="btn small danger">削除</button>
+        <button onclick="event.stopPropagation(); deleteLoan('${loan.id}')" class="btn small danger">削除</button>
       </div>
     </div>
   `).join('');

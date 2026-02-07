@@ -8,7 +8,7 @@ export const driveSync = {
   async findFile(token) {
     const apiKey = appStore.data.settings?.googleApiKey;
     const q = `name = '${FILE_NAME}' and 'appDataFolder' in parents`;
-    const url = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${encodeURIComponent(q)}&fields=files(id,name,updatedTime)`;
+    const url = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${encodeURIComponent(q)}&fields=files(id,name,modifiedTime)`;
     
     const response = await fetch(url, {
       headers: { 'Authorization': `Bearer ${token}` }
@@ -40,7 +40,7 @@ export const driveSync = {
       
       // 競合チェック用：Drive側の更新時刻を保存
       appStore.updateSettings({ 
-        lastDriveUpdatedAt: file.updatedTime,
+        lastDriveUpdatedAt: file.modifiedTime,
         lastSyncAt: new Date().toISOString()
       });
 
@@ -58,7 +58,7 @@ export const driveSync = {
 
       // 競合チェック: Push前にDrive上の最新更新時刻を取得
       if (file && appStore.data.settings?.lastDriveUpdatedAt) {
-        if (file.updatedTime > appStore.data.settings.lastDriveUpdatedAt) {
+        if (file.modifiedTime > appStore.data.settings.lastDriveUpdatedAt) {
           if (!await window.showConfirm('クラウド上のデータがローカルより新しいです。上書きしますか？（キャンセルするとクラウドからプルします）')) {
             const remoteData = await this.pull();
             if (remoteData) {
@@ -102,7 +102,7 @@ export const driveSync = {
       // アップロード成功後、Drive側の最新状態を反映
       const updatedFile = await this.findFile(token);
       appStore.updateSettings({
-        lastDriveUpdatedAt: updatedFile.updatedTime,
+        lastDriveUpdatedAt: updatedFile.modifiedTime,
         lastSyncAt: new Date().toISOString()
       });
       
