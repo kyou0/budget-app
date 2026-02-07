@@ -1,4 +1,5 @@
 import { store as appStore } from '../store.js';
+import { INITIAL_DATA } from '../schema.js';
 import { googleAuth } from '../auth/googleAuth.js';
 
 console.log('settings.js module loaded (appStore version)');
@@ -336,6 +337,17 @@ window.removeLoanTypeOption = (value) => {
   renderSettings(document.getElementById('app-container'));
 };
 
+window.exitDemoToLogin = async () => {
+  const ok = await window.showConfirm('デモデータを終了してログイン画面に戻ります。よろしいですか？');
+  if (!ok) return;
+  const fresh = appStore.migrate(JSON.parse(JSON.stringify(INITIAL_DATA)));
+  appStore.data = fresh;
+  appStore.save();
+  sessionStorage.removeItem('isLoggedIn');
+  sessionStorage.removeItem('demoTutorialShown');
+  location.reload();
+};
+
 export function renderSettings(container) {
 const settings = appStore.data.settings || {};
 const syncHistory = settings.syncHistory || [];
@@ -351,6 +363,13 @@ container.innerHTML = `
     </div>
     <div class="settings-content" style="padding: 20px;">
       <p>バージョン: 1.2.3 (Modal Import)</p>
+
+      ${settings.demoMode ? `
+        <div style="margin-top: 10px; background: #fff7ed; padding: 12px; border-radius: 8px; border: 1px solid #fdba74;">
+          <div style="font-weight: 700; margin-bottom: 8px;">デモを気に入ったら</div>
+          <button onclick="exitDemoToLogin()" class="btn primary">Googleで使う</button>
+        </div>
+      ` : ''}
       
       ${settings.demoMode ? '' : `
         <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
