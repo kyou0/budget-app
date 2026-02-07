@@ -1,10 +1,20 @@
 import { store as appStore } from '../store.js';
 import { calculateLoanPayoff, calculatePayoffSummary, simulateLoanSchedule } from '../calc.js';
+import { formatAgeMonths, formatMonthsToYears, getAgeMonthsFromBirthdate } from '../utils.js';
 
 export function renderAnalysis(container) {
+  const settings = appStore.data.settings || {};
   const loans = appStore.data.master.loans || [];
   const payoffSummary = calculatePayoffSummary(loans);
-  const payoffMonthsLabel = payoffSummary.totalMonths === Infinity ? '不明' : `${payoffSummary.totalMonths} ヶ月`;
+  const payoffMonthsLabel = formatMonthsToYears(payoffSummary.totalMonths);
+  const ageMonthsFromBirth = getAgeMonthsFromBirthdate(settings.userBirthdate);
+  const ageMonthsBase = Number.isFinite(ageMonthsFromBirth)
+    ? ageMonthsFromBirth
+    : (Number.isFinite(settings.userAge) ? settings.userAge * 12 : null);
+  const ageAtPayoff = (months) => {
+    if (!Number.isFinite(months) || ageMonthsBase === null) return '';
+    return formatAgeMonths(ageMonthsBase + months);
+  };
 
   window.jumpToLoanEdit = (loanId) => {
     location.hash = '#master';
@@ -120,6 +130,7 @@ export function renderAnalysis(container) {
           <div style="font-size: 0.8rem; color: #6b7280;">完済予定</div>
           <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary);">${payoffSummary.payoffDate}</div>
           <div style="font-size: 0.9rem; color: #6b7280;">（あと ${payoffMonthsLabel}）</div>
+          ${ageMonthsBase !== null ? `<div style="font-size: 0.85rem; color: #6b7280;">完済時: ${ageAtPayoff(payoffSummary.totalMonths)}</div>` : ''}
         </div>
       </div>
 
@@ -130,7 +141,7 @@ export function renderAnalysis(container) {
           ${milestones.map(m => `
             <li style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f9f9f9;">
               <span>${m.name}</span>
-              <span style="font-weight: bold;">${m.months === Infinity ? '返済不可' : `あと ${m.months} ヶ月`}</span>
+              <span style="font-weight: bold;">${m.months === Infinity ? '返済不可' : `あと ${formatMonthsToYears(m.months)}`}</span>
             </li>
           `).join('')}
           ${milestones.length === 0 ? '<li>登録された借入はありません</li>' : ''}
@@ -160,9 +171,9 @@ export function renderAnalysis(container) {
                 <div style="padding: 10px; background: #f0fdf4; border-radius: 8px; border-left: 4px solid var(--success); margin-bottom: 8px;">
                   <div style="font-weight: bold;">月 +${extra.toLocaleString()}円 なら</div>
                   <div style="font-size: 0.9rem; color: #166534;">
-                    ${savedMonths && savedMonths > 0 ? `${savedMonths} ヶ月短縮（${simSummary.payoffDate}完済）` : '計算不可'}
-                  </div>
+                  ${savedMonths && savedMonths > 0 ? `${formatMonthsToYears(savedMonths)}短縮（${simSummary.payoffDate}完済${ageMonthsBase !== null ? ` / 完済時${ageAtPayoff(simSummary.totalMonths)}` : ''}）` : '計算不可'}
                 </div>
+              </div>
               `;
             }).join('')}
           </div>
@@ -188,7 +199,7 @@ export function renderAnalysis(container) {
                       <div style="background: white; border: 1px solid #eee; border-radius: 6px; padding: 6px 8px;">
                         <div style="font-weight: 600;">+${extra.toLocaleString()}円</div>
                         <div style="font-size: 0.75rem; color: #6b7280;">
-                          ${saved && saved > 0 ? `${saved} ヶ月短縮` : '計算不可'}
+                          ${saved && saved > 0 ? `${formatMonthsToYears(saved)}短縮` : '計算不可'}
                         </div>
                       </div>
                     `;
@@ -265,7 +276,7 @@ export function renderAnalysis(container) {
                   年利: ${Number(loan.interestRate) || 0}%
                 </div>
                 <div style="margin-top: 6px; font-size: 0.9rem;">
-                  ${loan.payoff.status === 'ok' ? `完済予定: ${loan.payoff.payoffDate}（あと ${loan.payoff.months} ヶ月）` :
+                  ${loan.payoff.status === 'ok' ? `完済予定: ${loan.payoff.payoffDate}（あと ${formatMonthsToYears(loan.payoff.months)}）${ageMonthsBase !== null ? ` / 完済時${ageAtPayoff(loan.payoff.months)}` : ''}` :
                     loan.payoff.status === 'paid' ? '完済済み' : '返済不可（返済額が不足）'}
                 </div>
               </div>

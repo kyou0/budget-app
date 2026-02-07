@@ -4,7 +4,7 @@ import { calculatePenalty, calculatePayoffSummary } from '../calc.js';
 import { googleAuth } from '../auth/googleAuth.js';
 import { driveSync } from '../sync/driveSync.js';
 import { calendarSync } from '../sync/calendarSync.js';
-import { getIcon } from '../utils.js';
+import { formatMonthsToYears, getIcon } from '../utils.js';
 
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
@@ -15,7 +15,7 @@ export function renderDashboard(container) {
   const loans = appStore.data.master.loans || [];
   const masterItems = appStore.data.master.items || [];
   const payoffSummary = calculatePayoffSummary(loans);
-  const payoffMonthsLabel = payoffSummary.totalMonths === Infinity ? '不明' : `${payoffSummary.totalMonths} ヶ月`;
+  const payoffMonthsLabel = formatMonthsToYears(payoffSummary.totalMonths);
 
   // 銀行残高の合計
   const totalBankBalance = masterItems
@@ -40,6 +40,13 @@ export function renderDashboard(container) {
 
   const delayedEvents = events.filter(e => e.status === 'pending' && e.originalDate < todayStr);
   const thisWeekEvents = events.filter(e => e.status === 'pending' && e.originalDate >= todayStr && e.originalDate <= nextWeekStr);
+  const welcomeName = (appStore.data.settings?.userDisplayName || '').trim();
+  const welcomeLabel = welcomeName ? (welcomeName.endsWith('さん') ? welcomeName : `${welcomeName}さん`) : '';
+  const tipsMessage = delayedEvents.length > 0
+    ? `延滞が ${delayedEvents.length} 件あります。優先して確認しましょう。`
+    : thisWeekEvents.length > 0
+      ? `今週の支払いが ${thisWeekEvents.length} 件あります。早めに確認しましょう。`
+      : '今月も良いペースです。この調子でいきましょう。';
 
   const settings = appStore.data.settings || {};
   const isSyncing = false; // 将来的にローディング状態を管理する場合用
@@ -63,6 +70,12 @@ export function renderDashboard(container) {
         ` : ''}
       </div>
     </div>
+
+    ${welcomeLabel ? `
+      <div style="margin: 0 10px 10px 10px; padding: 10px 12px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd; color: #0c4a6e;">
+        <strong>${welcomeLabel}</strong>、がんばりましょう！ ${tipsMessage}
+      </div>
+    ` : ''}
 
     <div class="summary-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px;">
       <div class="summary-card" style="background: white; padding: 15px; border-radius: 8px;">

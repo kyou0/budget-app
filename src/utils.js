@@ -49,3 +49,47 @@ export function getIcon(name, type) {
   // その他
   return type === 'expense' ? '🛒' : '❓';
 }
+
+/**
+ * ヶ月数を「X年Yヶ月」に変換
+ * @param {number} months
+ * @returns {string}
+ */
+export function formatMonthsToYears(months) {
+  if (!Number.isFinite(months)) return '不明';
+  if (months <= 0) return '0ヶ月';
+  const years = Math.floor(months / 12);
+  const remain = months % 12;
+  if (years > 0 && remain > 0) return `${years}年${remain}ヶ月`;
+  if (years > 0) return `${years}年`;
+  return `${remain}ヶ月`;
+}
+
+/**
+ * 生年月日から年齢(月)を計算
+ * @param {string} birthdate - YYYY-MM-DD
+ * @param {Date} [refDate]
+ * @returns {number|null}
+ */
+export function getAgeMonthsFromBirthdate(birthdate, refDate = new Date()) {
+  if (!birthdate) return null;
+  const [y, m, d] = birthdate.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  const birth = new Date(y, m - 1, d);
+  if (Number.isNaN(birth.getTime())) return null;
+  let months = (refDate.getFullYear() - birth.getFullYear()) * 12 + (refDate.getMonth() - birth.getMonth());
+  if (refDate.getDate() < birth.getDate()) months -= 1;
+  return Math.max(0, months);
+}
+
+/**
+ * 年齢(月)を「X歳Yヶ月」に変換
+ * @param {number} months
+ * @returns {string}
+ */
+export function formatAgeMonths(months) {
+  if (!Number.isFinite(months)) return '';
+  const years = Math.floor(months / 12);
+  const remain = months % 12;
+  return remain > 0 ? `${years}歳${remain}ヶ月` : `${years}歳`;
+}

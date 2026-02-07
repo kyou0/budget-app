@@ -116,6 +116,8 @@ class Store {
     }
     if (typeof data.settings.demoMode !== 'boolean') data.settings.demoMode = false;
     if (typeof data.settings.userDisplayName !== 'string') data.settings.userDisplayName = '';
+    if (typeof data.settings.userAge !== 'number') data.settings.userAge = null;
+    if (typeof data.settings.userBirthdate !== 'string') data.settings.userBirthdate = '';
     if (!data.transactions) data.transactions = [];
 
     return data;

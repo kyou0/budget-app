@@ -337,6 +337,42 @@ window.removeLoanTypeOption = (value) => {
   renderSettings(document.getElementById('app-container'));
 };
 
+window.updateUserAge = () => {
+  const input = document.getElementById('user-age');
+  if (!input) return;
+  const value = input.value.trim();
+  if (value === '') {
+    appStore.updateSettings({ userAge: null });
+    return;
+  }
+  const age = Number(value);
+  if (Number.isNaN(age) || age < 0) {
+    window.showToast('年齢は0以上の数値で入力してください', 'warn');
+    return;
+  }
+  appStore.updateSettings({ userAge: age });
+};
+
+window.updateUserBirthdate = () => {
+  const input = document.getElementById('user-birthdate');
+  if (!input) return;
+  const value = input.value.trim();
+  appStore.updateSettings({ userBirthdate: value });
+};
+
+window.getAgeFromBirthdate = (birthdate) => {
+  if (!birthdate) return null;
+  const [y, m, d] = birthdate.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  const birth = new Date(y, m - 1, d);
+  if (Number.isNaN(birth.getTime())) return null;
+  const now = new Date();
+  let years = now.getFullYear() - birth.getFullYear();
+  const beforeBirthday = now.getMonth() < birth.getMonth() || (now.getMonth() === birth.getMonth() && now.getDate() < birth.getDate());
+  if (beforeBirthday) years -= 1;
+  return Math.max(0, years);
+};
+
 window.exitDemoToLogin = async () => {
   const ok = await window.showConfirm('デモデータを終了してログイン画面に戻ります。よろしいですか？');
   if (!ok) return;
@@ -354,11 +390,13 @@ const syncHistory = settings.syncHistory || [];
 const loanTypeOptions = settings.loanTypeOptions || [];
 const rawName = settings.userDisplayName || (settings.demoMode ? 'サンプルさん' : '');
 const welcomeName = rawName ? (rawName.endsWith('さん') ? rawName : `${rawName}さん`) : '';
+const birthdateValue = settings.userBirthdate || '';
+const ageFromBirth = birthdateValue ? (window.getAgeFromBirthdate ? window.getAgeFromBirthdate(birthdateValue) : null) : null;
 
 container.innerHTML = `
     <div class="settings-header">
       <h2>設定</h2>
-      ${welcomeName ? `<div style="margin-top: 4px; font-size: 0.85rem; color: #6b7280;">ようこそ、${welcomeName}</div>` : ''}
+      ${welcomeName ? `<div style="margin-top: 4px; font-size: 0.85rem; color: #6b7280;">ようこそ、${welcomeName}。がんばりましょう！</div>` : ''}
       ${settings.demoMode ? `<div style="margin-top: 6px; font-size: 0.8rem; color: #b45309;">デモモード（同期・ログインは無効）</div>` : ''}
     </div>
     <div class="settings-content" style="padding: 20px;">
@@ -436,6 +474,21 @@ container.innerHTML = `
           </div>
         </div>
       `}
+
+      <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+        <h3 style="margin-top: 0;">プロフィール</h3>
+        <div class="form-group">
+          <label>生年月日</label>
+          <input type="date" id="user-birthdate" value="${birthdateValue}" onchange="updateUserBirthdate()">
+        </div>
+        <div class="form-group">
+          <label>年齢</label>
+          <input type="number" id="user-age" value="${Number.isFinite(settings.userAge) ? settings.userAge : ''}" placeholder="例: 30" min="0" max="120" onchange="updateUserAge()">
+          <div style="font-size: 0.75rem; color: #6b7280; margin-top: 6px;">
+            生年月日が入力されている場合は自動計算が優先されます。
+          </div>
+        </div>
+      </div>
 
       <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
         <h3 style="margin-top: 0;">同期履歴</h3>

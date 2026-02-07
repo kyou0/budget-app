@@ -89,6 +89,8 @@
     "syncHistory": [],
     "demoMode": true,
     "userDisplayName": "サンプルさん",
+    "userAge": 30,
+    "userBirthdate": "1995-04-01",
     "loanTypeOptions": [
       "消費者金融",
       "銀行カードローン",

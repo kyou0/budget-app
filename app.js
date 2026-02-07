@@ -153,6 +153,8 @@ function renderLogin() {
         ...migrated.settings,
         demoMode: true,
         userDisplayName: 'サンプルさん',
+        userAge: 30,
+        userBirthdate: '1995-04-01',
         tutorialCompleted: false,
         driveSyncEnabled: false,
         calendarSyncEnabled: false
