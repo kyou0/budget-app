@@ -73,6 +73,32 @@
         "adjustment": "next_weekday",
         "active": true
       }
+    ],
+    "clients": [
+      {
+        "id": "client-001",
+        "name": "株式会社サンプル",
+        "amount": 320000,
+        "amountMode": "fixed",
+        "scheduleRule": { "type": "monthly", "day": 15 },
+        "bankId": "bank-001",
+        "adjustment": "next_weekday",
+        "effective": { "start": "2025-01-01", "end": "2025-12-31" },
+        "notes": "業務委託（固定）",
+        "active": true
+      },
+      {
+        "id": "client-002",
+        "name": "個人事業主A",
+        "amount": 120000,
+        "amountMode": "variable",
+        "scheduleRule": { "type": "monthly", "day": 25 },
+        "bankId": "bank-001",
+        "adjustment": "next_weekday",
+        "effective": { "start": "2025-04-01", "end": null },
+        "notes": "変動案件",
+        "active": true
+      }
     ]
   },
   "calendar": {

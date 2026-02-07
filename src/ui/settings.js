@@ -509,31 +509,6 @@ container.innerHTML = `
       </div>
 
       <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-        <h3 style="margin-top: 0;">同期履歴</h3>
-        ${syncHistory.length === 0 ? `
-          <div style="font-size: 0.8rem; color: #6b7280;">履歴はまだありません。</div>
-        ` : `
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            ${syncHistory.slice(0, 10).map(log => `
-              <div style="display: flex; justify-content: space-between; gap: 10px; font-size: 0.8rem; background: #f9fafb; padding: 8px 10px; border-radius: 6px;">
-                <div>
-                  <strong>${log.type === 'drive' ? 'Drive' : 'Calendar'}</strong>
-                  <span style="margin-left: 6px; color: ${log.status === 'success' ? 'var(--success)' : 'var(--danger)'};">
-                    ${log.status === 'success' ? '成功' : '失敗'}
-                  </span>
-                  <span style="margin-left: 6px; color: #6b7280;">(${log.mode === 'manual' ? '手動' : '自動'})</span>
-                  <div style="color: #6b7280; margin-top: 2px;">${log.message || ''}</div>
-                </div>
-                <div style="color: #6b7280; white-space: nowrap;">
-                  ${new Date(log.timestamp).toLocaleString()}
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        `}
-      </div>
-
-      <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
         <h3 style="margin-top: 0;">借入種別の管理</h3>
         ${loanTypeOptions.length === 0 ? `
           <div style="font-size: 0.8rem; color: #6b7280;">種別がありません。追加してください。</div>
@@ -570,6 +545,31 @@ container.innerHTML = `
       <div style="margin-top: 20px;">
         <h3>開発用</h3>
         <button onclick="resetServiceWorkerAndCache()" class="btn">キャッシュをリセット</button>
+      </div>
+
+      <div style="margin-top: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+        <h3 style="margin-top: 0;">同期履歴</h3>
+        ${syncHistory.length === 0 ? `
+          <div style="font-size: 0.8rem; color: #6b7280;">履歴はまだありません。</div>
+        ` : `
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            ${syncHistory.slice(0, 10).map(log => `
+              <div style="display: flex; justify-content: space-between; gap: 10px; font-size: 0.8rem; background: #f9fafb; padding: 8px 10px; border-radius: 6px;">
+                <div>
+                  <strong>${log.type === 'drive' ? 'Drive' : 'Calendar'}</strong>
+                  <span style="margin-left: 6px; color: ${log.status === 'success' ? 'var(--success)' : 'var(--danger)'};">
+                    ${log.status === 'success' ? '成功' : '失敗'}
+                  </span>
+                  <span style="margin-left: 6px; color: #6b7280;">(${log.mode === 'manual' ? '手動' : '自動'})</span>
+                  <div style="color: #6b7280; margin-top: 2px;">${log.message || ''}</div>
+                </div>
+                <div style="color: #6b7280; white-space: nowrap;">
+                  ${new Date(log.timestamp).toLocaleString()}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `}
       </div>
 
       <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">

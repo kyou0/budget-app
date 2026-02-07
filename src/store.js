@@ -107,6 +107,7 @@ class Store {
     if (!data.master) data.master = { items: [], loans: [] };
     if (!data.master.items) data.master.items = [];
     if (!data.master.loans) data.master.loans = [];
+    if (!data.master.clients) data.master.clients = [];
     if (!data.calendar) data.calendar = { generatedMonths: {} };
     if (!data.calendar.generatedMonths) data.calendar.generatedMonths = {};
     if (!data.settings) data.settings = { ...INITIAL_DATA.settings };
@@ -120,6 +121,9 @@ class Store {
     if (typeof data.settings.userBirthdate !== 'string') data.settings.userBirthdate = '';
     if (!Array.isArray(data.settings.analysisHistory)) data.settings.analysisHistory = [];
     if (typeof data.settings.analysisTab !== 'string') data.settings.analysisTab = 'overview';
+    if (!data.settings.expenseConfirmInputs || typeof data.settings.expenseConfirmInputs !== 'object') {
+      data.settings.expenseConfirmInputs = { yearMonth: '', values: {} };
+    }
     if (!data.transactions) data.transactions = [];
 
     return data;
@@ -178,6 +182,29 @@ class Store {
     const index = this.data.master.loans.findIndex(loan => loan.id === id);
     if (index !== -1) {
       this.data.master.loans.splice(index, 1);
+      this.save();
+    }
+  }
+
+  // Client CRUD
+  addClient(client) {
+    const newClient = { ...client, id: crypto.randomUUID(), active: true };
+    this.data.master.clients.push(newClient);
+    this.save();
+  }
+
+  updateClient(id, updates) {
+    const index = this.data.master.clients.findIndex(c => c.id === id);
+    if (index !== -1) {
+      this.data.master.clients[index] = { ...this.data.master.clients[index], ...updates };
+      this.save();
+    }
+  }
+
+  deleteClient(id) {
+    const index = this.data.master.clients.findIndex(c => c.id === id);
+    if (index !== -1) {
+      this.data.master.clients.splice(index, 1);
       this.save();
     }
   }

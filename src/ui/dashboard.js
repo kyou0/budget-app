@@ -9,12 +9,44 @@ import { formatAgeMonths, formatMonthsToYears, getAgeMonthsFromBirthdate, getIco
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
 
+const EXPENSE_RULES = [
+  { key: 'JCB', label: 'JCB', rule: { deadlineDay: 13, payDay: 27 }, bankName: '楽天銀行' },
+  { key: 'AmexPersonal', label: 'Amex 個人', rule: { deadlineDay: 20, payDay: 27 }, bankName: '楽天銀行' },
+  { key: 'AmexBusiness', label: 'Amex 法人', rule: { deadlineDay: 20, payDay: 27 }, bankName: '住信SBI' },
+  { key: 'PayPay', label: 'PayPay', rule: { deadlineDay: 27, payDay: 27 }, bankName: '楽天銀行' },
+  { key: 'VIEW', label: 'VIEW', rule: { deadlineDay: 10, payDay: 4, payMonthOffset: 1 }, bankName: '住信SBI' },
+  { key: 'Paidy', label: 'ペイディ', rule: { deadlineDay: 27, payDay: 27 }, bankName: '楽天銀行' },
+  { key: 'auLoan', label: 'auじぶんローン', rule: { payDay: 26 }, bankName: '住信SBI' },
+  { key: 'Scholarship', label: '奨学金', rule: { payDay: 27 }, bankName: '楽天銀行' }
+];
+
+const toYearMonth = (year, month) => `${year}-${String(month).padStart(2, '0')}`;
+const toYMD = (date) => date.toISOString().split('T')[0];
+
+const adjustToNextWeekday = (date) => {
+  const d = new Date(date);
+  const day = d.getDay();
+  if (day === 6) d.setDate(d.getDate() + 2); // Sat -> Mon
+  if (day === 0) d.setDate(d.getDate() + 1); // Sun -> Mon
+  return d;
+};
+
+const computePayDate = (year, month, rule) => {
+  const offset = rule.payMonthOffset || 0;
+  const targetMonth = month + offset;
+  const payDay = rule.payDay || rule.deadlineDay || 1;
+  const date = new Date(year, targetMonth - 1, payDay);
+  return adjustToNextWeekday(date);
+};
+
 export function renderDashboard(container) {
   const yearMonth = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   const events = appStore.data.calendar.generatedMonths[yearMonth] || [];
   const loans = appStore.data.master.loans || [];
   const masterItems = appStore.data.master.items || [];
   const payoffSummary = calculatePayoffSummary(loans);
+  const expenseInputs = appStore.data.settings?.expenseConfirmInputs || { yearMonth: '', values: {} };
+  const expenseInputValues = expenseInputs.yearMonth === yearMonth ? (expenseInputs.values || {}) : {};
   const payoffMonthsLabel = formatMonthsToYears(payoffSummary.totalMonths);
   const ageMonthsFromBirth = getAgeMonthsFromBirthdate(appStore.data.settings?.userBirthdate || '');
   const ageMonthsBase = Number.isFinite(ageMonthsFromBirth)
@@ -98,6 +130,33 @@ export function renderDashboard(container) {
       <div class="summary-card" style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary); display: flex; flex-direction: column; justify-content: center;">
         <h4 style="margin: 0; font-size: 0.8rem; color: #6b7280;">月末予想残高</h4>
         <div class="value" style="font-size: 1.2rem; font-weight: bold; color: var(--primary);">¥${estimatedEndBalance.toLocaleString()}</div>
+      </div>
+    </div>
+
+    <div style="margin: 0 10px 10px 10px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+      <h4 style="margin: 0 0 10px 0; font-size: 0.9rem;">🧾 今月の支出確定</h4>
+      <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 10px;">
+        カード明細や請求書で確定した金額を入力してください。確定すると引落日にカレンダーへ反映されます。
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px;">
+        ${EXPENSE_RULES.map(rule => `
+          <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; background: #f9fafb;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong>${rule.label}</strong>
+              <span style="font-size: 0.7rem; color: #6b7280;">${rule.bankName}</span>
+            </div>
+            <div style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">
+              締日: ${rule.rule.deadlineDay ? `${rule.rule.deadlineDay}日` : '—'} / 引落: ${rule.rule.payDay}日${rule.rule.payMonthOffset ? ' (翌月)' : ''}
+            </div>
+            <div style="display: flex; gap: 6px; margin-top: 8px; align-items: center;">
+              <input type="number" min="0" step="1" id="expense-${rule.key}" value="${expenseInputValues[rule.key] || ''}" placeholder="金額" oninput="saveExpenseInput('${rule.key}', this.value)">
+              <button class="btn small" onclick="confirmExpense('${rule.key}')">確定</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div style="font-size: 0.75rem; color: #6b7280; margin-top: 8px;">
+        ※月が変わると入力欄は自動的にリセットされます（履歴は残ります）。
       </div>
     </div>
 
@@ -190,6 +249,85 @@ export function renderDashboard(container) {
     renderDashboard(container);
   };
 
+  window.saveExpenseInput = (key, value) => {
+    const amount = Number(value);
+    const nextValues = {
+      ...(appStore.data.settings?.expenseConfirmInputs?.values || {}),
+      [key]: Number.isFinite(amount) ? amount : ''
+    };
+    appStore.updateSettings({
+      expenseConfirmInputs: {
+        yearMonth,
+        values: nextValues
+      }
+    });
+  };
+
+  window.confirmExpense = (key) => {
+    const ruleDef = EXPENSE_RULES.find(r => r.key === key);
+    if (!ruleDef) return;
+    const inputEl = document.getElementById(`expense-${key}`);
+    const amount = inputEl ? Number(inputEl.value) : 0;
+    if (!amount || amount <= 0) {
+      window.showToast('金額を入力してください', 'warn');
+      return;
+    }
+
+    const bank = masterItems.find(b => b.type === 'bank' && b.name.includes(ruleDef.bankName));
+    const bankId = bank ? bank.id : '';
+    const payDate = computePayDate(currentYear, currentMonth, ruleDef.rule);
+    const payDateStr = toYMD(payDate);
+    const payMonthKey = toYearMonth(payDate.getFullYear(), payDate.getMonth() + 1);
+
+    const transactions = appStore.data.transactions || [];
+    const txKey = `expense-confirm-${key}-${yearMonth}`;
+    const existingIndex = transactions.findIndex(t => t.key === txKey);
+    const tx = {
+      id: existingIndex >= 0 ? transactions[existingIndex].id : crypto.randomUUID(),
+      key: txKey,
+      type: 'expense',
+      category: ruleDef.label,
+      categoryKey: key,
+      date: payDateStr,
+      amount: -Math.abs(amount),
+      status: 'confirmed',
+      yearMonth
+    };
+    if (existingIndex >= 0) transactions[existingIndex] = tx;
+    else transactions.push(tx);
+    appStore.data.transactions = transactions;
+    appStore.save();
+
+    const eventId = `confirm-${key}-${yearMonth}`;
+    const monthEvents = appStore.data.calendar.generatedMonths[payMonthKey] || [];
+    const eventIndex = monthEvents.findIndex(e => e.id === eventId);
+    const eventData = {
+      id: eventId,
+      masterId: `confirm-${key}`,
+      name: `確定支出: ${ruleDef.label}`,
+      type: 'expense',
+      amount: Math.abs(amount),
+      amountMode: 'fixed',
+      bankId,
+      originalDate: payDateStr,
+      actualDate: payDateStr,
+      penaltyFee: 0,
+      status: 'pending'
+    };
+    if (eventIndex >= 0) {
+      const existing = monthEvents[eventIndex];
+      monthEvents[eventIndex] = existing.status === 'paid' ? existing : { ...existing, ...eventData };
+    } else {
+      monthEvents.push(eventData);
+    }
+    appStore.data.calendar.generatedMonths[payMonthKey] = monthEvents;
+    appStore.save();
+
+    window.saveExpenseInput(key, amount);
+    window.showToast(`${ruleDef.label} を確定しました`, 'success');
+    renderDashboard(container);
+  };
+
   window.generateEvents = async () => {
     const hasEvents = events.length > 0;
     const confirmMsg = hasEvents 
@@ -198,7 +336,7 @@ export function renderDashboard(container) {
 
     if (await window.showConfirm(confirmMsg)) {
       console.log(`Generating events for ${currentYear}-${currentMonth}...`);
-      const newEvents = generateMonthEvents(appStore.data.master.items, loans, currentYear, currentMonth);
+      const newEvents = generateMonthEvents(appStore.data.master.items, loans, appStore.data.master.clients || [], currentYear, currentMonth);
       console.log(`Generated ${newEvents.length} events.`);
       
       if (newEvents.length === 0) {

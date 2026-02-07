@@ -29,7 +29,7 @@ const CHART_COLORS = [
   '#14b8a6'
 ];
 
-const EXTRA_OPTIONS = [10000, 50000, 100000];
+const EXTRA_OPTIONS = [10000, 50000, 100000, 200000, 300000, 500000];
 
 const formatCurrency = (value) => `¥${Math.round(value).toLocaleString()}`;
 

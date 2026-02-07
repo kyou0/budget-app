@@ -1,13 +1,15 @@
 import { store as appStore } from '../store.js';
 import { getIcon } from '../utils.js';
 import { driveSync } from '../sync/driveSync.js';
+import { generateClientEvents } from '../generate.js';
 
-let currentTab = 'items'; // 'items' | 'banks' | 'loans'
+let currentTab = 'items'; // 'items' | 'banks' | 'loans' | 'clients'
 let currentItemType = 'income'; // 'income' | 'expense'
 
 export function renderMaster(container) {
   const items = appStore.data.master.items;
   const loans = appStore.data.master.loans || [];
+  const clients = appStore.data.master.clients || [];
   const loanTypeOptions = appStore.data.settings?.loanTypeOptions || [];
   const loanTypeOptionsHtml = loanTypeOptions
     .map(option => `<option value="${option}">${option}</option>`)
@@ -19,11 +21,15 @@ export function renderMaster(container) {
       <button class="tab-btn ${currentTab === 'items' ? 'active' : ''}" onclick="switchMasterTab('items')">収支項目</button>
       <button class="tab-btn ${currentTab === 'banks' ? 'active' : ''}" onclick="switchMasterTab('banks')">銀行口座</button>
       <button class="tab-btn ${currentTab === 'loans' ? 'active' : ''}" onclick="switchMasterTab('loans')">借入先</button>
+      <button class="tab-btn ${currentTab === 'clients' ? 'active' : ''}" onclick="switchMasterTab('clients')">クライアント</button>
     </div>
 
     <div class="master-header">
-      <h2>${currentTab === 'items' ? '収支マスター' : currentTab === 'banks' ? '銀行マスター' : '借入先マスター'}</h2>
-      <button id="add-btn" class="btn primary">新規追加</button>
+      <h2>${currentTab === 'items' ? '収支マスター' : currentTab === 'banks' ? '銀行マスター' : currentTab === 'loans' ? '借入先マスター' : 'クライアントマスター'}</h2>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        ${currentTab === 'clients' ? `<button id="bulk-generate-btn" class="btn">一括生成</button>` : ''}
+        <button id="add-btn" class="btn primary">新規追加</button>
+      </div>
     </div>
 
     <div class="master-list">
@@ -35,7 +41,8 @@ export function renderMaster(container) {
         ${renderItemsList(visibleItems)}
       ` : 
         currentTab === 'banks' ? renderBanksList(items.filter(i => i.type === 'bank')) : 
-        renderLoansList(loans)}
+        currentTab === 'loans' ? renderLoansList(loans) :
+        renderClientsList(clients)}
     </div>
 
     <!-- 項目モーダル -->
@@ -44,10 +51,12 @@ export function renderMaster(container) {
         <h3 id="modal-title">項目追加</h3>
         <form id="master-form">
           <input type="hidden" id="edit-id">
-          <div class="form-group">
-            <label>名前</label>
-            <input type="text" id="master-name" required placeholder="例: 家賃、アコム">
-          </div>
+          ${currentTab === 'clients' ? '' : `
+            <div class="form-group">
+              <label>名前</label>
+              <input type="text" id="master-name" required placeholder="例: 家賃、アコム">
+            </div>
+          `}
           
           ${currentTab === 'items' ? `
             <div class="form-row">
@@ -141,6 +150,79 @@ export function renderMaster(container) {
               <label>現在残高</label>
               <input type="number" id="master-balance" required>
             </div>
+          ` : currentTab === 'clients' ? `
+            <div class="form-group">
+              <label>クライアント名</label>
+              <input type="text" id="client-name" required placeholder="例: 株式会社〇〇">
+              <div class="hint-text">請求書の宛先と同じ名前がおすすめです。</div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>金額モード</label>
+                <select id="client-amount-mode">
+                  <option value="fixed">固定</option>
+                  <option value="variable">変動</option>
+                </select>
+                <div class="hint-text">変動の場合は実績入力で調整します。</div>
+              </div>
+              <div class="form-group">
+                <label>金額（ベース）</label>
+                <input type="number" id="client-amount" required placeholder="例: 300000">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>支払ルール</label>
+              <select id="client-rule-type" onchange="toggleClientRuleFields()">
+                <option value="monthly">毎月◯日</option>
+                <option value="monthEnd">月末</option>
+                <option value="weekly">毎週◯曜</option>
+                <option value="nextMonthDay">翌月◯日</option>
+                <option value="monthlyBusinessDay">第◯営業日</option>
+              </select>
+              <div id="client-rule-detail" style="margin-top:10px;">
+                <input type="number" id="client-day" min="1" max="31" placeholder="日">
+                <select id="client-weekday" class="hidden">
+                  <option value="0">日曜日</option>
+                  <option value="1">月曜日</option>
+                  <option value="2">火曜日</option>
+                  <option value="3">水曜日</option>
+                  <option value="4">木曜日</option>
+                  <option value="5">金曜日</option>
+                  <option value="6">土曜日</option>
+                </select>
+                <input type="number" id="client-nth" min="1" max="20" placeholder="第n営業日" class="hidden">
+              </div>
+              <div class="hint-text">支払サイトに合わせて設定してください。</div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>入金先銀行</label>
+                <select id="client-bank-id">
+                  <option value="">(未選択)</option>
+                  ${items.filter(i => i.type === 'bank').map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>土日祝の調整</label>
+                <select id="client-adjustment">
+                  <option value="none">調整なし</option>
+                  <option value="prev_weekday">前営業日</option>
+                  <option value="next_weekday">翌営業日</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>契約期間</label>
+              <div class="form-row">
+                <input type="date" id="client-eff-start" placeholder="開始日">
+                <input type="date" id="client-eff-end" placeholder="終了日">
+              </div>
+              <div class="hint-text">未入力なら期限なしで扱います。</div>
+            </div>
+            <div class="form-group">
+              <label>メモ</label>
+              <textarea id="client-notes" rows="2" placeholder="請求書番号や担当者など"></textarea>
+            </div>
           ` : `
             <div class="form-row">
               <div class="form-group">
@@ -212,10 +294,33 @@ export function renderMaster(container) {
         </form>
       </div>
     </div>
+
+    ${currentTab === 'clients' ? `
+      <div id="client-bulk-modal" class="modal hidden">
+        <div class="modal-content">
+          <h3>クライアントの一括生成</h3>
+          <div class="form-group">
+            <label>開始月</label>
+            <input type="month" id="bulk-start-month">
+          </div>
+          <div class="form-group">
+            <label>終了月</label>
+            <input type="month" id="bulk-end-month">
+            <div class="hint-text">未指定なら年末までを自動設定します。</div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" onclick="closeClientBulkModal()" class="btn">キャンセル</button>
+            <button type="button" onclick="runClientBulkGenerate()" class="btn primary">生成</button>
+          </div>
+        </div>
+      </div>
+    ` : ''}
   `;
 
   // イベントリスナー
   container.querySelector('#add-btn').onclick = () => showModal();
+  const bulkBtn = container.querySelector('#bulk-generate-btn');
+  if (bulkBtn) bulkBtn.onclick = () => openClientBulkModal();
   container.querySelector('#master-form').onsubmit = (e) => {
     e.preventDefault();
     saveData();
@@ -231,6 +336,71 @@ export function renderMaster(container) {
     renderMaster(container);
   };
 
+  window.openClientBulkModal = () => {
+    const modal = document.getElementById('client-bulk-modal');
+    if (!modal) return;
+    const start = document.getElementById('bulk-start-month');
+    const end = document.getElementById('bulk-end-month');
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    if (start) start.value = `${year}-${month}`;
+    if (end) end.value = `${year}-12`;
+    modal.classList.remove('hidden');
+  };
+
+  window.closeClientBulkModal = () => {
+    const modal = document.getElementById('client-bulk-modal');
+    if (modal) modal.classList.add('hidden');
+  };
+
+  window.runClientBulkGenerate = async () => {
+    const start = document.getElementById('bulk-start-month')?.value;
+    const end = document.getElementById('bulk-end-month')?.value;
+    if (!start) {
+      window.showToast('開始月を指定してください', 'warn');
+      return;
+    }
+    const [startY, startM] = start.split('-').map(Number);
+    const [endY, endM] = (end || `${startY}-12`).split('-').map(Number);
+    const months = [];
+    let y = startY;
+    let m = startM;
+    while (y < endY || (y === endY && m <= endM)) {
+      months.push([y, m]);
+      m += 1;
+      if (m > 12) {
+        m = 1;
+        y += 1;
+      }
+    }
+
+    for (const [year, month] of months) {
+      const key = `${year}-${String(month).padStart(2, '0')}`;
+      const existing = appStore.data.calendar.generatedMonths[key] || [];
+      const existingById = new Map(existing.map(e => [e.id, e]));
+      const clientEvents = generateClientEvents(clients, year, month);
+      const merged = [];
+      const used = new Set();
+
+      clientEvents.forEach(event => {
+        const old = existingById.get(event.id);
+        if (old) {
+          merged.push(old.status === 'paid' ? old : { ...event, ...old, status: old.status });
+        } else {
+          merged.push(event);
+        }
+        used.add(event.id);
+      });
+      existing.forEach(old => {
+        if (!used.has(old.id)) merged.push(old);
+      });
+      appStore.addMonthEvents(key, merged);
+    }
+    window.showToast('クライアント収入を一括生成しました', 'success');
+    closeClientBulkModal();
+  };
+
   window.editMasterItem = (id) => {
     const item = appStore.data.master.items.find(i => i.id === id);
     showModal(item);
@@ -239,6 +409,11 @@ export function renderMaster(container) {
   window.editLoan = (id) => {
     const loan = appStore.data.master.loans.find(l => l.id === id);
     showModal(loan);
+  };
+
+  window.editClient = (id) => {
+    const client = appStore.data.master.clients.find(c => c.id === id);
+    showModal(client);
   };
 
   window.addLoanTypeOption = () => {
@@ -282,6 +457,15 @@ export function renderMaster(container) {
     renderMaster(container);
   };
 
+  window.toggleClient = (id) => {
+    const client = appStore.data.master.clients.find(c => c.id === id);
+    appStore.updateClient(id, { active: !client.active });
+    if (appStore.data.settings?.driveSyncEnabled) {
+      driveSync.push().catch(err => console.error('Auto drive push failed', err));
+    }
+    renderMaster(container);
+  };
+
   window.deleteMasterItem = async (id) => {
     if (await window.showConfirm('この項目を完全に削除しますか？')) {
       appStore.deleteMasterItem(id);
@@ -296,6 +480,17 @@ export function renderMaster(container) {
   window.deleteLoan = async (id) => {
     if (await window.showConfirm('この借入先を完全に削除しますか？')) {
       appStore.deleteLoan(id);
+      if (appStore.data.settings?.driveSyncEnabled) {
+        driveSync.push().catch(err => console.error('Auto drive push failed', err));
+      }
+      window.showToast('削除しました', 'success');
+      renderMaster(container);
+    }
+  };
+
+  window.deleteClient = async (id) => {
+    if (await window.showConfirm('このクライアントを完全に削除しますか？')) {
+      appStore.deleteClient(id);
       if (appStore.data.settings?.driveSyncEnabled) {
         driveSync.push().catch(err => console.error('Auto drive push failed', err));
       }
@@ -331,6 +526,17 @@ export function renderMaster(container) {
 
     if (!dayInput) return;
 
+    dayInput.classList.toggle('hidden', !['monthly', 'nextMonthDay'].includes(ruleType));
+    weekdaySelect.classList.toggle('hidden', ruleType !== 'weekly');
+    nthInput.classList.toggle('hidden', ruleType !== 'monthlyBusinessDay');
+  };
+
+  window.toggleClientRuleFields = () => {
+    const ruleType = document.getElementById('client-rule-type')?.value;
+    const dayInput = document.getElementById('client-day');
+    const weekdaySelect = document.getElementById('client-weekday');
+    const nthInput = document.getElementById('client-nth');
+    if (!dayInput || !weekdaySelect || !nthInput) return;
     dayInput.classList.toggle('hidden', !['monthly', 'nextMonthDay'].includes(ruleType));
     weekdaySelect.classList.toggle('hidden', ruleType !== 'weekly');
     nthInput.classList.toggle('hidden', ruleType !== 'monthlyBusinessDay');
@@ -517,6 +723,52 @@ function renderLoansList(loans) {
   `).join('');
 }
 
+function renderClientsList(clients) {
+  const bankMap = Object.fromEntries(appStore.data.master.items.filter(i => i.type === 'bank').map(b => [b.id, b.name]));
+
+  if (clients.length === 0) {
+    return `<div style="font-size: 0.85rem; color: #6b7280; padding: 10px 0;">クライアントがありません。</div>`;
+  }
+
+  return `
+    <div class="master-group">
+      <div class="master-group-title">
+        <span>クライアント</span>
+        <span class="master-group-count">${clients.length}</span>
+      </div>
+      <div class="master-group-grid">
+        ${clients.map(client => `
+          <div class="master-item master-item-card ${client.active ? '' : 'inactive'}" onclick="editClient('${client.id}')">
+            <div class="info">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="type income">収入</span>
+                <span style="font-size: 0.7rem; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; color: #6b7280;">クライアント</span>
+              </div>
+              <span class="name">🤝 ${client.name}</span>
+              <div style="display: flex; gap: 15px; font-size: 0.9rem;">
+                <span class="amount">入金: ¥${(client.amount || 0).toLocaleString()}</span>
+                <span class="day">${client.amountMode === 'variable' ? '変動' : '固定'}</span>
+              </div>
+              <div style="font-size: 0.8rem; color: #4b5563; margin-top: 4px;">
+                📅 ${formatRule(client.scheduleRule || { type: 'monthly', day: client.paymentDay || 15 })}
+                (${bankMap[client.bankId] || '銀行未設定'})
+              </div>
+              ${client.notes ? `<div style="font-size: 0.7rem; color: #6b7280; margin-top: 4px; font-style: italic;">📝 ${client.notes}</div>` : ''}
+            </div>
+            <div class="actions">
+              <button onclick="event.stopPropagation(); editClient('${client.id}')" class="btn small">編集</button>
+              <button onclick="event.stopPropagation(); toggleClient('${client.id}')" class="btn small ${client.active ? 'warn' : 'success'}">
+                ${client.active ? '無効化' : '有効化'}
+              </button>
+              <button onclick="event.stopPropagation(); deleteClient('${client.id}')" class="btn small danger">削除</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 function showModal(data = null) {
   const modal = document.getElementById('master-modal');
   const title = document.getElementById('modal-title');
@@ -568,11 +820,34 @@ function showModal(data = null) {
       if (form['loan-bank-id']) form['loan-bank-id'].value = data.bankId || '';
       if (form['loan-adjustment']) form['loan-adjustment'].value = data.adjustment || 'none';
       if (form['loan-notes']) form['loan-notes'].value = data.notes || '';
+    } else if (currentTab === 'clients') {
+      if (form['client-name']) form['client-name'].value = data.name;
+      if (form['client-amount-mode']) form['client-amount-mode'].value = data.amountMode || 'fixed';
+      if (form['client-amount']) form['client-amount'].value = data.amount || 0;
+      if (form['client-rule-type']) {
+        const rule = data.scheduleRule || { type: 'monthly', day: data.paymentDay || 15 };
+        form['client-rule-type'].value = rule.type;
+        if (form['client-day']) form['client-day'].value = rule.day || 15;
+        if (form['client-weekday']) form['client-weekday'].value = rule.weekday || 0;
+        if (form['client-nth']) form['client-nth'].value = rule.nth || 1;
+      }
+      if (form['client-bank-id']) form['client-bank-id'].value = data.bankId || '';
+      if (form['client-adjustment']) form['client-adjustment'].value = data.adjustment || 'none';
+      if (form['client-eff-start']) form['client-eff-start'].value = data.effective?.start || '';
+      if (form['client-eff-end']) form['client-eff-end'].value = data.effective?.end || '';
+      if (form['client-notes']) form['client-notes'].value = data.notes || '';
+      window.toggleClientRuleFields();
     }
   } else {
     title.textContent = '新規追加';
     form.reset();
     form['edit-id'].value = '';
+    if (currentTab === 'clients') {
+      if (form['client-amount-mode']) form['client-amount-mode'].value = 'fixed';
+      if (form['client-rule-type']) form['client-rule-type'].value = 'monthly';
+      if (form['client-day']) form['client-day'].value = 15;
+      window.toggleClientRuleFields();
+    }
   }
   modal.classList.remove('hidden');
 }
@@ -693,6 +968,39 @@ function saveData() {
     };
     if (id) appStore.updateLoan(id, data);
     else appStore.addLoan(data);
+  } else if (currentTab === 'clients') {
+    requireField(requireText, form['client-name']);
+    requireField(requireNumber, form['client-amount']);
+    if (firstInvalid) {
+      window.showToast('必須項目を入力してください', 'warn');
+      firstInvalid.focus();
+      return;
+    }
+
+    const ruleType = form['client-rule-type'] ? form['client-rule-type'].value : 'monthly';
+    const scheduleRule = {
+      type: ruleType,
+      day: Number(form['client-day']?.value || 15),
+      weekday: Number(form['client-weekday']?.value || 0),
+      nth: Number(form['client-nth']?.value || 1)
+    };
+
+    const data = {
+      name: form['client-name'] ? form['client-name'].value : '',
+      amount: Number(form['client-amount']?.value || 0),
+      amountMode: form['client-amount-mode'] ? form['client-amount-mode'].value : 'fixed',
+      scheduleRule,
+      paymentDay: scheduleRule.day,
+      bankId: form['client-bank-id'] ? form['client-bank-id'].value : '',
+      adjustment: form['client-adjustment'] ? form['client-adjustment'].value : 'none',
+      effective: {
+        start: form['client-eff-start']?.value || null,
+        end: form['client-eff-end']?.value || null
+      },
+      notes: form['client-notes'] ? form['client-notes'].value : ''
+    };
+    if (id) appStore.updateClient(id, data);
+    else appStore.addClient(data);
   }
   
   if (appStore.data.settings?.driveSyncEnabled) {

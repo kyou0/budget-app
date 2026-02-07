@@ -66,11 +66,29 @@
  * @property {boolean} active
  */
 
+/**
+ * @typedef {Object} Client
+ * @property {string} id
+ * @property {string} name
+ * @property {number} amount
+ * @property {'fixed'|'variable'} [amountMode]
+ * @property {ScheduleRule} [scheduleRule]
+ * @property {number} [paymentDay]
+ * @property {'none'|'prev_weekday'|'next_weekday'} [adjustment]
+ * @property {string} [bankId]
+ * @property {Object} [effective]
+ * @property {string|null} [effective.start]
+ * @property {string|null} [effective.end]
+ * @property {string} [notes]
+ * @property {boolean} active
+ */
+
 export const INITIAL_DATA = {
   schemaVersion: 2,
   master: {
     items: [],
-    loans: []
+    loans: [],
+    clients: []
   },
   calendar: {
     generatedMonths: {}
@@ -90,6 +108,10 @@ export const INITIAL_DATA = {
     userBirthdate: '',
     analysisHistory: [],
     analysisTab: 'overview',
+    expenseConfirmInputs: {
+      yearMonth: '',
+      values: {}
+    },
     loanTypeOptions: [
       '消費者金融',
       '銀行カードローン',
