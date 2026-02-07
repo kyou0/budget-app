@@ -37,7 +37,7 @@ window.importData = (e) => {
   console.log('File selected:', file.name, file.size);
   const reader = new FileReader();
   
-  reader.onload = (event) => {
+  reader.onload = async (event) => {
     console.log('File read successfully');
     try {
       const data = JSON.parse(event.target.result);
@@ -57,7 +57,7 @@ window.importData = (e) => {
         modal.classList.remove('hidden');
       } else {
         // フォールバック (万が一モーダルがない場合)
-        if (confirm('データを上書きしますか？')) {
+        if (await window.showConfirm('データを上書きしますか？')) {
           window.executeImport(false);
         }
       }
@@ -103,31 +103,197 @@ window.executeImport = async (backupFirst = false) => {
     window.showToast('インポートが完了しました。', 'success');
     
     // Hide modal
-    window.closeImportModal();
+  window.closeImportModal();
 
-    // Push to drive if enabled
-    if (appStore.data.settings?.driveSyncEnabled) {
-      window.showToast('クラウド同期中...', 'info');
-      await driveSync.push().catch(err => console.error('Drive push failed:', err));
-    }
-    
-    setTimeout(() => location.reload(), 1000);
-  } catch (err) {
-    console.error('Import execution failed:', err);
-    alert('インポートの実行に失敗しました: ' + err.message);
+  // Push to drive if enabled
+  if (appStore.data.settings?.driveSyncEnabled) {
+    window.showToast('クラウド同期中...', 'info');
+    await driveSync.push().catch(err => console.error('Drive push failed:', err));
   }
+  
+  setTimeout(() => location.reload(), 1000);
+} catch (err) {
+  console.error('Import execution failed:', err);
+  alert('インポートの実行に失敗しました: ' + err.message);
+}
 };
 
 window.closeImportModal = () => {
-  const modal = document.getElementById('import-confirm-modal');
-  if (modal) modal.classList.add('hidden');
-  window.pendingImportData = null;
+const modal = document.getElementById('import-confirm-modal');
+if (modal) modal.classList.add('hidden');
+window.pendingImportData = null;
+};
+
+window.saveGoogleSettings = () => {
+const googleClientId = document.getElementById('google-client-id').value;
+const googleApiKey = document.getElementById('google-api-key').value;
+appStore.updateSettings({ googleClientId, googleApiKey });
+
+// 即時初期化を試行
+if (googleClientId) {
+  import('../auth/googleAuth.js').then(m => m.initGoogleAuth(googleClientId));
+}
+
+window.showToast('API設定を保存しました。', 'success');
+};
+
+window.loginGoogle = async () => {
+try {
+  await googleAuth.init();
+  await googleAuth.getAccessToken([], 'select_account');
+  window.showToast('Google ログイン成功', 'success');
+  // 画面更新が必要な場合は reload または 再描画
+  location.reload();
+} catch (err) {
+  window.showToast('ログイン失敗: ' + (err.error || err.message), 'danger');
+}
+};
+
+window.toggleDriveSync = () => {
+const el = document.getElementById('drive-sync-enabled');
+if (el) {
+  const enabled = el.checked;
+  appStore.updateSettings({ driveSyncEnabled: enabled });
+}
+};
+
+window.toggleCalendarSync = () => {
+const el = document.getElementById('calendar-sync-enabled');
+if (el) {
+  const enabled = el.checked;
+  appStore.updateSettings({ calendarSyncEnabled: enabled });
+}
+};
+
+window.loadCalendarList = async () => {
+try {
+  const calendars = await calendarSync.listCalendars();
+  const incomeSelect = document.getElementById('income-calendar-id');
+  const expenseSelect = document.getElementById('expense-calendar-id');
+  
+  if (!incomeSelect || !expenseSelect) return;
+
+  const currentIncome = appStore.data.settings.incomeCalendarId || 'primary';
+  const currentExpense = appStore.data.settings.expenseCalendarId || 'primary';
+
+  if (calendars.length === 0) {
+    window.showToast('カレンダーが見つかりませんでした。Googleカレンダー側でカレンダーを作成しているか確認してください。', 'warn');
+    return;
+  }
+
+  // 取得したリストをオプションとして生成
+  let optionsHtml = calendars.map(c => `<option value="${c.id}">${c.summary}${c.primary ? ' (プライマリ)' : ''}</option>`).join('');
+  
+  // 現在設定されているIDがリストにない場合でも選択肢として維持するための処理
+  if (currentIncome !== 'primary' && !calendars.find(c => c.id === currentIncome)) {
+    optionsHtml += `<option value="${currentIncome}" selected>${currentIncome} (現在の設定)</option>`;
+  }
+  if (currentExpense !== 'primary' && currentExpense !== currentIncome && !calendars.find(c => c.id === currentExpense)) {
+    optionsHtml += `<option value="${currentExpense}" selected>${currentExpense} (現在の設定)</option>`;
+  }
+
+  incomeSelect.innerHTML = optionsHtml;
+  expenseSelect.innerHTML = optionsHtml;
+  
+  // 明示的に値をセット
+  incomeSelect.value = currentIncome;
+  expenseSelect.value = currentExpense;
+  
+  window.showToast('カレンダー一覧を取得しました', 'success');
+} catch (err) {
+  window.showToast('カレンダー取得失敗: ' + err.message, 'danger');
+}
+};
+
+window.updateCalendarSettings = () => {
+const incomeCalendarId = document.getElementById('income-calendar-id').value;
+const expenseCalendarId = document.getElementById('expense-calendar-id').value;
+appStore.updateSettings({ incomeCalendarId, expenseCalendarId });
+};
+
+window.syncAllCalendars = async (btn) => {
+  if (!appStore.data.settings?.calendarSyncEnabled) {
+    window.showToast('カレンダー同期を有効にして下さい', 'warn');
+    return;
+  }
+  const months = Object.keys(appStore.data.calendar.generatedMonths);
+  if (months.length === 0) {
+    window.showToast('同期するデータがありません', 'info');
+    return;
+  }
+  
+  if (await window.showConfirm(`${months.length} ヶ月分のデータを同期しますか？`)) {
+    const originalText = btn.textContent;
+    btn.disabled = true;
+  btn.textContent = '同期中...';
+  
+  window.showToast('一括同期中...', 'info');
+  try {
+    const token = await googleAuth.getAccessToken([googleAuth.getScopes().CALENDAR]);
+    for (const ym of months) {
+      await calendarSync.syncMonthEvents(ym, token);
+    }
+    window.showToast('一括同期完了', 'success');
+  } catch (err) {
+    console.error('Batch sync error:', err);
+    window.showToast('同期中にエラーが発生しました', 'danger');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+};
+
+window.manualDrivePush = async () => {
+try {
+  await driveSync.push();
+  window.showToast('クラウドに保存しました', 'success');
+  location.reload();
+} catch (err) {
+  window.showToast('保存失敗: ' + err.message, 'danger');
+}
+};
+
+window.manualDrivePull = async () => {
+  if (await window.showConfirm('クラウドからデータを読み込みます。現在のローカルデータは上書きされます。よろしいですか？')) {
+    try {
+      const remoteData = await driveSync.pull();
+    if (remoteData) {
+      appStore.data = appStore.migrate(remoteData);
+      appStore.save();
+      window.showToast('クラウドから読み込みました。', 'success');
+      location.reload();
+    } else {
+      window.showToast('クラウド上にデータが見つかりませんでした。', 'warn');
+    }
+  } catch (err) {
+    window.showToast('読み込み失敗: ' + err.message, 'danger');
+  }
+}
+};
+
+window.clearAllData = async () => {
+  if (await window.showConfirm('全てのデータを削除して初期化しますか？この操作は取り消せません。')) {
+    localStorage.removeItem('budget_app_data');
+    location.reload();
+  }
+};
+
+window.clearCorruptedBackup = async () => {
+  if (await window.showConfirm('退避された壊れたデータを完全に削除しますか？')) {
+    localStorage.removeItem('budget_app_data_corrupted_backup');
+    location.reload();
+  }
+};
+
+window.startTutorialFromSettings = () => {
+import('./tutorial.js').then(m => m.startTutorial());
 };
 
 export function renderSettings(container) {
-  const settings = appStore.data.settings || {};
-  
-  container.innerHTML = `
+const settings = appStore.data.settings || {};
+
+container.innerHTML = `
     <div class="settings-header">
       <h2>設定</h2>
     </div>
@@ -215,189 +381,26 @@ export function renderSettings(container) {
         <button onclick="startTutorialFromSettings()" class="btn">チュートリアルを再開</button>
       </div>
 
-      <button onclick="clearAllData()" class="btn warn">全データ削除（リセット）</button>
+      <button id="clear-all-btn" class="btn warn">全データ削除（リセット）</button>
       
       ${localStorage.getItem('budget_app_data_corrupted_backup') ? `
         <div style="margin-top: 20px; padding: 15px; background: #fee2e2; border-radius: 8px; border: 1px solid var(--danger);">
           <h4 style="margin: 0; color: #991b1b;">⚠️ 壊れたデータのバックアップがあります</h4>
           <p style="font-size: 0.8rem; margin: 10px 0;">起動時に破損が検知されたため、データを退避しました。</p>
-          <button onclick="clearCorruptedBackup()" class="btn danger small">バックアップを完全に削除</button>
+          <button id="clear-corrupted-btn" class="btn danger small">バックアップを完全に削除</button>
         </div>
       ` : ''}
     </div>
-
-    <!-- インポート確認モーダル -->
-    <div id="import-confirm-modal" class="modal hidden">
-      <div class="modal-content">
-        <h3>インポートの確認</h3>
-        <p>新しいデータをインポートしますか？現在のデータは上書きされます。</p>
-        <p style="font-size: 0.8rem; color: #6b7280;">※「バックアップして上書き」を選択すると、現在のデータをブラウザ内に保存してからインポートします。</p>
-        <div class="modal-actions" style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
-          <button onclick="executeImport(true)" class="btn success">バックアップして上書き</button>
-          <button onclick="executeImport(false)" class="btn primary">そのまま上書き</button>
-          <button onclick="closeImportModal()" class="btn">キャンセル</button>
-        </div>
-      </div>
-    </div>
   `;
 
-  window.saveGoogleSettings = () => {
-    const googleClientId = document.getElementById('google-client-id').value;
-    const googleApiKey = document.getElementById('google-api-key').value;
-    appStore.updateSettings({ googleClientId, googleApiKey });
-    
-    // 即時初期化を試行
-    if (googleClientId) {
-      import('../auth/googleAuth.js').then(m => m.initGoogleAuth(googleClientId));
-    }
-    
-    window.showToast('API設定を保存しました。', 'success');
-  };
+  // イベントリスナーの動的紐付け
+  const clearAllBtn = container.querySelector('#clear-all-btn');
+  if (clearAllBtn) {
+    clearAllBtn.onclick = () => window.clearAllData();
+  }
 
-  window.loginGoogle = async () => {
-    try {
-      await googleAuth.init();
-      await googleAuth.getAccessToken([], 'select_account');
-      window.showToast('Google ログイン成功', 'success');
-      renderSettings(container);
-    } catch (err) {
-      window.showToast('ログイン失敗: ' + (err.error || err.message), 'danger');
-    }
-  };
-
-  window.toggleDriveSync = () => {
-    const enabled = document.getElementById('drive-sync-enabled').checked;
-    appStore.updateSettings({ driveSyncEnabled: enabled });
-  };
-
-  window.toggleCalendarSync = () => {
-    const enabled = document.getElementById('calendar-sync-enabled').checked;
-    appStore.updateSettings({ calendarSyncEnabled: enabled });
-  };
-
-  window.loadCalendarList = async () => {
-    try {
-      const calendars = await calendarSync.listCalendars();
-      const incomeSelect = document.getElementById('income-calendar-id');
-      const expenseSelect = document.getElementById('expense-calendar-id');
-      
-      if (!incomeSelect || !expenseSelect) return;
-
-      const currentIncome = appStore.data.settings.incomeCalendarId || 'primary';
-      const currentExpense = appStore.data.settings.expenseCalendarId || 'primary';
-
-      if (calendars.length === 0) {
-        window.showToast('カレンダーが見つかりませんでした。Googleカレンダー側でカレンダーを作成しているか確認してください。', 'warn');
-        return;
-      }
-
-      // 取得したリストをオプションとして生成
-      let optionsHtml = calendars.map(c => `<option value="${c.id}">${c.summary}${c.primary ? ' (プライマリ)' : ''}</option>`).join('');
-      
-      // 現在設定されているIDがリストにない場合でも選択肢として維持するための処理
-      if (currentIncome !== 'primary' && !calendars.find(c => c.id === currentIncome)) {
-        optionsHtml += `<option value="${currentIncome}" selected>${currentIncome} (現在の設定)</option>`;
-      }
-      if (currentExpense !== 'primary' && currentExpense !== currentIncome && !calendars.find(c => c.id === currentExpense)) {
-        optionsHtml += `<option value="${currentExpense}" selected>${currentExpense} (現在の設定)</option>`;
-      }
-
-      incomeSelect.innerHTML = optionsHtml;
-      expenseSelect.innerHTML = optionsHtml;
-      
-      // 明示的に値をセット
-      incomeSelect.value = currentIncome;
-      expenseSelect.value = currentExpense;
-      
-      window.showToast('カレンダー一覧を取得しました', 'success');
-    } catch (err) {
-      window.showToast('カレンダー取得失敗: ' + err.message, 'danger');
-    }
-  };
-
-  window.updateCalendarSettings = () => {
-    const incomeCalendarId = document.getElementById('income-calendar-id').value;
-    const expenseCalendarId = document.getElementById('expense-calendar-id').value;
-    appStore.updateSettings({ incomeCalendarId, expenseCalendarId });
-  };
-
-  window.syncAllCalendars = async (btn) => {
-    if (!appStore.data.settings?.calendarSyncEnabled) {
-      window.showToast('カレンダー同期を有効にして下さい', 'warn');
-      return;
-    }
-    const months = Object.keys(appStore.data.calendar.generatedMonths);
-    if (months.length === 0) {
-      window.showToast('同期するデータがありません', 'info');
-      return;
-    }
-    
-    if (confirm(`${months.length} ヶ月分のデータを同期しますか？`)) {
-      const originalText = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = '同期中...';
-      
-      window.showToast('一括同期中...', 'info');
-      try {
-        const token = await googleAuth.getAccessToken([googleAuth.getScopes().CALENDAR]);
-        for (const ym of months) {
-          await calendarSync.syncMonthEvents(ym, token);
-        }
-        window.showToast('一括同期完了', 'success');
-      } catch (err) {
-        console.error('Batch sync error:', err);
-        window.showToast('同期中にエラーが発生しました', 'danger');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = originalText;
-      }
-    }
-  };
-
-  window.manualDrivePush = async () => {
-    try {
-      await driveSync.push();
-      window.showToast('クラウドに保存しました', 'success');
-      renderSettings(container);
-    } catch (err) {
-      window.showToast('保存失敗: ' + err.message, 'danger');
-    }
-  };
-
-  window.manualDrivePull = async () => {
-    if (confirm('クラウドからデータを読み込みます。現在のローカルデータは上書きされます。よろしいですか？')) {
-      try {
-        const remoteData = await driveSync.pull();
-        if (remoteData) {
-          appStore.data = appStore.migrate(remoteData);
-          appStore.save();
-          window.showToast('クラウドから読み込みました。', 'success');
-          location.reload();
-        } else {
-          window.showToast('クラウド上にデータが見つかりませんでした。', 'warn');
-        }
-      } catch (err) {
-        window.showToast('読み込み失敗: ' + err.message, 'danger');
-      }
-    }
-  };
-
-  window.clearAllData = () => {
-    if (confirm('全てのデータを削除して初期化しますか？この操作は取り消せません。')) {
-      localStorage.removeItem('budget_app_data');
-      location.reload();
-    }
-  };
-
-  window.clearCorruptedBackup = () => {
-    if (confirm('退避された壊れたデータを完全に削除しますか？')) {
-      localStorage.removeItem('budget_app_data_corrupted_backup');
-      renderSettings(container);
-      window.showToast('バックアップを削除しました', 'success');
-    }
-  };
-
-  window.startTutorialFromSettings = () => {
-    import('./tutorial.js').then(m => m.startTutorial());
-  };
+  const clearCorruptedBtn = container.querySelector('#clear-corrupted-btn');
+  if (clearCorruptedBtn) {
+    clearCorruptedBtn.onclick = () => window.clearCorruptedBackup();
+  }
 }

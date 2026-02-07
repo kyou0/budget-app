@@ -163,7 +163,7 @@ export function renderDashboard(container) {
       ? `${currentYear}年${currentMonth}月のイベントが既に存在します。全ての項目を削除して再生成しますか？（完了済みの項目もリセットされます）`
       : `${currentYear}年${currentMonth}月のイベントを生成しますか？`;
 
-    if (confirm(confirmMsg)) {
+    if (await window.showConfirm(confirmMsg)) {
       console.log(`Generating events for ${currentYear}-${currentMonth}...`);
       const newEvents = generateMonthEvents(appStore.data.master.items, loans, currentYear, currentMonth);
       console.log(`Generated ${newEvents.length} events.`);
@@ -352,8 +352,8 @@ export function renderDashboard(container) {
           <p class="warn">⚠️ 完済予定が ${monthDiff} ヶ月延びて ${newSummary.payoffDate} になります。</p>
         `;
         applyBtn.classList.remove('hidden');
-        applyBtn.onclick = () => {
-          if (confirm('借入を実行して残高に反映しますか？')) {
+        applyBtn.onclick = async () => {
+          if (await window.showConfirm('借入を実行して残高に反映しますか？')) {
             plan.forEach(p => {
               const loan = loans.find(l => l.id === p.id);
               appStore.updateLoan(p.id, { currentBalance: loan.currentBalance + p.amount });

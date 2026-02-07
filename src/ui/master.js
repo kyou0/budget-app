@@ -237,8 +237,8 @@ export function renderMaster(container) {
     renderMaster(container);
   };
 
-  window.deleteMasterItem = (id) => {
-    if (confirm('この項目を完全に削除しますか？')) {
+  window.deleteMasterItem = async (id) => {
+    if (await window.showConfirm('この項目を完全に削除しますか？')) {
       appStore.deleteMasterItem(id);
       if (appStore.data.settings?.driveSyncEnabled) {
         driveSync.push().catch(err => console.error('Auto drive push failed', err));
@@ -248,8 +248,8 @@ export function renderMaster(container) {
     }
   };
 
-  window.deleteLoan = (id) => {
-    if (confirm('この借入先を完全に削除しますか？')) {
+  window.deleteLoan = async (id) => {
+    if (await window.showConfirm('この借入先を完全に削除しますか？')) {
       appStore.deleteLoan(id);
       if (appStore.data.settings?.driveSyncEnabled) {
         driveSync.push().catch(err => console.error('Auto drive push failed', err));

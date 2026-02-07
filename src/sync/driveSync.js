@@ -59,7 +59,7 @@ export const driveSync = {
       // 競合チェック: Push前にDrive上の最新更新時刻を取得
       if (file && appStore.data.settings?.lastDriveUpdatedAt) {
         if (file.updatedTime > appStore.data.settings.lastDriveUpdatedAt) {
-          if (!confirm('クラウド上のデータがローカルより新しいです。上書きしますか？（キャンセルするとクラウドからプルします）')) {
+          if (!await window.showConfirm('クラウド上のデータがローカルより新しいです。上書きしますか？（キャンセルするとクラウドからプルします）')) {
             const remoteData = await this.pull();
             if (remoteData) {
               appStore.data = appStore.migrate(remoteData);

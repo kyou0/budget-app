@@ -28,6 +28,48 @@ window.showToast = (message, type = 'info') => {
   }, 100);
 };
 
+/**
+ * カスタム確認ダイアログの表示
+ */
+window.showConfirm = (message, title = '確認') => {
+  return new Promise((resolve) => {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.zIndex = '3000'; // チュートリアルなどより前面に出す
+    modal.innerHTML = `
+      <div class="modal-content">
+        <h3 style="margin-top:0;">${title}</h3>
+        <p style="margin-bottom: 20px; line-height: 1.6; white-space: pre-wrap;">${message}</p>
+        <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button id="confirm-cancel" class="btn" style="min-width: 80px;">キャンセル</button>
+          <button id="confirm-ok" class="btn primary" style="min-width: 80px;">OK</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const okBtn = modal.querySelector('#confirm-ok');
+    const cancelBtn = modal.querySelector('#confirm-cancel');
+
+    okBtn.onclick = () => {
+      modal.remove();
+      resolve(true);
+    };
+    cancelBtn.onclick = () => {
+      modal.remove();
+      resolve(false);
+    };
+    
+    // 背景クリックでもキャンセル
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        modal.remove();
+        resolve(false);
+      }
+    };
+  });
+};
+
 const routes = {
   '#dashboard': () => renderDashboard ? renderDashboard(container) : console.error('renderDashboard is missing'),
   '#analysis': () => renderAnalysis ? renderAnalysis(container) : console.error('renderAnalysis is missing'),
@@ -47,7 +89,7 @@ function renderLogin() {
           Googleアカウントでログイン
         </button>
         <p style="font-size: 0.8rem; color: #6b7280; margin-top: 20px;">
-          ※現在はデモモードです。ボタンを押すと開始します。
+          クラウド同期を利用するにはGoogleログインが必要です。
         </p>
       </div>
     </div>
@@ -60,7 +102,7 @@ function renderLogin() {
       try {
         // initGoogleAuth は DOMContentLoaded で呼ばれているはずだが念のため
         initGoogleAuth(clientId);
-        await googleAuth.getAccessToken(); // ログイン試行
+        await googleAuth.getAccessToken([], 'select_account'); // ログイン試行
         sessionStorage.setItem('isLoggedIn', 'true');
         initApp();
       } catch (err) {
@@ -68,7 +110,7 @@ function renderLogin() {
         window.showToast('ログインに失敗しました。設定を確認してください。', 'danger');
       }
     } else {
-      // Client IDがない場合はデモモード
+      // Client IDがない場合はローカルモードとして続行
       sessionStorage.setItem('isLoggedIn', 'true');
       initApp();
     }
@@ -97,9 +139,10 @@ async function initApp() {
       try {
         const remoteData = await driveSync.pull();
         if (remoteData) {
-          if (confirm('Google Driveから新しいデータが見つかりました。読み込みますか？')) {
+          if (await window.showConfirm('Google Driveから新しいデータが見つかりました。読み込みますか？')) {
             appStore.data = appStore.migrate(remoteData);
             appStore.save();
+            location.reload();
           }
         }
       } catch (err) {
