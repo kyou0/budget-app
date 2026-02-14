@@ -89,6 +89,10 @@ export function renderDashboard(container) {
 
   const settings = appStore.data.settings || {};
   const isSyncing = false; // 将来的にローディング状態を管理する場合用
+  const syncHistory = settings.syncHistory || [];
+  const recentSyncLogs = syncHistory
+    .filter(log => log.type === 'calendar' || log.type === 'drive')
+    .slice(0, 3);
   const analysisHistory = settings.analysisHistory || [];
   const baselineTotal = analysisHistory[0]?.baselineTotalBalance || analysisHistory[0]?.totalBalance || payoffSummary.totalBalance || 0;
   const progressPercent = baselineTotal > 0 ? Math.max(0, Math.round((1 - payoffSummary.totalBalance / baselineTotal) * 100)) : 0;
@@ -115,6 +119,17 @@ export function renderDashboard(container) {
         ` : ''}
       </div>
     </div>
+    ${recentSyncLogs.length > 0 ? `
+      <div style="margin: 0 10px 10px 10px; padding: 10px 12px; background: #f9fafb; border-radius: 8px; font-size: 0.8rem; color: #6b7280;">
+        <div style="font-weight: 600; margin-bottom: 6px; color: #374151;">同期ログ（直近）</div>
+        ${recentSyncLogs.map(log => `
+          <div style="display: flex; justify-content: space-between; gap: 10px;">
+            <div>${log.type === 'drive' ? 'Drive' : 'Calendar'} ${log.status === 'success' ? '成功' : '失敗'}${log.mode === 'auto' ? '（自動）' : '（手動）'}</div>
+            <div style="white-space: nowrap;">${new Date(log.timestamp).toLocaleString()}</div>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
 
     ${welcomeLabel ? `
       <div style="margin: 0 10px 10px 10px; padding: 10px 12px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd; color: #0c4a6e;">
@@ -402,10 +417,22 @@ export function renderDashboard(container) {
     window.showToast('カレンダー同期中...', 'info');
     try {
       await calendarSync.syncMonthEvents(yearMonth);
+      appStore.addSyncLog({
+        type: 'calendar',
+        mode: isAuto ? 'auto' : 'manual',
+        status: 'success',
+        message: `Calendar sync: ${yearMonth}`
+      });
       window.showToast('カレンダー同期完了', 'success');
       if (!isAuto) renderDashboard(container); // IDが割り当てられた可能性があるので再描画
     } catch (err) {
       console.error('Calendar sync failed', err);
+      appStore.addSyncLog({
+        type: 'calendar',
+        mode: isAuto ? 'auto' : 'manual',
+        status: 'error',
+        message: `Calendar sync: ${err.message || '失敗'}`
+      });
       window.showToast('カレンダー同期に失敗しました', 'danger');
     }
   };
