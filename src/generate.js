@@ -110,7 +110,7 @@ export function generateMonthEvents(masterItems, loans, clients, year, month) {
 
   // 借入の返済
   loans
-    .filter(loan => loan.active && loan.currentBalance > 0)
+    .filter(loan => loan.active && loan.currentBalance > 0 && loan.type !== 'クレジットカード')
     .forEach(loan => {
       const rule = loan.scheduleRule || { type: 'monthly', day: loan.paymentDay || 27 };
       const dates = resolveDatesFromRule(rule, loan.adjustment || 'none', year, month, lastDay);

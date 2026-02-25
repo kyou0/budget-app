@@ -93,3 +93,69 @@ export function formatAgeMonths(months) {
   const remain = months % 12;
   return remain > 0 ? `${years}歳${remain}ヶ月` : `${years}歳`;
 }
+
+/**
+ * 名前からブランドのロゴURLを返す
+ * @param {string} name 
+ * @returns {string|null}
+ */
+export function getLogoUrl(name) {
+  if (!name) return null;
+  const n = name.toLowerCase();
+  
+  for (const brand of CARD_BRANDS) {
+    if (n.includes(brand.key)) {
+      return `https://www.google.com/s2/favicons?domain=${brand.domain}&sz=64`;
+    }
+  }
+  return null;
+}
+
+/**
+ * クレジットカードブランドのリスト
+ */
+export const CARD_BRANDS = [
+  { name: 'JCB', key: 'jcb', domain: 'jcb.co.jp' },
+  { name: 'Visa', key: 'visa', domain: 'visa.co.jp' },
+  { name: 'Mastercard', key: 'master', domain: 'mastercard.co.jp' },
+  { name: 'Amex', key: 'amex', domain: 'americanexpress.com' },
+  { name: 'Diners', key: 'diners', domain: 'diners.co.jp' },
+  { name: '楽天カード', key: '楽天', domain: 'rakuten-card.co.jp' },
+  { name: 'PayPayカード', key: 'paypay', domain: 'paypay-card.co.jp' },
+  { name: '三井住友カード', key: '三井住友', domain: 'smbc-card.com' },
+  { name: '三菱UFJカード', key: '三菱ufj', domain: 'cr.mufg.jp' },
+  { name: 'エポスカード', key: 'エポス', domain: 'eposcard.co.jp' },
+  { name: 'イオンカード', key: 'イオン', domain: 'aeon.co.jp' },
+  { name: 'セゾンカード', key: 'セゾン', domain: 'saisoncard.co.jp' },
+  { name: 'dカード', key: 'dカード', domain: 'd-card.jp' },
+  { name: 'au PAY カード', key: 'au pay', domain: 'kddi-fs.com' },
+  { name: 'リクルートカード', key: 'リクルート', domain: 'recruit-card.jp' },
+  { name: 'Amazonカード', key: 'amazon', domain: 'amazon.co.jp' },
+  { name: 'メルカード', key: 'メル', domain: 'mercari.com' },
+  { name: 'VIEWカード', key: 'view', domain: 'jreast.co.jp' },
+  { name: 'ライフカード', key: 'ライフ', domain: 'lifecard.co.jp' },
+  { name: 'オリコカード', key: 'オリコ', domain: 'orico.co.jp' }
+];
+
+/**
+ * 数値をカンマ区切り文字列に変換
+ * @param {number|string} val 
+ * @returns {string}
+ */
+export function formatNumber(val) {
+  if (val === undefined || val === null || val === '') return '';
+  const num = typeof val === 'string' ? Number(val.replace(/,/g, '')) : val;
+  if (isNaN(num)) return val;
+  return num.toLocaleString();
+}
+
+/**
+ * カンマ区切り文字列を数値に変換
+ * @param {string|number} val 
+ * @returns {number}
+ */
+export function parseNumber(val) {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  return Number(String(val).replace(/,/g, '')) || 0;
+}

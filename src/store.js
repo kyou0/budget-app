@@ -170,6 +170,16 @@ class Store {
     this.save();
   }
 
+  addLoans(loans) {
+    const newLoans = loans.map(loan => ({
+      ...loan,
+      id: loan.id || crypto.randomUUID(),
+      active: typeof loan.active === 'boolean' ? loan.active : true
+    }));
+    this.data.master.loans.push(...newLoans);
+    this.save();
+  }
+
   updateLoan(id, updates) {
     const index = this.data.master.loans.findIndex(l => l.id === id);
     if (index !== -1) {

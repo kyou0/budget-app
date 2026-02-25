@@ -1,14 +1,16 @@
 import { store as appStore } from '../store.js';
-import { getIcon } from '../utils.js';
+import { getIcon, getLogoUrl, CARD_BRANDS, formatNumber, parseNumber } from '../utils.js';
 import { driveSync } from '../sync/driveSync.js';
 import { generateClientEvents } from '../generate.js';
 
-let currentTab = 'items'; // 'items' | 'banks' | 'loans' | 'clients'
+let currentTab = 'items'; // 'items' | 'banks' | 'loans' | 'clients' | 'cards'
 let currentItemType = 'income'; // 'income' | 'expense'
 
 export function renderMaster(container) {
   const items = appStore.data.master.items;
   const loans = appStore.data.master.loans || [];
+  const cards = loans.filter(l => l.type === 'クレジットカード');
+  const otherLoans = loans.filter(l => l.type !== 'クレジットカード');
   const clients = appStore.data.master.clients || [];
   const loanTypeOptions = appStore.data.settings?.loanTypeOptions || [];
   const loanTypeOptionsHtml = loanTypeOptions
@@ -18,16 +20,34 @@ export function renderMaster(container) {
 
   container.innerHTML = `
     <div class="tabs">
-      <button class="tab-btn ${currentTab === 'items' ? 'active' : ''}" onclick="switchMasterTab('items')">収支項目</button>
-      <button class="tab-btn ${currentTab === 'banks' ? 'active' : ''}" onclick="switchMasterTab('banks')">銀行口座</button>
-      <button class="tab-btn ${currentTab === 'loans' ? 'active' : ''}" onclick="switchMasterTab('loans')">借入先</button>
-      <button class="tab-btn ${currentTab === 'clients' ? 'active' : ''}" onclick="switchMasterTab('clients')">クライアント</button>
+      <button class="tab-btn ${currentTab === 'items' ? 'active' : ''}" onclick="switchMasterTab('items')">📝 収支項目</button>
+      <button class="tab-btn ${currentTab === 'banks' ? 'active' : ''}" onclick="switchMasterTab('banks')">🏦 銀行口座</button>
+      <button class="tab-btn ${currentTab === 'cards' ? 'active' : ''}" onclick="switchMasterTab('cards')">💳 クレジット</button>
+      <button class="tab-btn ${currentTab === 'loans' ? 'active' : ''}" onclick="switchMasterTab('loans')">💸 借入先</button>
+      <button class="tab-btn ${currentTab === 'clients' ? 'active' : ''}" onclick="switchMasterTab('clients')">🤝 クライアント</button>
     </div>
 
+    ${currentTab === 'cards' ? `
+      <div style="margin: 0 16px 16px; padding: 12px; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; font-size: 0.85rem; color: #1e40af;">
+        💡 <strong>クレジットカード管理:</strong> ローンとは別に、毎月の請求額を管理するためのマスターです。名前からロゴが自動取得されますが、手動で選択も可能です。
+      </div>
+    ` : ''}
+
     <div class="master-header">
-      <h2>${currentTab === 'items' ? '収支マスター' : currentTab === 'banks' ? '銀行マスター' : currentTab === 'loans' ? '借入先マスター' : 'クライアントマスター'}</h2>
+      <h2>${
+        currentTab === 'items' ? '収支マスター' : 
+        currentTab === 'banks' ? '銀行マスター' : 
+        currentTab === 'cards' ? 'クレジットマスター' :
+        currentTab === 'loans' ? '借入先マスター' : 
+        'クライアントマスター'
+      }</h2>
       <div style="display: flex; gap: 8px; align-items: center;">
         ${currentTab === 'clients' ? `<button id="bulk-generate-btn" class="btn">一括生成</button>` : ''}
+        ${currentTab === 'cards' ? `
+          <a href="credit-cards-demo.json" download style="font-size: 0.8rem; color: var(--primary); text-decoration: none; margin-right: 8px;">[テンプレート]</a>
+          <button id="import-btn" class="btn">一括インポート</button>
+          <input type="file" id="import-file" class="hidden" accept=".json">
+        ` : ''}
         <button id="add-btn" class="btn primary">新規追加</button>
       </div>
     </div>
@@ -41,7 +61,8 @@ export function renderMaster(container) {
         ${renderItemsList(visibleItems)}
       ` : 
         currentTab === 'banks' ? renderBanksList(items.filter(i => i.type === 'bank')) : 
-        currentTab === 'loans' ? renderLoansList(loans) :
+        currentTab === 'cards' ? renderCardsList(cards) :
+        currentTab === 'loans' ? renderLoansList(otherLoans) :
         renderClientsList(clients)}
     </div>
 
@@ -93,7 +114,7 @@ export function renderMaster(container) {
                 </div>
                 <div>
                   <label>金額 (ベース)</label>
-                  <input type="number" id="master-amount" required>
+                  <input type="text" inputmode="numeric" id="master-amount" required oninput="handleNumericInput(this)">
                 </div>
               </div>
             </div>
@@ -148,7 +169,7 @@ export function renderMaster(container) {
             <input type="hidden" id="master-type" value="bank">
             <div id="field-balance" class="form-group">
               <label>現在残高</label>
-              <input type="number" id="master-balance" required>
+              <input type="text" inputmode="numeric" id="master-balance" required oninput="handleNumericInput(this)">
             </div>
           ` : currentTab === 'clients' ? `
             <div class="form-group">
@@ -167,7 +188,7 @@ export function renderMaster(container) {
               </div>
               <div class="form-group">
                 <label>金額（ベース）</label>
-                <input type="number" id="client-amount" required placeholder="例: 300000">
+                <input type="text" inputmode="numeric" id="client-amount" required placeholder="例: 300,000" oninput="handleNumericInput(this)">
               </div>
             </div>
             <div class="form-group">
@@ -224,41 +245,79 @@ export function renderMaster(container) {
               <textarea id="client-notes" rows="2" placeholder="請求書番号や担当者など"></textarea>
             </div>
           ` : `
-            <div class="form-row">
+            <div class="form-row ${currentTab === 'cards' ? 'hidden' : ''}">
               <div class="form-group">
                 <label>種別</label>
-                <select id="loan-type">
+                <select id="loan-type" onchange="toggleLoanFields()">
                   ${loanTypeOptionsHtml}
                 </select>
               </div>
               <div class="form-group">
                 <label>年利 (%)</label>
-                <input type="number" id="loan-rate" step="0.1" required>
+                <input type="number" id="loan-rate" step="0.1" ${currentTab === 'cards' ? '' : 'required'}>
               </div>
             </div>
-            <div class="form-row">
+            <div class="form-row ${currentTab === 'cards' ? 'hidden' : ''}">
               <div class="form-group">
                 <label>現在残高</label>
-                <input type="number" id="loan-balance" required>
+                <input type="text" inputmode="numeric" id="loan-balance" oninput="handleNumericInput(this)" ${currentTab === 'cards' ? '' : 'required'}>
               </div>
               <div class="form-group">
                 <label>月間返済額</label>
-                <input type="number" id="loan-payment" required>
+                <input type="text" inputmode="numeric" id="loan-payment" oninput="handleNumericInput(this)" ${currentTab === 'cards' ? '' : 'required'}>
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>限度額 (任意)</label>
-                <input type="number" id="loan-limit">
+                <label>${currentTab === 'cards' ? '限度額' : '限度額 (任意)'}</label>
+                <input type="text" inputmode="numeric" id="loan-limit" oninput="handleNumericInput(this)" ${currentTab === 'cards' ? 'required' : ''}>
               </div>
               <div class="form-group">
-                <label>返済日 (1-31)</label>
+                <label>${currentTab === 'cards' ? '引落日 (1-31)' : '返済日 (1-31)'}</label>
                 <input type="number" id="loan-day" min="1" max="31" value="27">
               </div>
             </div>
+            ${currentTab === 'cards' ? `
+              <div class="form-group">
+                <label>ブランドロゴ</label>
+                <input type="hidden" id="loan-logo">
+                <div id="logo-selection" class="logo-candidate-grid">
+                  ${CARD_BRANDS.map(brand => {
+                    const url = `https://www.google.com/s2/favicons?domain=${brand.domain}&sz=64`;
+                    return `
+                      <div class="logo-candidate" onclick="selectCardLogo('${url}', this)">
+                        <img src="${url}" alt="${brand.name}">
+                        <span>${brand.name}</span>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            ` : ''}
+            <div id="field-credit-card-detail" class="hidden">
+              <details class="collapsible">
+                <summary>高度な設定 (締日・支払月など)</summary>
+                <div class="collapsible-body">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>締日 (1-31, 任意)</label>
+                      <input type="number" id="loan-deadline" min="1" max="31">
+                    </div>
+                    <div class="form-group">
+                      <label>支払月オフセット</label>
+                      <select id="loan-offset">
+                        <option value="0">当月</option>
+                        <option value="1" selected>翌月</option>
+                        <option value="2">翌々月</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </details>
+            </div>
             <div class="form-row">
               <div class="form-group">
-                <label>支払元銀行</label>
+                <label>${currentTab === 'cards' ? '引落銀行' : '支払元銀行'}</label>
                 <select id="loan-bank-id">
                   <option value="">(未選択)</option>
                   ${items.filter(i => i.type === 'bank').map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
@@ -269,7 +328,7 @@ export function renderMaster(container) {
                 <select id="loan-adjustment">
                   <option value="none">調整なし</option>
                   <option value="prev_weekday">前営業日</option>
-                  <option value="next_weekday">翌営業日</option>
+                  <option value="next_weekday" selected>翌営業日</option>
                 </select>
               </div>
             </div>
@@ -321,6 +380,53 @@ export function renderMaster(container) {
   container.querySelector('#add-btn').onclick = () => showModal();
   const bulkBtn = container.querySelector('#bulk-generate-btn');
   if (bulkBtn) bulkBtn.onclick = () => openClientBulkModal();
+
+  const importBtn = container.querySelector('#import-btn');
+  const importFile = container.querySelector('#import-file');
+  if (importBtn && importFile) {
+    importBtn.onclick = () => importFile.click();
+    importFile.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const json = JSON.parse(event.target.result);
+          if (!Array.isArray(json)) throw new Error('JSONは配列形式である必要があります');
+          
+          if (await window.showConfirm(`${json.length}件のデータをインポートしますか？`)) {
+            // クレジットカードとしてインポート
+            const cardsToImport = json.map(c => ({
+              interestRate: 0,
+              maxLimit: 0,
+              currentBalance: 0,
+              monthlyPayment: 0,
+              paymentDay: 27,
+              deadlineDay: null,
+              payMonthOffset: 1,
+              adjustment: 'none',
+              bankId: '',
+              notes: '',
+              ...c,
+              type: 'クレジットカード' // 種別は固定
+            }));
+            appStore.addLoans(cardsToImport);
+            if (appStore.data.settings?.driveSyncEnabled) {
+              driveSync.push().catch(err => console.error('Auto drive push failed', err));
+            }
+            window.showToast('インポートが完了しました', 'success');
+            renderMaster(container);
+          }
+        } catch (err) {
+          console.error(err);
+          window.showToast('JSONの解析に失敗しました: ' + err.message, 'danger');
+        }
+        importFile.value = '';
+      };
+      reader.readAsText(file);
+    };
+  }
+
   container.querySelector('#master-form').onsubmit = (e) => {
     e.preventDefault();
     saveData();
@@ -416,6 +522,20 @@ export function renderMaster(container) {
     showModal(client);
   };
 
+  window.handleNumericInput = (el) => {
+    const cursor = el.selectionStart;
+    const oldVal = el.value;
+    const newVal = formatNumber(oldVal);
+    
+    if (oldVal === newVal) return;
+    
+    el.value = newVal;
+    
+    // カンマが増減した分を考慮してカーソル位置を調整
+    const diff = newVal.length - oldVal.length;
+    el.setSelectionRange(cursor + diff, cursor + diff);
+  };
+
   window.addLoanTypeOption = () => {
     const input = document.getElementById('loan-type-custom');
     const select = document.getElementById('loan-type');
@@ -437,6 +557,12 @@ export function renderMaster(container) {
     select.value = value;
     input.value = '';
     window.showToast('借入種別を追加しました', 'success');
+  };
+
+  window.selectCardLogo = (url, el) => {
+    document.getElementById('loan-logo').value = url;
+    document.querySelectorAll('.logo-candidate').forEach(c => c.classList.remove('selected'));
+    if (el) el.classList.add('selected');
   };
 
   window.toggleMasterItem = (id) => {
@@ -516,6 +642,24 @@ export function renderMaster(container) {
     if (type !== 'bank') {
       window.toggleRuleFields();
     }
+  };
+
+  window.toggleLoanFields = () => {
+    const typeEl = document.getElementById('loan-type');
+    if (!typeEl) return;
+    const type = typeEl.value;
+    const creditCardDetail = document.getElementById('field-credit-card-detail');
+    if (creditCardDetail) {
+      creditCardDetail.classList.toggle('hidden', type !== 'クレジットカード');
+    }
+    
+    // カードの場合は年利・残高・返済額の行を完全に非表示にする（親のform-rowごと）
+    const rateEl = document.getElementById('loan-rate');
+    const balanceEl = document.getElementById('loan-balance');
+    const paymentEl = document.getElementById('loan-payment');
+    
+    if (rateEl) rateEl.closest('.form-row').classList.toggle('hidden', type === 'クレジットカード');
+    if (balanceEl) balanceEl.closest('.form-row').classList.toggle('hidden', type === 'クレジットカード');
   };
 
   window.toggleRuleFields = () => {
@@ -683,6 +827,10 @@ function renderLoansList(loans) {
 
   const groupKeys = Object.keys(grouped).sort((a, b) => a.localeCompare(b, 'ja'));
 
+  if (loans.length === 0) {
+    return `<div style="font-size: 0.85rem; color: #6b7280; padding: 10px 0;">借入先がありません。</div>`;
+  }
+
   return groupKeys.map(type => `
     <div class="master-group">
       <div class="master-group-title">
@@ -696,7 +844,6 @@ function renderLoansList(loans) {
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span class="type expense">借入</span>
                 <span style="font-size: 0.7rem; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; color: #6b7280;">${loan.type || '未分類'}</span>
-                ${loan.type === 'クレジットカード' ? '<span class="tag-badge tag-card">要移行</span>' : ''}
               </div>
               <span class="name">${getIcon(loan.name, 'loan')} ${loan.name}</span>
               <div style="display: flex; gap: 15px; font-size: 0.9rem;">
@@ -721,6 +868,68 @@ function renderLoansList(loans) {
       </div>
     </div>
   `).join('');
+}
+
+function renderCardsList(cards) {
+  const bankMap = Object.fromEntries(appStore.data.master.items.filter(i => i.type === 'bank').map(b => [b.id, b.name]));
+  
+  if (cards.length === 0) {
+    return `<div style="font-size: 0.85rem; color: #6b7280; padding: 10px 0;">クレジットカードが登録されていません。</div>`;
+  }
+
+  return `
+    <div class="master-group">
+      <div class="master-group-title">
+        <span>登録済みカード</span>
+        <span class="master-group-count">${cards.length}</span>
+      </div>
+      <div class="master-group-grid">
+        ${cards.map(card => {
+          const logoUrl = card.logo || getLogoUrl(card.name);
+          return `
+            <div class="master-item master-item-card card-type ${card.active ? '' : 'inactive'}" onclick="editLoan('${card.id}')">
+              <div class="info">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                  <div class="card-chip"></div>
+                  ${logoUrl ? `<img src="${logoUrl}" alt="" style="height: 32px; max-width: 80px; object-fit: contain; background: white; padding: 4px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">` : `<span style="font-size: 2rem;">💳</span>`}
+                </div>
+                <span class="name">${card.name}</span>
+                <div class="bank-link" style="font-size: 0.85rem; margin-bottom: 12px; opacity: 0.9;">
+                  🏦 ${bankMap[card.bankId] || '(銀行未設定)'}
+                </div>
+                <div class="info-grid">
+                  <div>
+                    <div>LIMIT</div>
+                    <div>¥${(card.maxLimit || 0).toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <div>PAY DAY</div>
+                    <div>${card.paymentDay}日 (${card.payMonthOffset === 0 ? '当月' : '翌月'})</div>
+                  </div>
+                  <div>
+                    <div>DEADLINE</div>
+                    <div>${card.deadlineDay ? `${card.deadlineDay}日` : '—'}</div>
+                  </div>
+                  <div>
+                    <div>STATUS</div>
+                    <div>${card.active ? 'ACTIVE' : 'INACTIVE'}</div>
+                  </div>
+                </div>
+                ${card.notes ? `<div style="font-size: 0.7rem; color: rgba(255,255,255,0.7); margin-top: 10px; font-style: italic; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px;">📝 ${card.notes}</div>` : ''}
+              </div>
+              <div class="actions" style="margin-top: 15px;">
+                <button onclick="event.stopPropagation(); editLoan('${card.id}')" class="btn small" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">編集</button>
+                <button onclick="event.stopPropagation(); toggleLoan('${card.id}')" class="btn small" style="background: ${card.active ? 'rgba(245,158,11,0.4)' : 'rgba(16,185,129,0.4)'}; color: white; border: 1px solid rgba(255,255,255,0.2);">
+                  ${card.active ? '無効化' : '有効化'}
+                </button>
+                <button onclick="event.stopPropagation(); deleteLoan('${card.id}')" class="btn small" style="background: rgba(239,68,68,0.4); color: white; border: 1px solid rgba(255,255,255,0.2);">削除</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
 }
 
 function renderClientsList(clients) {
@@ -782,7 +991,7 @@ function showModal(data = null) {
     if (currentTab === 'items' || currentTab === 'banks') {
       if (form['master-type']) form['master-type'].value = data.type;
       if (form['master-tag']) form['master-tag'].value = data.tag || '';
-      if (form['master-amount']) form['master-amount'].value = data.amount || 0;
+      if (form['master-amount']) form['master-amount'].value = formatNumber(data.amount || 0);
       if (form['master-amount-mode']) form['master-amount-mode'].value = data.amountMode || 'fixed';
       
       if (form['master-rule-type']) {
@@ -793,7 +1002,7 @@ function showModal(data = null) {
         if (form['master-nth']) form['master-nth'].value = rule.nth || 1;
       }
 
-      if (form['master-balance']) form['master-balance'].value = data.currentBalance || 0;
+      if (form['master-balance']) form['master-balance'].value = formatNumber(data.currentBalance || 0);
       if (form['master-bank-id']) form['master-bank-id'].value = data.bankId || '';
       if (form['master-adjustment']) form['master-adjustment'].value = data.adjustment || 'none';
       
@@ -801,7 +1010,7 @@ function showModal(data = null) {
       if (form['master-eff-end']) form['master-eff-end'].value = data.effective?.end || '';
 
       window.toggleMasterFormFields();
-    } else if (currentTab === 'loans') {
+    } else if (currentTab === 'loans' || currentTab === 'cards') {
       if (form['loan-type']) {
         const options = Array.from(form['loan-type'].options).map(o => o.value);
         if (!options.includes(data.type)) {
@@ -810,20 +1019,33 @@ function showModal(data = null) {
           option.textContent = data.type;
           form['loan-type'].appendChild(option);
         }
-        form['loan-type'].value = data.type;
+        form['loan-type'].value = data.type || (currentTab === 'cards' ? 'クレジットカード' : '消費者金融');
       }
-      if (form['loan-rate']) form['loan-rate'].value = data.interestRate;
-      if (form['loan-balance']) form['loan-balance'].value = data.currentBalance;
-      if (form['loan-payment']) form['loan-payment'].value = data.monthlyPayment;
-      if (form['loan-limit']) form['loan-limit'].value = data.maxLimit || 0;
+      if (form['master-name']) form['master-name'].value = data.name || '';
+      if (form['loan-rate']) form['loan-rate'].value = data.interestRate || 0;
+      if (form['loan-balance']) form['loan-balance'].value = formatNumber(data.currentBalance || 0);
+      if (form['loan-payment']) form['loan-payment'].value = formatNumber(data.monthlyPayment || 0);
+      if (form['loan-limit']) form['loan-limit'].value = formatNumber(data.maxLimit || 0);
       if (form['loan-day']) form['loan-day'].value = data.paymentDay || (data.scheduleRule?.day) || 27;
+      if (form['loan-deadline']) form['loan-deadline'].value = data.deadlineDay || '';
+      if (form['loan-offset']) form['loan-offset'].value = data.payMonthOffset !== undefined ? data.payMonthOffset : 1;
+      if (form['loan-logo']) {
+        form['loan-logo'].value = data.logo || '';
+        // 候補から選択状態を復元
+        document.querySelectorAll('.logo-candidate').forEach(c => {
+          const img = c.querySelector('img');
+          if (img && img.src === data.logo) c.classList.add('selected');
+          else c.classList.remove('selected');
+        });
+      }
       if (form['loan-bank-id']) form['loan-bank-id'].value = data.bankId || '';
       if (form['loan-adjustment']) form['loan-adjustment'].value = data.adjustment || 'none';
       if (form['loan-notes']) form['loan-notes'].value = data.notes || '';
+      window.toggleLoanFields();
     } else if (currentTab === 'clients') {
       if (form['client-name']) form['client-name'].value = data.name;
       if (form['client-amount-mode']) form['client-amount-mode'].value = data.amountMode || 'fixed';
-      if (form['client-amount']) form['client-amount'].value = data.amount || 0;
+      if (form['client-amount']) form['client-amount'].value = formatNumber(data.amount || 0);
       if (form['client-rule-type']) {
         const rule = data.scheduleRule || { type: 'monthly', day: data.paymentDay || 15 };
         form['client-rule-type'].value = rule.type;
@@ -847,6 +1069,12 @@ function showModal(data = null) {
       if (form['client-rule-type']) form['client-rule-type'].value = 'monthly';
       if (form['client-day']) form['client-day'].value = 15;
       window.toggleClientRuleFields();
+    }
+    if (currentTab === 'cards' || currentTab === 'loans') {
+      if (form['loan-type']) {
+        form['loan-type'].value = (currentTab === 'cards' ? 'クレジットカード' : '消費者金融');
+        window.toggleLoanFields();
+      }
     }
   }
   modal.classList.remove('hidden');
@@ -877,7 +1105,7 @@ function requireText(el) {
 }
 
 function requireNumber(el) {
-  if (!el || el.value === '' || Number.isNaN(Number(el.value))) {
+  if (!el || el.value === '' || Number.isNaN(parseNumber(el.value))) {
     markError(el);
     return false;
   }
@@ -924,7 +1152,7 @@ function saveData() {
       name: form['master-name'] ? form['master-name'].value : '',
       type: type,
       tag: form['master-tag'] ? form['master-tag'].value : '',
-      amount: (type === 'bank' || !form['master-amount']) ? 0 : Number(form['master-amount'].value),
+      amount: (type === 'bank' || !form['master-amount']) ? 0 : parseNumber(form['master-amount'].value),
       amountMode: form['master-amount-mode'] ? form['master-amount-mode'].value : 'fixed',
       scheduleRule: type === 'bank' ? null : scheduleRule,
       day: scheduleRule.day, // v1 fallback
@@ -934,38 +1162,45 @@ function saveData() {
         start: form['master-eff-start']?.value || null,
         end: form['master-eff-end']?.value || null
       },
-      currentBalance: (type === 'bank' && form['master-balance']) ? Number(form['master-balance'].value) : 0
+      currentBalance: (type === 'bank' && form['master-balance']) ? parseNumber(form['master-balance'].value) : 0
     };
     if (id) appStore.updateMasterItem(id, data);
     else appStore.addMasterItem(data);
-  } else if (currentTab === 'loans') {
-    if (form['loan-type'] && form['loan-type'].value === 'クレジットカード') {
-      window.showToast('クレジットカードは借入ではなく、収支マスターの支出(カード)で管理してください', 'warn');
-      return;
-    }
-
+  } else if (currentTab === 'loans' || currentTab === 'cards') {
     requireField(requireText, form['master-name']);
-    requireField(requireNumber, form['loan-rate']);
-    requireField(requireNumber, form['loan-balance']);
-    requireField(requireNumber, form['loan-payment']);
+    if (currentTab === 'cards') {
+      requireField(requireNumber, form['loan-limit']);
+    } else {
+      requireField(requireNumber, form['loan-balance']);
+      requireField(requireNumber, form['loan-payment']);
+    }
     if (firstInvalid) {
       window.showToast('必須項目を入力してください', 'warn');
       firstInvalid.focus();
       return;
     }
-
     const data = {
       name: form['master-name'] ? form['master-name'].value : '',
-      type: form['loan-type'] ? form['loan-type'].value : '消費者金融',
+      type: form['loan-type'] ? form['loan-type'].value : (currentTab === 'cards' ? 'クレジットカード' : '消費者金融'),
       interestRate: Number(form['loan-rate'] ? form['loan-rate'].value : 0),
-      currentBalance: Number(form['loan-balance'] ? form['loan-balance'].value : 0),
-      monthlyPayment: Number(form['loan-payment'] ? form['loan-payment'].value : 0),
-      maxLimit: Number(form['loan-limit'] ? form['loan-limit'].value : 0),
+      currentBalance: parseNumber(form['loan-balance'] ? form['loan-balance'].value : 0),
+      monthlyPayment: parseNumber(form['loan-payment'] ? form['loan-payment'].value : 0),
+      maxLimit: parseNumber(form['loan-limit'] ? form['loan-limit'].value : 0),
       paymentDay: Number(form['loan-day'] ? form['loan-day'].value : 27),
+      deadlineDay: form['loan-deadline']?.value ? Number(form['loan-deadline'].value) : null,
+      payMonthOffset: Number(form['loan-offset']?.value || 0),
       bankId: form['loan-bank-id'] ? form['loan-bank-id'].value : '',
+      logo: form['loan-logo'] ? form['loan-logo'].value : '',
       adjustment: form['loan-adjustment'] ? form['loan-adjustment'].value : 'none',
       notes: form['loan-notes'] ? form['loan-notes'].value : ''
     };
+
+    // クレジットカードの場合は負債項目をゼロクリア
+    if (data.type === 'クレジットカード') {
+      data.interestRate = 0;
+      data.currentBalance = 0;
+      data.monthlyPayment = 0;
+    }
     if (id) appStore.updateLoan(id, data);
     else appStore.addLoan(data);
   } else if (currentTab === 'clients') {
@@ -987,7 +1222,7 @@ function saveData() {
 
     const data = {
       name: form['client-name'] ? form['client-name'].value : '',
-      amount: Number(form['client-amount']?.value || 0),
+      amount: parseNumber(form['client-amount']?.value || 0),
       amountMode: form['client-amount-mode'] ? form['client-amount-mode'].value : 'fixed',
       scheduleRule,
       paymentDay: scheduleRule.day,

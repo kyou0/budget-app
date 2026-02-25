@@ -18,10 +18,17 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="**分析タブを改善し、新たなグラフUIおよび完済予測を追加**&#10;&#10;- 各分析タブのUIを一新し、視覚的に分かりやすいグラフを実装&#10;  （棒グラフと円グラフの構成で収入・支出を視覚化）&#10;- 月ごとのイベントデータを元に構成された「収支構成」セクションを追加&#10;- 借入ごとの完済見込み、マイルストーンデータを形式的に統一&#10;- 完済状況や返済不可状態の原因候補を明確に表示するUIを作成&#10;- #budget-app-v21にService Workerのキャッシュを更新">
+    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment=".git関連ファイルの一括削除を実施  &#10;&#10;- `.idea/shelf`内の未使用パッチファイルを削除  &#10;- `.output.txt`を含む不要な`.git`ファイルを削除し、プロジェクトの整理を実施">
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/2026_02_06_18_05______.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.output.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/generate.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/generate.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/schema.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/schema.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/store.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/store.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/analysis.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/analysis.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/dashboard.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/dashboard.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/master.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/master.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -32,7 +39,7 @@
     <execution />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="34" />
+    <option name="cachedIndexableFilesCount" value="32" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -98,8 +105,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-9b0f141eb926-JavaScript-PS-253.30387.85" />
-        <option value="bundled-php-predefined-a98d8de5180a-0e0d91225499-com.jetbrains.php.sharedIndexes-PS-253.30387.85" />
+        <option value="bundled-js-predefined-d6986cc7102b-9b0f141eb926-JavaScript-PS-253.31033.138" />
+        <option value="bundled-php-predefined-a98d8de5180a-0e0d91225499-com.jetbrains.php.sharedIndexes-PS-253.31033.138" />
       </set>
     </attachedChunks>
   </component>
@@ -123,39 +130,10 @@
       <workItem from="1770367929210" duration="11614000" />
       <workItem from="1770454206146" duration="250000" />
       <workItem from="1770454469379" duration="166000" />
-      <workItem from="1770454654269" duration="8702000" />
-    </task>
-    <task id="LOCAL-00109" summary="不要なCSSの修正">
-      <option name="closed" value="true" />
-      <created>1752005858556</created>
-      <option name="number" value="00109" />
-      <option name="presentableId" value="LOCAL-00109" />
-      <option name="project" value="LOCAL" />
-      <updated>1752005858556</updated>
-    </task>
-    <task id="LOCAL-00110" summary="masterhtml修正">
-      <option name="closed" value="true" />
-      <created>1752006064886</created>
-      <option name="number" value="00110" />
-      <option name="presentableId" value="LOCAL-00110" />
-      <option name="project" value="LOCAL" />
-      <updated>1752006064886</updated>
-    </task>
-    <task id="LOCAL-00111" summary="大バグ修正">
-      <option name="closed" value="true" />
-      <created>1752006536807</created>
-      <option name="number" value="00111" />
-      <option name="presentableId" value="LOCAL-00111" />
-      <option name="project" value="LOCAL" />
-      <updated>1752006536807</updated>
-    </task>
-    <task id="LOCAL-00112" summary="index.js修正">
-      <option name="closed" value="true" />
-      <created>1752006785854</created>
-      <option name="number" value="00112" />
-      <option name="presentableId" value="LOCAL-00112" />
-      <option name="project" value="LOCAL" />
-      <updated>1752006785854</updated>
+      <workItem from="1770454654269" duration="21048000" />
+      <workItem from="1772009723692" duration="774000" />
+      <workItem from="1772010964173" duration="1390000" />
+      <workItem from="1772012376886" duration="1314000" />
     </task>
     <task id="LOCAL-00113" summary="クライアントIDの変更">
       <option name="closed" value="true" />
@@ -517,7 +495,39 @@
       <option name="project" value="LOCAL" />
       <updated>1770477825343</updated>
     </task>
-    <option name="localTasksCounter" value="158" />
+    <task id="LOCAL-00158" summary="グリッドレイアウトと分析タブを改善し、設定同期を強化&#10;&#10;- `.master-group-grid` のレスポンシブ設定を `repeat(auto-fit, minmax(240px, 1fr))` に統一し、冗長なメディアクエリを削除&#10;- `.sparkline` をグリッドからフレックスレイアウトに変更し、柔軟性とUI整合性を向上&#10;- 分析タブの切り替え状態を保存する設定オプション `analysisTab` を追加&#10;- Service Worker のキャッシュバージョンを `budget-app-v22` に更新&#10;- 履歴データ不足時の分析表示強化メッセージを追加">
+      <option name="closed" value="true" />
+      <created>1770478309043</created>
+      <option name="number" value="00158" />
+      <option name="presentableId" value="LOCAL-00158" />
+      <option name="project" value="LOCAL" />
+      <updated>1770478309044</updated>
+    </task>
+    <task id="LOCAL-00159" summary="返済進捗率と次回返済予定をダッシュボードに表示する機能を追加 &#10;&#10;- 返済進捗率を計算し、ダッシュボードに表示  &#10;（`baselineTotal`を基準に進捗を算出）  &#10;- 次回返済予定日をピックアップし、進捗ゼロ時に表示するUIを追加  &#10;- 達成率のモックデータを削除し、実際の進捗率を表示">
+      <option name="closed" value="true" />
+      <created>1770478532976</created>
+      <option name="number" value="00159" />
+      <option name="presentableId" value="LOCAL-00159" />
+      <option name="project" value="LOCAL" />
+      <updated>1770478532976</updated>
+    </task>
+    <task id="LOCAL-00160" summary="クライアント管理機能を新規追加&#10;&#10;- クライアントマスターの作成・編集・削除機能を実装  &#10;- クライアントに固定/変動金額モード、支払いルール、契約期間を設定可能  &#10;- クライアントの収入イベント生成ロジックを追加し、カレンダー表示に対応  &#10;- クライアント一括イベント生成機能をUIに追加  &#10;- ダッシュボードに支出確定入力欄を新規実装  &#10;- サンプルデータにクライアント情報を追加  &#10;- Service Worker のキャッシュバージョンを `budget-app-v24` に更新">
+      <option name="closed" value="true" />
+      <created>1770483265928</created>
+      <option name="number" value="00160" />
+      <option name="presentableId" value="LOCAL-00160" />
+      <option name="project" value="LOCAL" />
+      <updated>1770483265929</updated>
+    </task>
+    <task id="LOCAL-00161" summary=".git関連ファイルの一括削除を実施  &#10;&#10;- `.idea/shelf`内の未使用パッチファイルを削除  &#10;- `.output.txt`を含む不要な`.git`ファイルを削除し、プロジェクトの整理を実施">
+      <option name="closed" value="true" />
+      <created>1771078661785</created>
+      <option name="number" value="00161" />
+      <option name="presentableId" value="LOCAL-00161" />
+      <option name="project" value="LOCAL" />
+      <updated>1771078661785</updated>
+    </task>
+    <option name="localTasksCounter" value="162" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -535,11 +545,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="css読み込み" />
-    <MESSAGE value="GOOGLE_CLIENT_ID変更した" />
-    <MESSAGE value="不要ファイル削除" />
-    <MESSAGE value="不要な`.output.txt`を削除" />
-    <MESSAGE value="初期実装: 機能追加（ダッシュボード、分析画面、Google Drive / Calendar同期、イベント生成）" />
     <MESSAGE value="Add renderSettings import and sync dependencies in dashboard.js" />
     <MESSAGE value="トースト通知のスタイルを追加し、DOM操作を用いたトースト表示機能を実装  &#10;Google Authの初期化処理をリファクタリングし、設定保存時やログイン後にトースト通知を表示  &#10;Service Workerのキャッシュバージョンを更新し、新たな同期依存ファイルを登録" />
     <MESSAGE value="チュートリアル機能を追加&#10;&#10;スタイルシートにチュートリアル用のスタイルを追加  &#10;`settings`に`tutorialCompleted`フラグを追加し、チュートリアル完了状況を管理  &#10;初回起動時、未完了の場合にチュートリアルを開始する処理を実装  &#10;設定画面からチュートリアルを再開できる機能を追加  &#10;favicon.icoを登録し、`index.html`およびService Workerに対応追加" />
@@ -560,7 +565,12 @@
     <MESSAGE value="デモモード終了後のログイン遷移機能を実装&#10;&#10;- デモモードを終了してログイン画面に戻る確認ダイアログを追加&#10;- デモデータのクリア処理と初期データの再設定を実装&#10;- 設定画面でデモ終了ボタンを表示し、操作性を向上" />
     <MESSAGE value="年齢および生年月日設定機能を追加&#10;&#10;- 生年月日および年齢を入力するUIを設定画面に追加&#10;  （入力値を用いて完済時年齢を表示可能に）&#10;- 月数を「X年Yヶ月」に変換するロジックを`utils.js`に実装&#10;- サンプルデータに年齢と生年月日を初期値として追加&#10;- 年齢／完済時の計算結果を分析画面やダッシュボードに反映" />
     <MESSAGE value="**分析タブを改善し、新たなグラフUIおよび完済予測を追加**&#10;&#10;- 各分析タブのUIを一新し、視覚的に分かりやすいグラフを実装&#10;  （棒グラフと円グラフの構成で収入・支出を視覚化）&#10;- 月ごとのイベントデータを元に構成された「収支構成」セクションを追加&#10;- 借入ごとの完済見込み、マイルストーンデータを形式的に統一&#10;- 完済状況や返済不可状態の原因候補を明確に表示するUIを作成&#10;- #budget-app-v21にService Workerのキャッシュを更新" />
-    <option name="LAST_COMMIT_MESSAGE" value="**分析タブを改善し、新たなグラフUIおよび完済予測を追加**&#10;&#10;- 各分析タブのUIを一新し、視覚的に分かりやすいグラフを実装&#10;  （棒グラフと円グラフの構成で収入・支出を視覚化）&#10;- 月ごとのイベントデータを元に構成された「収支構成」セクションを追加&#10;- 借入ごとの完済見込み、マイルストーンデータを形式的に統一&#10;- 完済状況や返済不可状態の原因候補を明確に表示するUIを作成&#10;- #budget-app-v21にService Workerのキャッシュを更新" />
+    <MESSAGE value="グリッドレイアウトと分析タブを改善し、設定同期を強化&#10;&#10;- `.master-group-grid` のレスポンシブ設定を `repeat(auto-fit, minmax(240px, 1fr))` に統一し、冗長なメディアクエリを削除&#10;- `.sparkline` をグリッドからフレックスレイアウトに変更し、柔軟性とUI整合性を向上&#10;- 分析タブの切り替え状態を保存する設定オプション `analysisTab` を追加&#10;- Service Worker のキャッシュバージョンを `budget-app-v22` に更新&#10;- 履歴データ不足時の分析表示強化メ" />
+    <MESSAGE value="グリッドレイアウトと分析タブを改善し、設定同期を強化&#10;&#10;- `.master-group-grid` のレスポンシブ設定を `repeat(auto-fit, minmax(240px, 1fr))` に統一し、冗長なメディアクエリを削除&#10;- `.sparkline` をグリッドからフレックスレイアウトに変更し、柔軟性とUI整合性を向上&#10;- 分析タブの切り替え状態を保存する設定オプション `analysisTab` を追加&#10;- Service Worker のキャッシュバージョンを `budget-app-v22` に更新&#10;- 履歴データ不足時の分析表示強化メッセージを追加" />
+    <MESSAGE value="返済進捗率と次回返済予定をダッシュボードに表示する機能を追加 &#10;&#10;- 返済進捗率を計算し、ダッシュボードに表示  &#10;（`baselineTotal`を基準に進捗を算出）  &#10;- 次回返済予定日をピックアップし、進捗ゼロ時に表示するUIを追加  &#10;- 達成率のモックデータを削除し、実際の進捗率を表示" />
+    <MESSAGE value="クライアント管理機能を新規追加&#10;&#10;- クライアントマスターの作成・編集・削除機能を実装  &#10;- クライアントに固定/変動金額モード、支払いルール、契約期間を設定可能  &#10;- クライアントの収入イベント生成ロジックを追加し、カレンダー表示に対応  &#10;- クライアント一括イベント生成機能をUIに追加  &#10;- ダッシュボードに支出確定入力欄を新規実装  &#10;- サンプルデータにクライアント情報を追加  &#10;- Service Worker のキャッシュバージョンを `budget-app-v24` に更新" />
+    <MESSAGE value=".git関連ファイルの一括削除を実施  &#10;&#10;- `.idea/shelf`内の未使用パッチファイルを削除  &#10;- `.output.txt`を含む不要な`.git`ファイルを削除し、プロジェクトの整理を実施" />
+    <option name="LAST_COMMIT_MESSAGE" value=".git関連ファイルの一括削除を実施  &#10;&#10;- `.idea/shelf`内の未使用パッチファイルを削除  &#10;- `.output.txt`を含む不要な`.git`ファイルを削除し、プロジェクトの整理を実施" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

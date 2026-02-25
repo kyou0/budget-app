@@ -57,12 +57,15 @@
  * @property {number} monthlyPayment - 月間返済額
  * @property {ScheduleRule} [scheduleRule] - v2 日付ルール
  * @property {number} [paymentDay] - v1 互換用 (1-31)
+ * @property {number} [deadlineDay] - クレジットカード用 (締日 1-31)
+ * @property {number} [payMonthOffset] - クレジットカード用 (支払月オフセット 0:当月, 1:翌月)
  * @property {'none'|'prev_weekday'|'next_weekday'} [adjustment] - 土日祝の調整
  * @property {string} [bankId] - 支払元銀行
  * @property {string} [repaymentMethod] - 返済方式 (fixed_payment, revolving_minimum, etc.)
  * @property {number} [originalPrincipal] - 元金合計
  * @property {number} [remainingPayments] - 残り回数
  * @property {string} [notes] - メモ
+ * @property {string} [logo] - ロゴ画像URL
  * @property {boolean} active
  */
 
@@ -115,6 +118,7 @@ export const INITIAL_DATA = {
     loanTypeOptions: [
       '消費者金融',
       '銀行カードローン',
+      'クレジットカード',
       '分割払い',
       '奨学金',
       'デバイス',
