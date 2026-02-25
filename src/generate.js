@@ -23,23 +23,31 @@ const resolveDatesFromRule = (rule, adjustment, year, month, lastDay) => {
   if (!rule) return [];
 
   const dates = [];
+  const addDate = (d) => {
+    const original = formatYMD(d);
+    const actual = getAdjustedDate(d, adjustment);
+    dates.push({ original, actual });
+  };
+
   switch (rule.type) {
     case 'monthly':
-      dates.push(getAdjustedDate(new Date(year, month - 1, Math.min(rule.day || 1, lastDay)), adjustment));
+      addDate(new Date(year, month - 1, Math.min(rule.day || 1, lastDay)));
       break;
     case 'monthEnd':
-      dates.push(getAdjustedDate(new Date(year, month - 1, lastDay), adjustment));
+      addDate(new Date(year, month - 1, lastDay));
       break;
     case 'weekly':
       for (let d = 1; d <= lastDay; d++) {
         const dt = new Date(year, month - 1, d);
         if (dt.getDay() === rule.weekday) {
-          dates.push(formatYMD(dt));
+          addDate(dt);
         }
       }
       break;
     case 'nextMonthDay':
-      dates.push(getAdjustedDate(new Date(year, month - 1, Math.min(rule.day || 1, lastDay)), adjustment));
+      // 今月のカレンダーに表示される「前月締め翌月払い」の項目
+      // 実質的には monthly と同じ（その月の◯日）だが、文脈として区別
+      addDate(new Date(year, month - 1, Math.min(rule.day || 1, lastDay)));
       break;
     case 'monthlyBusinessDay':
       let businessDayCount = 0;
@@ -49,7 +57,7 @@ const resolveDatesFromRule = (rule, adjustment, year, month, lastDay) => {
         if (dow !== 0 && dow !== 6) {
           businessDayCount++;
           if (businessDayCount === rule.nth) {
-            dates.push(formatYMD(dt));
+            addDate(dt);
             break;
           }
         }
@@ -66,6 +74,14 @@ const isEffective = (item, targetMonthStart, targetMonthEnd) => {
   const { start, end } = item.effective;
   if (start && formatYMD(targetMonthEnd) < start) return false;
   if (end && formatYMD(targetMonthStart) > end) return false;
+  return true;
+};
+
+const isDateWithinRange = (dateStr, effective) => {
+  if (!effective) return true;
+  const { start, end } = effective;
+  if (start && dateStr < start) return false;
+  if (end && dateStr > end) return false;
   return true;
 };
 
@@ -91,7 +107,8 @@ export function generateMonthEvents(masterItems, loans, clients, year, month) {
       const rule = item.scheduleRule || { type: 'monthly', day: item.day || 1 };
       const dates = resolveDatesFromRule(rule, item.adjustment || 'none', year, month, lastDay);
 
-      dates.forEach((dateStr, index) => {
+      dates.forEach((datePair, index) => {
+        if (!isDateWithinRange(datePair.original, item.effective)) return;
         events.push({
           id: `${item.id}-${year}-${month}-${index}`,
           masterId: item.id,
@@ -100,8 +117,8 @@ export function generateMonthEvents(masterItems, loans, clients, year, month) {
           amount: item.amount,
           amountMode: item.amountMode || 'fixed',
           bankId: item.bankId || '',
-          originalDate: dateStr,
-          actualDate: dateStr,
+          originalDate: datePair.original,
+          actualDate: datePair.actual,
           penaltyFee: 0,
           status: 'pending'
         });
@@ -115,7 +132,7 @@ export function generateMonthEvents(masterItems, loans, clients, year, month) {
       const rule = loan.scheduleRule || { type: 'monthly', day: loan.paymentDay || 27 };
       const dates = resolveDatesFromRule(rule, loan.adjustment || 'none', year, month, lastDay);
 
-      dates.forEach((dateStr, index) => {
+      dates.forEach((datePair, index) => {
         events.push({
           id: `loan-${loan.id}-${year}-${month}-${index}`,
           masterId: loan.id,
@@ -123,8 +140,8 @@ export function generateMonthEvents(masterItems, loans, clients, year, month) {
           type: 'expense',
           amount: loan.monthlyPayment,
           bankId: loan.bankId || '', 
-          originalDate: dateStr,
-          actualDate: dateStr,
+          originalDate: datePair.original,
+          actualDate: datePair.actual,
           penaltyFee: 0,
           status: 'pending'
         });
@@ -137,7 +154,8 @@ export function generateMonthEvents(masterItems, loans, clients, year, month) {
     .forEach(client => {
       const rule = client.scheduleRule || { type: 'monthly', day: client.paymentDay || 15 };
       const dates = resolveDatesFromRule(rule, client.adjustment || 'none', year, month, lastDay);
-      dates.forEach((dateStr, index) => {
+      dates.forEach((datePair, index) => {
+        if (!isDateWithinRange(datePair.original, client.effective)) return;
         events.push({
           id: `client-${client.id}-${year}-${month}-${index}`,
           masterId: client.id,
@@ -146,8 +164,8 @@ export function generateMonthEvents(masterItems, loans, clients, year, month) {
           amount: client.amount,
           amountMode: client.amountMode || 'fixed',
           bankId: client.bankId || '',
-          originalDate: dateStr,
-          actualDate: dateStr,
+          originalDate: datePair.original,
+          actualDate: datePair.actual,
           penaltyFee: 0,
           status: 'pending'
         });

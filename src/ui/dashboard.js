@@ -99,6 +99,7 @@ export function renderDashboard(container) {
       </div>
       <div class="actions" style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
         ${settings.driveSyncEnabled && googleAuth.isSignedIn() ? `<span class="sync-status" title="Drive同期有効">☁️</span>` : ''}
+        <button onclick="generateYearEvents()" class="btn small" title="年内の全予定を一括生成します">年内一括</button>
         <button onclick="generateEvents()" class="btn ${events.length === 0 ? 'primary' : ''}">
           ${currentMonth}月の予定を${events.length === 0 ? '生成' : '再生成'}
         </button>
@@ -276,6 +277,7 @@ export function renderDashboard(container) {
         <div id="penalty-info"></div>
         <div class="modal-actions">
           <button onclick="hideEventModal()" class="btn">キャンセル</button>
+          <button id="delete-btn" class="btn danger">削除</button>
           <button id="pay-btn" class="btn primary">完了にする</button>
         </div>
       </div>
@@ -375,61 +377,73 @@ export function renderDashboard(container) {
       : `${currentYear}年${currentMonth}月のイベントを生成しますか？`;
 
     if (await window.showConfirm(confirmMsg)) {
-      console.log(`Generating events for ${currentYear}-${currentMonth}...`);
-      const newEvents = generateMonthEvents(appStore.data.master.items, masterLoans, appStore.data.master.clients || [], currentYear, currentMonth);
-      console.log(`Generated ${newEvents.length} events.`);
-      
-      if (newEvents.length === 0) {
-        window.showToast('生成される項目がありません。マスター登録を確認してください。', 'warn');
+      await window.runGeneration(currentYear, currentMonth);
+      window.showToast(`${currentMonth}月の予定を${hasEvents ? '再生成' : '生成'}しました`, 'success');
+      renderDashboard(container);
+    }
+  };
+
+  window.generateYearEvents = async () => {
+    const confirmMsg = `${currentYear}年${currentMonth}月から12月までの予定を一括生成しますか？（既に完了した項目は保持されます）`;
+    if (!(await window.showConfirm(confirmMsg))) return;
+
+    window.showToast('一括生成中...', 'info');
+    for (let m = currentMonth; m <= 12; m++) {
+      await window.runGeneration(currentYear, m, true);
+    }
+
+    if (appStore.data.settings?.driveSyncEnabled) {
+      await driveSync.push({ mode: 'auto' }).catch(err => console.error('Auto drive push failed', err));
+    }
+
+    window.showToast(`${currentYear}年分の予定を生成しました`, 'success');
+    renderDashboard(container);
+  };
+
+  window.runGeneration = async (year, month, skipSync = false) => {
+    const ym = toYearMonth(year, month);
+    const newEvents = generateMonthEvents(appStore.data.master.items, masterLoans, appStore.data.master.clients || [], year, month);
+    const existingEvents = appStore.data.calendar.generatedMonths[ym] || [];
+    const existingById = new Map(existingEvents.map(e => [e.id, e]));
+    const mergedEvents = [];
+    const usedIds = new Set();
+
+    const mergeEvent = (existing, fresh) => {
+      if (existing.status === 'paid') return existing;
+      const merged = { ...fresh };
+      if (existing.actualDate && existing.actualDate !== fresh.actualDate) merged.actualDate = existing.actualDate;
+      if (Number.isFinite(existing.amount) && existing.amount !== fresh.amount) merged.amount = existing.amount;
+      if (existing.amountMode) merged.amountMode = existing.amountMode;
+      if (existing.bankId) merged.bankId = existing.bankId;
+      if (existing.penaltyFee) merged.penaltyFee = existing.penaltyFee;
+      if (existing.status === 'pending') merged.status = 'pending';
+      return merged;
+    };
+
+    for (const event of newEvents) {
+      const existing = existingById.get(event.id);
+      if (existing) {
+        mergedEvents.push(mergeEvent(existing, event));
+        usedIds.add(event.id);
+      } else {
+        mergedEvents.push(event);
       }
-
-      const existingEvents = appStore.data.calendar.generatedMonths[yearMonth] || [];
-      const existingById = new Map(existingEvents.map(e => [e.id, e]));
-      const mergedEvents = [];
-      const usedIds = new Set();
-
-      const mergeEvent = (existing, fresh) => {
-        if (existing.status === 'paid') return existing;
-        const merged = { ...fresh };
-        if (existing.actualDate && existing.actualDate !== fresh.actualDate) merged.actualDate = existing.actualDate;
-        if (Number.isFinite(existing.amount) && existing.amount !== fresh.amount) merged.amount = existing.amount;
-        if (existing.amountMode) merged.amountMode = existing.amountMode;
-        if (existing.bankId) merged.bankId = existing.bankId;
-        if (existing.penaltyFee) merged.penaltyFee = existing.penaltyFee;
-        if (existing.status === 'pending') merged.status = 'pending';
-        return merged;
-      };
-
-      for (const event of newEvents) {
-        const existing = existingById.get(event.id);
-        if (existing) {
-          mergedEvents.push(mergeEvent(existing, event));
-          usedIds.add(event.id);
-        } else {
-          mergedEvents.push(event);
-        }
+    }
+    for (const existing of existingEvents) {
+      if (!usedIds.has(existing.id) && existing.status === 'paid') {
+        mergedEvents.push(existing);
       }
+    }
 
-      for (const existing of existingEvents) {
-        if (!usedIds.has(existing.id) && existing.status === 'paid') {
-          mergedEvents.push(existing);
-        }
-      }
+    appStore.addMonthEvents(ym, mergedEvents);
 
-      appStore.addMonthEvents(yearMonth, mergedEvents);
-      
-      // Google Calendar 同期 (自動)
+    if (!skipSync) {
       if (appStore.data.settings?.calendarSyncEnabled) {
         await window.syncCurrentMonthToCalendar(true);
       }
-
-      // Drive 同期
       if (appStore.data.settings?.driveSyncEnabled) {
-        driveSync.push({ mode: 'auto' }).catch(err => console.error('Auto drive push failed', err));
+        await driveSync.push({ mode: 'auto' }).catch(err => console.error('Auto drive push failed', err));
       }
-
-      window.showToast(`${currentMonth}月の予定を${hasEvents ? '再生成' : '生成'}しました`, 'success');
-      renderDashboard(container);
     }
   };
 
@@ -471,6 +485,7 @@ export function renderDashboard(container) {
     const dateInput = document.getElementById('actual-date');
     const penaltyInfo = document.getElementById('penalty-info');
     const payBtn = document.getElementById('pay-btn');
+    const deleteBtn = document.getElementById('delete-btn');
 
     detail.innerHTML = `
       <p>項目: ${event.name}</p>
@@ -554,6 +569,25 @@ export function renderDashboard(container) {
 
       hideEventModal();
       renderDashboard(container);
+    };
+
+    deleteBtn.onclick = async () => {
+      if (await window.showConfirm('この予定をカレンダーから削除しますか？\n（マスターデータは削除されません）')) {
+        // カレンダー同期
+        if (appStore.data.settings?.calendarSyncEnabled && event.gcalEventId) {
+          calendarSync.deleteEvent(null, event).catch(err => console.error('Calendar deletion failed', err));
+        }
+        
+        appStore.deleteEvent(yearMonth, eventId);
+        
+        // Drive 同期
+        if (appStore.data.settings?.driveSyncEnabled) {
+          driveSync.push().catch(err => console.error('Auto drive push failed', err));
+        }
+
+        hideEventModal();
+        renderDashboard(container);
+      }
     };
 
     modal.classList.remove('hidden');
@@ -680,10 +714,15 @@ function renderCalendar(year, month, events) {
           ${dayEvents.map(e => {
             const isDelayed = e.status === 'pending' && e.originalDate < todayStr;
             const isPaid = e.status === 'paid';
+            const showActualDate = e.actualDate && e.actualDate !== e.originalDate;
+            const actualDay = showActualDate ? e.actualDate.split('-')[2] : '';
             return `
               <div class="event-item ${e.type} ${e.status} ${isDelayed ? 'delayed blink' : ''}" 
                    onclick="showEventModal('${e.id}')">
-                ${getIcon(e.name, e.type)} ${e.name}
+                ${getIcon(e.name, e.type)} 
+                ${showActualDate ? `<span style="font-size: 0.6rem; background: rgba(0,0,0,0.1); padding: 0 2px; border-radius: 2px; margin-right: 2px;">${actualDay}日</span>` : ''}
+                <span style="font-weight: 700;">${e.type === 'income' ? '+' : '-'}${formatNumber(e.amount)}円</span>
+                ${e.name}
               </div>
             `;
           }).join('')}

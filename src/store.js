@@ -142,8 +142,14 @@ class Store {
 
   // Master CRUD
   addMasterItem(item) {
-    const newItem = { ...item, id: crypto.randomUUID(), active: true };
-    this.data.master.items.push(newItem);
+    const existingIndex = this.data.master.items.findIndex(i => i.name === item.name && i.type === item.type);
+    if (existingIndex !== -1) {
+      // 同じ名前・タイプの項目があれば上書き（重複回避）
+      this.data.master.items[existingIndex] = { ...this.data.master.items[existingIndex], ...item };
+    } else {
+      const newItem = { ...item, id: crypto.randomUUID(), active: true };
+      this.data.master.items.push(newItem);
+    }
     this.save();
   }
 
@@ -165,18 +171,31 @@ class Store {
 
   // Loan CRUD
   addLoan(loan) {
-    const newLoan = { ...loan, id: crypto.randomUUID(), active: true };
-    this.data.master.loans.push(newLoan);
+    const existingIndex = this.data.master.loans.findIndex(l => l.name === loan.name);
+    if (existingIndex !== -1) {
+      // 名前が同じなら上書き
+      this.data.master.loans[existingIndex] = { ...this.data.master.loans[existingIndex], ...loan };
+    } else {
+      const newLoan = { ...loan, id: crypto.randomUUID(), active: true };
+      this.data.master.loans.push(newLoan);
+    }
     this.save();
   }
 
   addLoans(loans) {
-    const newLoans = loans.map(loan => ({
-      ...loan,
-      id: loan.id || crypto.randomUUID(),
-      active: typeof loan.active === 'boolean' ? loan.active : true
-    }));
-    this.data.master.loans.push(...newLoans);
+    loans.forEach(loan => {
+      const existingIndex = this.data.master.loans.findIndex(l => l.name === loan.name);
+      if (existingIndex !== -1) {
+        this.data.master.loans[existingIndex] = { ...this.data.master.loans[existingIndex], ...loan };
+      } else {
+        const newLoan = {
+          ...loan,
+          id: loan.id || crypto.randomUUID(),
+          active: typeof loan.active === 'boolean' ? loan.active : true
+        };
+        this.data.master.loans.push(newLoan);
+      }
+    });
     this.save();
   }
 
@@ -198,8 +217,13 @@ class Store {
 
   // Client CRUD
   addClient(client) {
-    const newClient = { ...client, id: crypto.randomUUID(), active: true };
-    this.data.master.clients.push(newClient);
+    const existingIndex = this.data.master.clients.findIndex(c => c.name === client.name);
+    if (existingIndex !== -1) {
+      this.data.master.clients[existingIndex] = { ...this.data.master.clients[existingIndex], ...client };
+    } else {
+      const newClient = { ...client, id: crypto.randomUUID(), active: true };
+      this.data.master.clients.push(newClient);
+    }
     this.save();
   }
 
@@ -231,21 +255,72 @@ class Store {
     }
   }
 
+  deleteEvent(yearMonth, eventId) {
+    const monthEvents = this.data.calendar.generatedMonths[yearMonth];
+    if (monthEvents) {
+      const index = monthEvents.findIndex(e => e.id === eventId);
+      if (index !== -1) {
+        monthEvents.splice(index, 1);
+        this.save();
+        return true;
+      }
+    }
+    return false;
+  }
+
   addMonthEvents(yearMonth, newEvents) {
     const existingEvents = this.data.calendar.generatedMonths[yearMonth] || [];
-    // 既存のイベントからgcalEventIdを引き継ぐ（重複防止）
-    const mergedEvents = newEvents.map(newEvent => {
-      const existing = existingEvents.find(e => e.id === newEvent.id);
-      if (existing && existing.gcalEventId) {
-        return { 
-          ...newEvent, 
-          gcalEventId: existing.gcalEventId, 
-          gcalCalendarId: existing.gcalCalendarId 
-        };
+    
+    // newEvents を順に処理し、既存のデータとマージまたは新規追加する
+    const resultEvents = [];
+    const usedExistingIndices = new Set();
+
+    newEvents.forEach(newEvent => {
+      // すでに resultEvents に同じものが追加されていないかチェック（newEvents 内の重複回避）
+      const isDuplicateInNew = resultEvents.some(e => 
+        e.name === newEvent.name && 
+        e.amount === newEvent.amount && 
+        e.originalDate === newEvent.originalDate
+      );
+      if (isDuplicateInNew) return;
+
+      // 既存のイベントから引き継ぐべきものを探す
+      // 1. IDでの一致を確認
+      let existingIndex = existingEvents.findIndex(e => e.id === newEvent.id);
+      
+      // 2. IDが違っても、名前・金額・日付が同じなら同一視（重複回避用）
+      if (existingIndex === -1) {
+        existingIndex = existingEvents.findIndex((e, idx) => 
+          !usedExistingIndices.has(idx) &&
+          e.name === newEvent.name && 
+          e.amount === newEvent.amount && 
+          e.originalDate === newEvent.originalDate
+        );
       }
-      return newEvent;
+
+      if (existingIndex !== -1) {
+        const existing = existingEvents[existingIndex];
+        usedExistingIndices.add(existingIndex);
+        resultEvents.push({
+          ...newEvent,
+          gcalEventId: existing.gcalEventId,
+          gcalCalendarId: existing.gcalCalendarId,
+          status: existing.status === 'paid' ? 'paid' : newEvent.status
+        });
+      } else {
+        resultEvents.push(newEvent);
+      }
     });
-    this.data.calendar.generatedMonths[yearMonth] = mergedEvents;
+
+    // newEvents には含まれていないが、すでに完了(paid)している既存イベントがあれば維持する
+    // (ただし、すでにIDや内容一致で処理済みのものは除く)
+    existingEvents.forEach((existing, idx) => {
+      if (!usedExistingIndices.has(idx) && existing.status === 'paid') {
+        resultEvents.push(existing);
+      }
+    });
+
+    this.data.calendar.generatedMonths[yearMonth] = resultEvents;
     this.save();
   }
 

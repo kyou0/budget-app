@@ -1141,9 +1141,10 @@ function saveData() {
     }
     
     const ruleType = form['master-rule-type'] ? form['master-rule-type'].value : 'monthly';
+    const ruleDay = Number(form['master-day']?.value || 1);
     const scheduleRule = {
       type: ruleType,
-      day: Number(form['master-day']?.value || 1),
+      day: ruleDay,
       weekday: Number(form['master-weekday']?.value || 0),
       nth: Number(form['master-nth']?.value || 1)
     };
@@ -1155,7 +1156,7 @@ function saveData() {
       amount: (type === 'bank' || !form['master-amount']) ? 0 : parseNumber(form['master-amount'].value),
       amountMode: form['master-amount-mode'] ? form['master-amount-mode'].value : 'fixed',
       scheduleRule: type === 'bank' ? null : scheduleRule,
-      day: scheduleRule.day, // v1 fallback
+      day: ruleType === 'monthEnd' ? 31 : ruleDay, // v1 fallback
       bankId: (type === 'bank' || !form['master-bank-id']) ? '' : form['master-bank-id'].value,
       adjustment: (type === 'bank' || !form['master-adjustment']) ? 'none' : form['master-adjustment'].value,
       effective: {

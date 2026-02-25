@@ -1,0 +1,29 @@
+[
+  {
+    "name": "JCB Wカード",
+    "paymentDay": 10,
+    "deadlineDay": 15,
+    "payMonthOffset": 1,
+    "notes": "メインカード"
+  },
+  {
+    "name": "三井住友カード(NL)",
+    "paymentDay": 26,
+    "deadlineDay": 15,
+    "payMonthOffset": 0,
+    "notes": "コンビニ用"
+  },
+  {
+    "name": "楽天カード",
+    "paymentDay": 27,
+    "deadlineDay": 31,
+    "payMonthOffset": 1,
+    "notes": "楽天市場用"
+  },
+  {
+    "name": "PayPayカード",
+    "paymentDay": 27,
+    "deadlineDay": 31,
+    "payMonthOffset": 1
+  }
+]

@@ -18,17 +18,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment=".git関連ファイルの一括削除を実施  &#10;&#10;- `.idea/shelf`内の未使用パッチファイルを削除  &#10;- `.output.txt`を含む不要な`.git`ファイルを削除し、プロジェクトの整理を実施">
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/2026_02_06_18_05______.xml" beforeDir="false" />
+    <list default="true" id="15e58d79-b95a-40b7-b0a4-87038f33e60c" name="変更" comment="クレジットカード関連機能を追加およびUI改善を実施&#10;&#10;- クレジットカードの基本設定（締日・支払日・支払月オフセット）およびロゴ設定をデータモデルに追加&#10;- 支払日の計算ロジックを修正し、クレジットカードの周期支払いに対応&#10;- クレジットカード用のスタイリングを`styles.css`に追加&#10;- クレジットカードを除外した返済イベント生成ロジックを修正&#10;&#10;その他：&#10;- 不要ファイル削除（`output.txt`, `.idea/shelf`など）&#10;- 数値入力のデフォルトフォーマット機能をUIで追加">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.output.txt" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/generate.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/generate.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/schema.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/schema.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/store.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/store.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/dashboard.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/dashboard.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/master.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/master.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/styles.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -133,15 +127,7 @@
       <workItem from="1770454654269" duration="21048000" />
       <workItem from="1772009723692" duration="774000" />
       <workItem from="1772010964173" duration="1390000" />
-      <workItem from="1772012376886" duration="1314000" />
-    </task>
-    <task id="LOCAL-00113" summary="クライアントIDの変更">
-      <option name="closed" value="true" />
-      <created>1752007023478</created>
-      <option name="number" value="00113" />
-      <option name="presentableId" value="LOCAL-00113" />
-      <option name="project" value="LOCAL" />
-      <updated>1752007023478</updated>
+      <workItem from="1772012376886" duration="3050000" />
     </task>
     <task id="LOCAL-00114" summary="クライアントIDの変更">
       <option name="closed" value="true" />
@@ -527,7 +513,15 @@
       <option name="project" value="LOCAL" />
       <updated>1771078661785</updated>
     </task>
-    <option name="localTasksCounter" value="162" />
+    <task id="LOCAL-00162" summary="クレジットカード関連機能を追加およびUI改善を実施&#10;&#10;- クレジットカードの基本設定（締日・支払日・支払月オフセット）およびロゴ設定をデータモデルに追加&#10;- 支払日の計算ロジックを修正し、クレジットカードの周期支払いに対応&#10;- クレジットカード用のスタイリングを`styles.css`に追加&#10;- クレジットカードを除外した返済イベント生成ロジックを修正&#10;&#10;その他：&#10;- 不要ファイル削除（`output.txt`, `.idea/shelf`など）&#10;- 数値入力のデフォルトフォーマット機能をUIで追加">
+      <option name="closed" value="true" />
+      <created>1772014023044</created>
+      <option name="number" value="00162" />
+      <option name="presentableId" value="LOCAL-00162" />
+      <option name="project" value="LOCAL" />
+      <updated>1772014023045</updated>
+    </task>
+    <option name="localTasksCounter" value="163" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -545,7 +539,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Add renderSettings import and sync dependencies in dashboard.js" />
     <MESSAGE value="トースト通知のスタイルを追加し、DOM操作を用いたトースト表示機能を実装  &#10;Google Authの初期化処理をリファクタリングし、設定保存時やログイン後にトースト通知を表示  &#10;Service Workerのキャッシュバージョンを更新し、新たな同期依存ファイルを登録" />
     <MESSAGE value="チュートリアル機能を追加&#10;&#10;スタイルシートにチュートリアル用のスタイルを追加  &#10;`settings`に`tutorialCompleted`フラグを追加し、チュートリアル完了状況を管理  &#10;初回起動時、未完了の場合にチュートリアルを開始する処理を実装  &#10;設定画面からチュートリアルを再開できる機能を追加  &#10;favicon.icoを登録し、`index.html`およびService Workerに対応追加" />
     <MESSAGE value="銀行口座の紐づけ機能を追加し、イベント生成・支払完了時の残高更新を実装&#10;&#10;- `schema` に bankId プロパティを追加&#10;- マスター登録時に入出金先銀行を選択可能に変更&#10;- イベント生成時に bankId 情報を保持&#10;- 支払完了時、紐づく銀行の残高を自動更新&#10;- チュートリアル仕様を更新し、新機能に対応&#10;- Drive API エラー時の詳細ログを追加&#10;- イベント生成処理の UI/UX を改良 (再生成可能に)" />
@@ -570,7 +563,8 @@
     <MESSAGE value="返済進捗率と次回返済予定をダッシュボードに表示する機能を追加 &#10;&#10;- 返済進捗率を計算し、ダッシュボードに表示  &#10;（`baselineTotal`を基準に進捗を算出）  &#10;- 次回返済予定日をピックアップし、進捗ゼロ時に表示するUIを追加  &#10;- 達成率のモックデータを削除し、実際の進捗率を表示" />
     <MESSAGE value="クライアント管理機能を新規追加&#10;&#10;- クライアントマスターの作成・編集・削除機能を実装  &#10;- クライアントに固定/変動金額モード、支払いルール、契約期間を設定可能  &#10;- クライアントの収入イベント生成ロジックを追加し、カレンダー表示に対応  &#10;- クライアント一括イベント生成機能をUIに追加  &#10;- ダッシュボードに支出確定入力欄を新規実装  &#10;- サンプルデータにクライアント情報を追加  &#10;- Service Worker のキャッシュバージョンを `budget-app-v24` に更新" />
     <MESSAGE value=".git関連ファイルの一括削除を実施  &#10;&#10;- `.idea/shelf`内の未使用パッチファイルを削除  &#10;- `.output.txt`を含む不要な`.git`ファイルを削除し、プロジェクトの整理を実施" />
-    <option name="LAST_COMMIT_MESSAGE" value=".git関連ファイルの一括削除を実施  &#10;&#10;- `.idea/shelf`内の未使用パッチファイルを削除  &#10;- `.output.txt`を含む不要な`.git`ファイルを削除し、プロジェクトの整理を実施" />
+    <MESSAGE value="クレジットカード関連機能を追加およびUI改善を実施&#10;&#10;- クレジットカードの基本設定（締日・支払日・支払月オフセット）およびロゴ設定をデータモデルに追加&#10;- 支払日の計算ロジックを修正し、クレジットカードの周期支払いに対応&#10;- クレジットカード用のスタイリングを`styles.css`に追加&#10;- クレジットカードを除外した返済イベント生成ロジックを修正&#10;&#10;その他：&#10;- 不要ファイル削除（`output.txt`, `.idea/shelf`など）&#10;- 数値入力のデフォルトフォーマット機能をUIで追加" />
+    <option name="LAST_COMMIT_MESSAGE" value="クレジットカード関連機能を追加およびUI改善を実施&#10;&#10;- クレジットカードの基本設定（締日・支払日・支払月オフセット）およびロゴ設定をデータモデルに追加&#10;- 支払日の計算ロジックを修正し、クレジットカードの周期支払いに対応&#10;- クレジットカード用のスタイリングを`styles.css`に追加&#10;- クレジットカードを除外した返済イベント生成ロジックを修正&#10;&#10;その他：&#10;- 不要ファイル削除（`output.txt`, `.idea/shelf`など）&#10;- 数値入力のデフォルトフォーマット機能をUIで追加" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

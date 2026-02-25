@@ -110,5 +110,27 @@ export const calendarSync = {
     if (!response.ok) {
       console.warn('Failed to update Google Calendar event', event.gcalEventId);
     }
+  },
+
+  async deleteEvent(token, event, calendarId = null) {
+    if (!event.gcalEventId) return;
+
+    if (!token) {
+      token = await googleAuth.getAccessToken([googleAuth.getScopes().CALENDAR]);
+    }
+
+    const targetCalendarId = calendarId || event.gcalCalendarId || 
+                             (event.type === 'income' ? (appStore.data.settings?.incomeCalendarId || 'primary') : (appStore.data.settings?.expenseCalendarId || 'primary'));
+
+    const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events/${event.gcalEventId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      console.warn('Failed to delete Google Calendar event', event.gcalEventId);
+    }
   }
 };
