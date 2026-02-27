@@ -153,7 +153,7 @@ export function renderMaster(container) {
                 <label>土日祝の調整</label>
                 <select id="master-adjustment">
                   <option value="none">調整なし</option>
-                  <option value="prev_weekday">前営業日 (金曜など)</option>
+                  <option value="prev_weekday" selected>前営業日 (金曜など)</option>
                   <option value="next_weekday">翌営業日 (月曜など)</option>
                 </select>
               </div>
@@ -227,7 +227,7 @@ export function renderMaster(container) {
                 <label>土日祝の調整</label>
                 <select id="client-adjustment">
                   <option value="none">調整なし</option>
-                  <option value="prev_weekday">前営業日</option>
+                  <option value="prev_weekday" selected>前営業日</option>
                   <option value="next_weekday">翌営業日</option>
                 </select>
               </div>
@@ -254,7 +254,7 @@ export function renderMaster(container) {
               </div>
               <div class="form-group">
                 <label>年利 (%)</label>
-                <input type="number" id="loan-rate" step="0.1" ${currentTab === 'cards' ? '' : 'required'}>
+                <input type="number" id="loan-rate" step="any" ${currentTab === 'cards' ? '' : 'required'}>
               </div>
             </div>
             <div class="form-row ${currentTab === 'cards' ? 'hidden' : ''}">
@@ -327,8 +327,8 @@ export function renderMaster(container) {
                 <label>土日祝の調整</label>
                 <select id="loan-adjustment">
                   <option value="none">調整なし</option>
-                  <option value="prev_weekday">前営業日</option>
-                  <option value="next_weekday" selected>翌営業日</option>
+                  <option value="prev_weekday" selected>前営業日</option>
+                  <option value="next_weekday">翌営業日</option>
                 </select>
               </div>
             </div>
@@ -404,7 +404,7 @@ export function renderMaster(container) {
               paymentDay: 27,
               deadlineDay: null,
               payMonthOffset: 1,
-              adjustment: 'none',
+              adjustment: 'prev_weekday',
               bankId: '',
               notes: '',
               ...c,
@@ -1165,6 +1165,18 @@ function saveData() {
       },
       currentBalance: (type === 'bank' && form['master-balance']) ? parseNumber(form['master-balance'].value) : 0
     };
+
+    // 重複チェック: 借入返済タグで、かつ借入先に同名がある場合
+    if (data.tag === 'loan' && data.type === 'expense') {
+      const loans = appStore.data.master.loans || [];
+      const hasLoan = loans.some(l => 
+        l.active && (l.name === data.name || data.name.includes(l.name) || l.name.includes(data.name))
+      );
+      if (hasLoan) {
+        window.showToast('借入先に同じ名前の項目があります。二重管理を避けるため、「借入先」タブでの管理を推奨します。', 'warn');
+      }
+    }
+
     if (id) appStore.updateMasterItem(id, data);
     else appStore.addMasterItem(data);
   } else if (currentTab === 'loans' || currentTab === 'cards') {
@@ -1195,6 +1207,15 @@ function saveData() {
       adjustment: form['loan-adjustment'] ? form['loan-adjustment'].value : 'none',
       notes: form['loan-notes'] ? form['loan-notes'].value : ''
     };
+
+    // 重複チェック: 収支項目側に同名の借入返済タグがある場合
+    const items = appStore.data.master.items || [];
+    const duplicateItem = items.find(i => 
+      i.tag === 'loan' && i.active && (i.name === data.name || i.name.includes(data.name) || data.name.includes(i.name))
+    );
+    if (duplicateItem) {
+      window.showToast(`収支項目に「${duplicateItem.name}」が登録されています。二重生成を避けるため、収支項目側を削除または無効化することをお勧めします。`, 'warn');
+    }
 
     // クレジットカードの場合は負債項目をゼロクリア
     if (data.type === 'クレジットカード') {

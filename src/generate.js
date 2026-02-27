@@ -1,3 +1,5 @@
+import { getAdjustedDate as utilsGetAdjustedDate } from './utils.js';
+
 const formatYMD = (date) => {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -6,17 +8,7 @@ const formatYMD = (date) => {
 };
 
 const getAdjustedDate = (date, adjustment) => {
-  const dayOfWeek = date.getDay();
-  const adjusted = new Date(date);
-
-  if (adjustment === 'prev_weekday') {
-    if (dayOfWeek === 0) adjusted.setDate(adjusted.getDate() - 2);
-    else if (dayOfWeek === 6) adjusted.setDate(adjusted.getDate() - 1);
-  } else if (adjustment === 'next_weekday') {
-    if (dayOfWeek === 0) adjusted.setDate(adjusted.getDate() + 1);
-    else if (dayOfWeek === 6) adjusted.setDate(adjusted.getDate() + 2);
-  }
-  return formatYMD(adjusted);
+  return formatYMD(utilsGetAdjustedDate(date, adjustment));
 };
 
 const resolveDatesFromRule = (rule, adjustment, year, month, lastDay) => {
@@ -102,6 +94,16 @@ export function generateMonthEvents(masterItems, loans, clients, year, month) {
   // 通常の収支項目
   masterItems
     .filter(item => item.active && item.type !== 'bank' && isEffective(item, targetMonthStart, targetMonthEnd))
+    .filter(item => {
+      // 借入(loan)タグがついている場合、借入先(loans)に同名のものがあれば二重生成を避けるためスキップ
+      if (item.tag === 'loan') {
+        const hasLoan = loans.some(l => 
+          l.active && (l.name === item.name || item.name.includes(l.name) || l.name.includes(item.name))
+        );
+        if (hasLoan) return false;
+      }
+      return true;
+    })
     .forEach(item => {
       // v2: scheduleRule, v1 fallback: day
       const rule = item.scheduleRule || { type: 'monthly', day: item.day || 1 };

@@ -71,6 +71,32 @@ window.showConfirm = (message, title = '確認') => {
   });
 };
 
+/**
+ * 全画面ローディング（同期中など）の表示・非表示
+ */
+window.toggleLoadingOverlay = (show, message = '同期中...') => {
+  let overlay = document.getElementById('global-loading-overlay');
+  if (show) {
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'global-loading-overlay';
+      overlay.className = 'loading-overlay';
+      overlay.innerHTML = `
+        <div class="loading-content">
+          <div class="loading-spinner"></div>
+          <div class="loading-message">${message}</div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    } else {
+      overlay.querySelector('.loading-message').textContent = message;
+      overlay.classList.remove('hidden');
+    }
+  } else if (overlay) {
+    overlay.classList.add('hidden');
+  }
+};
+
 const routes = {
   '#dashboard': () => {
     console.log('Routing to #dashboard');
@@ -109,6 +135,10 @@ function renderLogin() {
         <button id="demo-btn" class="btn" style="width: 100%; padding: 12px; margin-top: 10px;">
           デモで確認する
         </button>
+        <div id="login-loading" class="hidden" style="margin-top: 20px;">
+          <div class="blink">認証中...</div>
+        </div>
+        <p id="login-error" class="hidden" style="font-size: 0.8rem; color: var(--danger); margin-top: 20px;"></p>
         <p style="font-size: 0.8rem; color: #6b7280; margin-top: 20px;">
           クラウド同期を利用するにはGoogleログインが必要です。
         </p>
@@ -119,26 +149,48 @@ function renderLogin() {
   
   document.getElementById('login-btn').onclick = async () => {
     const clientId = appStore.data.settings?.googleClientId;
+    const loadingEl = document.getElementById('login-loading');
+    const errorEl = document.getElementById('login-error');
+    const loginBtn = document.getElementById('login-btn');
+    const demoBtn = document.getElementById('demo-btn');
+
     if (clientId) {
       try {
-        // initGoogleAuth は DOMContentLoaded で呼ばれているはずだが念のため
-        initGoogleAuth(clientId);
+        loginBtn.disabled = true;
+        demoBtn.disabled = true;
+        loadingEl.classList.remove('hidden');
+        errorEl.classList.add('hidden');
+
+        await initGoogleAuth(clientId);
         await googleAuth.getAccessToken(['openid', 'profile', 'email'], 'select_account'); // ログイン試行
+        
+        loadingEl.innerHTML = '<div class="blink">ログイン完了。データを同期しています...</div>';
+
         try {
           const profile = await googleAuth.fetchUserProfile();
           appStore.updateSettings({ userDisplayName: profile.name || profile.email || '' });
         } catch (err) {
           console.warn('User profile fetch failed', err);
         }
-        sessionStorage.setItem('isLoggedIn', 'true');
-        initApp();
+        
+        localStorage.setItem('isLoggedIn', 'true');
+        
+        // 同期完了を待ってから遷移
+        await initApp();
+        
+        window.location.hash = '#dashboard';
       } catch (err) {
         console.error('Login failed', err);
+        loadingEl.classList.add('hidden');
+        errorEl.textContent = 'ログインに失敗しました。' + (err.error || err.message || '');
+        errorEl.classList.remove('hidden');
+        loginBtn.disabled = false;
+        demoBtn.disabled = false;
         window.showToast('ログインに失敗しました。設定を確認してください。', 'danger');
       }
     } else {
       // Client IDがない場合はローカルモードとして続行
-      sessionStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('isLoggedIn', 'true');
       initApp();
     }
   };
@@ -161,7 +213,7 @@ function renderLogin() {
       };
       appStore.data = migrated;
       appStore.save();
-      sessionStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('isLoggedIn', 'true');
       initApp();
     } catch (err) {
       console.error('Demo init failed', err);
@@ -171,39 +223,59 @@ function renderLogin() {
 }
 
 async function initApp() {
-  const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+  const isLoggedIn = localStorage.getItem('isLoggedIn');
   const demoMode = appStore.data.settings?.demoMode;
-  const demoTutorialShown = sessionStorage.getItem('demoTutorialShown');
+  const demoTutorialShown = localStorage.getItem('demoTutorialShown');
   if (!isLoggedIn && demoMode) {
-    sessionStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('isLoggedIn', 'true');
   }
   if (!isLoggedIn) {
     renderLogin();
     return;
   }
 
-  // Google Auth 初期化 (Client IDがあれば)
+  // Google Auth 初期化
   const configClientId = appStore.data.settings?.googleClientId;
   if (configClientId) {
     try {
-      // 非同期で初期化
       await initGoogleAuth(configClientId);
+      
+      // 自動ログイン試行 (サインイン済みでデモモードでない場合)
+      if (!demoMode && !googleAuth.isSignedIn()) {
+        try {
+          // サイレントにトークン取得を試みる (プロンプトなし)
+          await googleAuth.getAccessToken(['openid', 'profile', 'email']);
+          console.log('Auto-reauthenticated successfully');
+        } catch (err) {
+          console.log('Silent auto-reauth failed', err);
+        }
+      }
     } catch (err) {
       console.warn('GIS init failed', err);
     }
   }
 
   document.querySelector('.bottom-nav').style.display = 'flex';
+  
+  // 既に初期化済みの場合は二重実行を避ける
+  if (container.querySelector('.dashboard-header') || (container.innerHTML && !container.querySelector('.login-screen'))) {
+    console.log('App already initialized, handling route');
+    router.handleRoute();
+    return;
+  }
+
   try {
     if (googleAuth.isSignedIn() && !appStore.data.settings?.demoMode) {
+      window.toggleLoadingOverlay(true, 'データを同期しています...');
       await runAutoSync();
+      window.toggleLoadingOverlay(false);
     }
 
     router.init();
     
     // チュートリアルが必要な場合
     if (demoMode && !demoTutorialShown) {
-      sessionStorage.setItem('demoTutorialShown', 'true');
+      localStorage.setItem('demoTutorialShown', 'true');
       setTimeout(() => startTutorial({ mode: 'demo' }), 500);
     } else if (!appStore.data.settings?.tutorialCompleted) {
       setTimeout(() => startTutorial(), 1000);
@@ -218,14 +290,13 @@ async function runAutoSync() {
 
   if (settings.driveSyncEnabled) {
     try {
-      window.showToast('Drive同期中...', 'info');
+      window.toggleLoadingOverlay(true, 'Google Driveと同期中...');
       const remoteData = await driveSync.pull({ mode: 'auto' });
       if (remoteData) {
         appStore.data = appStore.migrate(remoteData);
         appStore.save();
       }
       await driveSync.push({ mode: 'auto' });
-      window.showToast('Drive同期完了', 'success');
     } catch (err) {
       console.warn('Auto drive sync failed', err);
       window.showToast('Drive同期に失敗しました', 'danger');
@@ -234,28 +305,28 @@ async function runAutoSync() {
 
   if (settings.calendarSyncEnabled) {
     const months = Object.keys(appStore.data.calendar?.generatedMonths || {});
-    if (months.length === 0) return;
-    try {
-      window.showToast('カレンダー同期中...', 'info');
-      for (const ym of months) {
-        await calendarSync.syncMonthEvents(ym);
+    if (months.length > 0) {
+      try {
+        window.toggleLoadingOverlay(true, 'Googleカレンダーと同期中...');
+        for (const ym of months) {
+          await calendarSync.syncMonthEvents(ym);
+        }
+        appStore.addSyncLog({
+          type: 'calendar',
+          mode: 'auto',
+          status: 'success',
+          message: `Calendar sync: ${months.length}ヶ月`
+        });
+      } catch (err) {
+        console.warn('Auto calendar sync failed', err);
+        appStore.addSyncLog({
+          type: 'calendar',
+          mode: 'auto',
+          status: 'error',
+          message: `Calendar sync: ${err.message || '失敗'}`
+        });
+        window.showToast('カレンダー同期に失敗しました', 'danger');
       }
-      appStore.addSyncLog({
-        type: 'calendar',
-        mode: 'auto',
-        status: 'success',
-        message: `Calendar sync: ${months.length}ヶ月`
-      });
-      window.showToast('カレンダー同期完了', 'success');
-    } catch (err) {
-      console.warn('Auto calendar sync failed', err);
-      appStore.addSyncLog({
-        type: 'calendar',
-        mode: 'auto',
-        status: 'error',
-        message: `Calendar sync: ${err.message || '失敗'}`
-      });
-      window.showToast('カレンダー同期に失敗しました', 'danger');
     }
   }
 }

@@ -76,21 +76,6 @@ export const driveSync = {
       const token = await googleAuth.getAccessToken([googleAuth.getScopes().DRIVE]);
       const file = await this.findFile(token);
 
-      // 競合チェック: Push前にDrive上の最新更新時刻を取得
-      if (file && appStore.data.settings?.lastDriveUpdatedAt) {
-        if (file.modifiedTime > appStore.data.settings.lastDriveUpdatedAt) {
-          if (!await window.showConfirm('クラウド上のデータがローカルより新しいです。上書きしますか？（キャンセルするとクラウドからプルします）')) {
-            const remoteData = await this.pull();
-            if (remoteData) {
-              appStore.data = appStore.migrate(remoteData);
-              appStore.save();
-              location.reload();
-            }
-            return;
-          }
-        }
-      }
-
       const metadata = {
         name: FILE_NAME
       };

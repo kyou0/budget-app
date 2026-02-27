@@ -4,36 +4,45 @@ import { calculatePenalty, calculatePayoffSummary } from '../calc.js';
 import { googleAuth } from '../auth/googleAuth.js';
 import { driveSync } from '../sync/driveSync.js';
 import { calendarSync } from '../sync/calendarSync.js';
-import { formatAgeMonths, formatMonthsToYears, getAgeMonthsFromBirthdate, getIcon, getLogoUrl, formatNumber, parseNumber } from '../utils.js';
+import { formatAgeMonths, formatMonthsToYears, getAgeMonthsFromBirthdate, getIcon, getLogoUrl, formatNumber, parseNumber, getAdjustedDate } from '../utils.js';
 
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
+let containerEl = null;
 
 const toYearMonth = (year, month) => `${year}-${String(month).padStart(2, '0')}`;
 const toYMD = (date) => date.toISOString().split('T')[0];
 
-const adjustToNextWeekday = (date) => {
-  const d = new Date(date);
-  const day = d.getDay();
-  if (day === 6) d.setDate(d.getDate() + 2); // Sat -> Mon
-  if (day === 0) d.setDate(d.getDate() + 1); // Sun -> Mon
-  return d;
-};
-
 export function renderDashboard(container) {
-  const yearMonth = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+  containerEl = container;
+  const yearMonth = toYearMonth(currentYear, currentMonth);
   const masterLoans = appStore.data.master.loans || [];
   const creditCards = masterLoans.filter(l => l.type === 'クレジットカード' && l.active !== false);
   const masterItems = appStore.data.master.items || [];
   const payoffSummary = calculatePayoffSummary(masterLoans);
-  const events = appStore.data.calendar.generatedMonths[yearMonth] || [];
+  
+  // 前後1ヶ月分のイベントも収集（土日調整による月跨ぎ表示バグへの対応）
+  const allGenerated = appStore.data.calendar?.generatedMonths || {};
+  const prevMonthDate = new Date(currentYear, currentMonth - 2, 1);
+  const nextMonthDate = new Date(currentYear, currentMonth, 1);
+  const ymPrev = toYearMonth(prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1);
+  const ymNext = toYearMonth(nextMonthDate.getFullYear(), nextMonthDate.getMonth() + 1);
 
-  const computePayDate = (year, month, card) => {
+  const rawEvents = [
+    ...(allGenerated[ymPrev] || []),
+    ...(allGenerated[yearMonth] || []),
+    ...(allGenerated[ymNext] || [])
+  ];
+  
+  // IDで重複排除し、実施日が今月、または生成月が今月のものを対象とする
+  const events = Array.from(new Map(rawEvents.map(e => [e.id, e])).values());
+
+  window.computePayDate = (year, month, card) => {
     const offset = card.payMonthOffset || 0;
     const targetMonth = month + offset;
     const payDay = card.paymentDay || card.deadlineDay || 1;
     const date = new Date(year, targetMonth - 1, payDay);
-    return adjustToNextWeekday(date);
+    return getAdjustedDate(date, card.adjustment || 'none');
   };
   const expenseInputs = appStore.data.settings?.expenseConfirmInputs || { yearMonth: '', values: {} };
   const expenseInputValues = expenseInputs.yearMonth === yearMonth ? (expenseInputs.values || {}) : {};
@@ -51,12 +60,12 @@ export function renderDashboard(container) {
     .filter(i => i.type === 'bank' && i.active)
     .reduce((sum, i) => sum + (i.currentBalance || 0), 0);
 
-  // 今月の予定収支
+  // 今月の予定収支 (実施日が今月のもの)
   const pendingIncome = events
-    .filter(e => e.type === 'income' && e.status === 'pending')
+    .filter(e => e.type === 'income' && e.status === 'pending' && e.actualDate.startsWith(yearMonth))
     .reduce((sum, e) => sum + e.amount, 0);
   const pendingExpense = events
-    .filter(e => e.type === 'expense' && e.status === 'pending')
+    .filter(e => e.type === 'expense' && e.status === 'pending' && e.actualDate.startsWith(yearMonth))
     .reduce((sum, e) => sum + e.amount, 0);
   
   const estimatedEndBalance = totalBankBalance + pendingIncome - pendingExpense;
@@ -67,8 +76,8 @@ export function renderDashboard(container) {
   const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
   const nextWeekStr = nextWeek.toISOString().split('T')[0];
 
-  const delayedEvents = events.filter(e => e.status === 'pending' && e.originalDate < todayStr);
-  const thisWeekEvents = events.filter(e => e.status === 'pending' && e.originalDate >= todayStr && e.originalDate <= nextWeekStr);
+  const delayedEvents = events.filter(e => e.status === 'pending' && e.actualDate < todayStr && e.actualDate.startsWith(yearMonth));
+  const thisWeekEvents = events.filter(e => e.status === 'pending' && e.actualDate >= todayStr && e.actualDate <= nextWeekStr && e.actualDate.startsWith(yearMonth));
   const welcomeName = (appStore.data.settings?.userDisplayName || '').trim();
   const welcomeLabel = welcomeName ? (welcomeName.endsWith('さん') ? welcomeName : `${welcomeName}さん`) : '';
   const tipsMessage = delayedEvents.length > 0
@@ -87,8 +96,8 @@ export function renderDashboard(container) {
   const baselineTotal = analysisHistory[0]?.baselineTotalBalance || analysisHistory[0]?.totalBalance || payoffSummary.totalBalance || 0;
   const progressPercent = baselineTotal > 0 ? Math.max(0, Math.round((1 - payoffSummary.totalBalance / baselineTotal) * 100)) : 0;
   const nextRepayment = events
-    .filter(e => e.status === 'pending' && e.name.startsWith('返済:'))
-    .sort((a, b) => a.originalDate.localeCompare(b.originalDate))[0];
+    .filter(e => e.status === 'pending' && e.name.startsWith('返済:') && e.actualDate.startsWith(yearMonth))
+    .sort((a, b) => a.actualDate.localeCompare(b.actualDate))[0];
 
   container.innerHTML = `
     <div class="dashboard-header">
@@ -283,111 +292,122 @@ export function renderDashboard(container) {
       </div>
     </div>
   `;
+}
 
-  window.changeMonth = (diff) => {
-    currentMonth += diff;
-    if (currentMonth > 12) { currentMonth = 1; currentYear++; }
-    if (currentMonth < 1) { currentMonth = 12; currentYear--; }
-    renderDashboard(container);
+window.changeMonth = (diff) => {
+  currentMonth += diff;
+  if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+  if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+  renderDashboard(containerEl);
+};
+
+window.saveExpenseInput = (id, value) => {
+  const yearMonth = toYearMonth(currentYear, currentMonth);
+  const amount = parseNumber(value);
+  const nextValues = {
+    ...(appStore.data.settings?.expenseConfirmInputs?.values || {}),
+    [id]: (Number.isFinite(amount) || value === '') ? amount : 0
   };
-
-  window.saveExpenseInput = (id, value) => {
-    const amount = parseNumber(value);
-    const nextValues = {
-      ...(appStore.data.settings?.expenseConfirmInputs?.values || {}),
-      [id]: (Number.isFinite(amount) || value === '') ? amount : 0
-    };
-    appStore.updateSettings({
-      expenseConfirmInputs: {
-        yearMonth,
-        values: nextValues
-      }
-    });
-  };
-
-  window.confirmExpense = (id) => {
-    const card = creditCards.find(c => c.id === id);
-    if (!card) return;
-    const inputEl = document.getElementById(`expense-${id}`);
-    const amount = inputEl ? parseNumber(inputEl.value) : 0;
-    if (!amount || amount <= 0) {
-      window.showToast('金額を入力してください', 'warn');
-      return;
+  appStore.updateSettings({
+    expenseConfirmInputs: {
+      yearMonth,
+      values: nextValues
     }
+  });
+};
 
-    const payDate = computePayDate(currentYear, currentMonth, card);
-    const payDateStr = toYMD(payDate);
-    const payMonthKey = toYearMonth(payDate.getFullYear(), payDate.getMonth() + 1);
+window.confirmExpense = (id) => {
+  const yearMonth = toYearMonth(currentYear, currentMonth);
+  const masterLoans = appStore.data.master.loans || [];
+  const creditCards = masterLoans.filter(l => l.type === 'クレジットカード' && l.active !== false);
+  const card = creditCards.find(c => c.id === id);
+  if (!card) return;
+  const inputEl = document.getElementById(`expense-${id}`);
+  const amount = inputEl ? parseNumber(inputEl.value) : 0;
+  if (!amount || amount <= 0) {
+    window.showToast('金額を入力してください', 'warn');
+    return;
+  }
 
-    const transactions = appStore.data.transactions || [];
-    const txKey = `expense-confirm-${id}-${yearMonth}`;
-    const existingIndex = transactions.findIndex(t => t.key === txKey);
-    const tx = {
-      id: existingIndex >= 0 ? transactions[existingIndex].id : crypto.randomUUID(),
-      key: txKey,
-      type: 'expense',
-      category: card.name,
-      categoryKey: id,
-      date: payDateStr,
-      amount: -Math.abs(amount),
-      status: 'confirmed',
-      yearMonth
-    };
-    if (existingIndex >= 0) transactions[existingIndex] = tx;
-    else transactions.push(tx);
-    appStore.data.transactions = transactions;
-    appStore.save();
+  const payDate = window.computePayDate(currentYear, currentMonth, card);
+  const payDateStr = toYMD(payDate);
+  const payMonthKey = toYearMonth(payDate.getFullYear(), payDate.getMonth() + 1);
 
-    const eventId = `confirm-${id}-${yearMonth}`;
-    const monthEvents = appStore.data.calendar.generatedMonths[payMonthKey] || [];
-    const eventIndex = monthEvents.findIndex(e => e.id === eventId);
-    const eventData = {
-      id: eventId,
-      masterId: id,
-      name: `確定支出: ${card.name}`,
-      type: 'expense',
-      amount: Math.abs(amount),
-      amountMode: 'fixed',
-      bankId: card.bankId || '',
-      originalDate: payDateStr,
-      actualDate: payDateStr,
-      penaltyFee: 0,
-      status: 'pending'
-    };
-    if (eventIndex >= 0) {
-      const existing = monthEvents[eventIndex];
-      monthEvents[eventIndex] = existing.status === 'paid' ? existing : { ...existing, ...eventData };
-    } else {
-      monthEvents.push(eventData);
-    }
-    appStore.data.calendar.generatedMonths[payMonthKey] = monthEvents;
-    appStore.save();
-
-    window.saveExpenseInput(id, amount);
-    window.showToast(`${card.name} を確定しました`, 'success');
-    renderDashboard(container);
+  const transactions = appStore.data.transactions || [];
+  const txKey = `expense-confirm-${id}-${yearMonth}`;
+  const existingIndex = transactions.findIndex(t => t.key === txKey);
+  const tx = {
+    id: existingIndex >= 0 ? transactions[existingIndex].id : crypto.randomUUID(),
+    key: txKey,
+    type: 'expense',
+    category: card.name,
+    categoryKey: id,
+    date: payDateStr,
+    amount: -Math.abs(amount),
+    status: 'confirmed',
+    yearMonth
   };
+  if (existingIndex >= 0) transactions[existingIndex] = tx;
+  else transactions.push(tx);
+  appStore.data.transactions = transactions;
+  appStore.save();
 
-  window.generateEvents = async () => {
-    const yearMonth = toYearMonth(currentYear, currentMonth);
-    const events = appStore.data.calendar.generatedMonths[yearMonth] || [];
-    const hasEvents = events.length > 0;
-    const confirmMsg = hasEvents 
-      ? `${currentYear}年${currentMonth}月のイベントが既に存在します。再生成しますか？（完了済みは保持されます）`
-      : `${currentYear}年${currentMonth}月のイベントを生成しますか？`;
+  const eventId = `confirm-${id}-${yearMonth}`;
+  const monthEvents = appStore.data.calendar.generatedMonths[payMonthKey] || [];
+  const eventIndex = monthEvents.findIndex(e => e.id === eventId);
+  const eventData = {
+    id: eventId,
+    masterId: id,
+    name: `確定支出: ${card.name}`,
+    type: 'expense',
+    amount: Math.abs(amount),
+    amountMode: 'fixed',
+    bankId: card.bankId || '',
+    originalDate: payDateStr,
+    actualDate: payDateStr,
+    penaltyFee: 0,
+    status: 'pending'
+  };
+  if (eventIndex >= 0) {
+    const existing = monthEvents[eventIndex];
+    monthEvents[eventIndex] = existing.status === 'paid' ? existing : { ...existing, ...eventData };
+  } else {
+    monthEvents.push(eventData);
+  }
+  appStore.data.calendar.generatedMonths[payMonthKey] = monthEvents;
+  appStore.save();
 
-    if (await window.showConfirm(confirmMsg)) {
+  window.saveExpenseInput(id, amount);
+  window.showToast(`${card.name} を確定しました`, 'success');
+  renderDashboard(containerEl);
+};
+
+window.generateEvents = async () => {
+  const yearMonth = toYearMonth(currentYear, currentMonth);
+  const events = (appStore.data.calendar && appStore.data.calendar.generatedMonths) ? (appStore.data.calendar.generatedMonths[yearMonth] || []) : [];
+  const hasEvents = events.length > 0;
+  const confirmMsg = hasEvents 
+    ? `${currentYear}年${currentMonth}月のイベントが既に存在します。再生成しますか？（完了済みは保持されます）`
+    : `${currentYear}年${currentMonth}月のイベントを生成しますか？`;
+
+  if (await window.showConfirm(confirmMsg)) {
+    window.toggleLoadingOverlay(true, '予定を生成中...');
+    try {
       await window.runGeneration(currentYear, currentMonth);
       window.showToast(`${currentMonth}月の予定を${hasEvents ? '再生成' : '生成'}しました`, 'success');
-      renderDashboard(container);
+      renderDashboard(containerEl);
+    } finally {
+      window.toggleLoadingOverlay(false);
     }
-  };
+  }
+};
 
-  window.generateYearEvents = async () => {
-    const confirmMsg = `${currentYear}年${currentMonth}月から12月までの予定を一括生成しますか？（既に完了した項目は保持されます）`;
-    if (!(await window.showConfirm(confirmMsg))) return;
+window.generateYearEvents = async () => {
+  const confirmMsg = `${currentYear}年${currentMonth}月から12月までの予定を一括生成しますか？（既に完了した項目は保持されます）`;
+  if (!(await window.showConfirm(confirmMsg))) return;
 
-    window.showToast('一括生成中...', 'info');
+  window.toggleLoadingOverlay(true, '年内の予定を一括生成中...');
+  try {
     for (let m = currentMonth; m <= 12; m++) {
       await window.runGeneration(currentYear, m, true);
     }
@@ -397,288 +417,299 @@ export function renderDashboard(container) {
     }
 
     window.showToast(`${currentYear}年分の予定を生成しました`, 'success');
-    renderDashboard(container);
+    renderDashboard(containerEl);
+  } finally {
+    window.toggleLoadingOverlay(false);
+  }
+};
+
+window.runGeneration = async (year, month, skipSync = false) => {
+  const ym = toYearMonth(year, month);
+  const masterLoans = appStore.data.master.loans || [];
+  const newEvents = generateMonthEvents(appStore.data.master.items, masterLoans, appStore.data.master.clients || [], year, month);
+  const existingEvents = appStore.data.calendar.generatedMonths[ym] || [];
+  const existingById = new Map(existingEvents.map(e => [e.id, e]));
+  const mergedEvents = [];
+  const usedIds = new Set();
+
+  const mergeEvent = (existing, fresh) => {
+    if (existing.status === 'paid') return existing;
+    const merged = { ...fresh };
+    if (existing.actualDate && existing.actualDate !== fresh.actualDate) merged.actualDate = existing.actualDate;
+    if (Number.isFinite(existing.amount) && existing.amount !== fresh.amount) merged.amount = existing.amount;
+    if (existing.amountMode) merged.amountMode = existing.amountMode;
+    if (existing.bankId) merged.bankId = existing.bankId;
+    if (existing.penaltyFee) merged.penaltyFee = existing.penaltyFee;
+    if (existing.status === 'pending') merged.status = 'pending';
+    return merged;
   };
 
-  window.runGeneration = async (year, month, skipSync = false) => {
-    const ym = toYearMonth(year, month);
-    const newEvents = generateMonthEvents(appStore.data.master.items, masterLoans, appStore.data.master.clients || [], year, month);
-    const existingEvents = appStore.data.calendar.generatedMonths[ym] || [];
-    const existingById = new Map(existingEvents.map(e => [e.id, e]));
-    const mergedEvents = [];
-    const usedIds = new Set();
-
-    const mergeEvent = (existing, fresh) => {
-      if (existing.status === 'paid') return existing;
-      const merged = { ...fresh };
-      if (existing.actualDate && existing.actualDate !== fresh.actualDate) merged.actualDate = existing.actualDate;
-      if (Number.isFinite(existing.amount) && existing.amount !== fresh.amount) merged.amount = existing.amount;
-      if (existing.amountMode) merged.amountMode = existing.amountMode;
-      if (existing.bankId) merged.bankId = existing.bankId;
-      if (existing.penaltyFee) merged.penaltyFee = existing.penaltyFee;
-      if (existing.status === 'pending') merged.status = 'pending';
-      return merged;
-    };
-
-    for (const event of newEvents) {
-      const existing = existingById.get(event.id);
-      if (existing) {
-        mergedEvents.push(mergeEvent(existing, event));
-        usedIds.add(event.id);
-      } else {
-        mergedEvents.push(event);
-      }
+  for (const event of newEvents) {
+    const existing = existingById.get(event.id);
+    if (existing) {
+      mergedEvents.push(mergeEvent(existing, event));
+      usedIds.add(event.id);
+    } else {
+      mergedEvents.push(event);
     }
-    for (const existing of existingEvents) {
-      if (!usedIds.has(existing.id) && existing.status === 'paid') {
-        mergedEvents.push(existing);
-      }
+  }
+  for (const existing of existingEvents) {
+    if (!usedIds.has(existing.id) && existing.status === 'paid') {
+      mergedEvents.push(existing);
     }
+  }
 
-    appStore.addMonthEvents(ym, mergedEvents);
+  appStore.addMonthEvents(ym, mergedEvents);
 
-    if (!skipSync) {
-      if (appStore.data.settings?.calendarSyncEnabled) {
-        await window.syncCurrentMonthToCalendar(true);
-      }
-      if (appStore.data.settings?.driveSyncEnabled) {
-        await driveSync.push({ mode: 'auto' }).catch(err => console.error('Auto drive push failed', err));
-      }
+  if (!skipSync) {
+    if (appStore.data.settings?.calendarSyncEnabled) {
+      await window.syncCurrentMonthToCalendar(true);
     }
-  };
-
-  window.syncCurrentMonthToCalendar = async (isAuto = false) => {
-    if (!appStore.data.settings?.calendarSyncEnabled) {
-      if (!isAuto) window.showToast('カレンダー同期が無効です', 'warn');
-      return;
+    if (appStore.data.settings?.driveSyncEnabled) {
+      await driveSync.push({ mode: 'auto' }).catch(err => console.error('Auto drive push failed', err));
     }
-    
-    window.showToast('カレンダー同期中...', 'info');
-    try {
-      await calendarSync.syncMonthEvents(yearMonth);
-      appStore.addSyncLog({
-        type: 'calendar',
-        mode: isAuto ? 'auto' : 'manual',
-        status: 'success',
-        message: `Calendar sync: ${yearMonth}`
-      });
-      window.showToast('カレンダー同期完了', 'success');
-      if (!isAuto) renderDashboard(container); // IDが割り当てられた可能性があるので再描画
-    } catch (err) {
-      console.error('Calendar sync failed', err);
-      appStore.addSyncLog({
-        type: 'calendar',
-        mode: isAuto ? 'auto' : 'manual',
-        status: 'error',
-        message: `Calendar sync: ${err.message || '失敗'}`
-      });
-      window.showToast('カレンダー同期に失敗しました', 'danger');
-    }
-  };
+  }
+};
 
-  window.showEventModal = (eventId) => {
-    const event = events.find(e => e.id === eventId);
-    if (!event) return;
+window.syncCurrentMonthToCalendar = async (isAuto = false) => {
+  const yearMonth = toYearMonth(currentYear, currentMonth);
+  if (!appStore.data.settings?.calendarSyncEnabled) {
+    if (!isAuto) window.showToast('カレンダー同期が無効です', 'warn');
+    return;
+  }
+  
+  if (!isAuto) window.toggleLoadingOverlay(true, 'カレンダー同期中...');
+  try {
+    await calendarSync.syncMonthEvents(yearMonth);
+    appStore.addSyncLog({
+      type: 'calendar',
+      mode: isAuto ? 'auto' : 'manual',
+      status: 'success',
+      message: `Calendar sync: ${yearMonth}`
+    });
+    window.showToast('カレンダー同期完了', 'success');
+    if (!isAuto) renderDashboard(containerEl); // IDが割り当てられた可能性があるので再描画
+  } catch (err) {
+    console.error('Calendar sync failed', err);
+    appStore.addSyncLog({
+      type: 'calendar',
+      mode: isAuto ? 'auto' : 'manual',
+      status: 'error',
+      message: `Calendar sync: ${err.message || '失敗'}`
+    });
+    window.showToast('カレンダー同期に失敗しました', 'danger');
+  } finally {
+    if (!isAuto) window.toggleLoadingOverlay(false);
+  }
+};
 
-    const modal = document.getElementById('event-modal');
-    const detail = document.getElementById('event-detail');
-    const dateInput = document.getElementById('actual-date');
-    const penaltyInfo = document.getElementById('penalty-info');
-    const payBtn = document.getElementById('pay-btn');
-    const deleteBtn = document.getElementById('delete-btn');
+window.showEventModal = (eventId) => {
+  const yearMonth = toYearMonth(currentYear, currentMonth);
+  const events = (appStore.data.calendar && appStore.data.calendar.generatedMonths) ? (appStore.data.calendar.generatedMonths[yearMonth] || []) : [];
+  const event = events.find(e => e.id === eventId);
+  if (!event) return;
 
-    detail.innerHTML = `
-      <p>項目: ${event.name}</p>
-      <p>金額: ${event.amountMode === 'variable' ? '(変動)' : ''} ¥${event.amount.toLocaleString()}</p>
-      <p>予定日: ${event.originalDate}</p>
-      ${event.amountMode === 'variable' ? `
-        <div class="form-group">
-          <label>実績金額</label>
-          <input type="text" inputmode="numeric" id="actual-amount" value="${formatNumber(event.amount)}" oninput="handleNumericInput(this)">
-        </div>
-      ` : ''}
+  const masterItems = appStore.data.master.items || [];
+  const modal = document.getElementById('event-modal');
+  const detail = document.getElementById('event-detail');
+  const dateInput = document.getElementById('actual-date');
+  const penaltyInfo = document.getElementById('penalty-info');
+  const payBtn = document.getElementById('pay-btn');
+  const deleteBtn = document.getElementById('delete-btn');
+
+  detail.innerHTML = `
+    <p>項目: ${event.name}</p>
+    <p>金額: ${event.amountMode === 'variable' ? '(変動)' : ''} ¥${event.amount.toLocaleString()}</p>
+    <p>予定日: ${event.originalDate}</p>
+    ${event.amountMode === 'variable' ? `
       <div class="form-group">
-        <label>入出金先銀行</label>
-        <select id="event-bank-id">
-          <option value="">(未選択)</option>
-          ${masterItems.filter(i => i.type === 'bank').map(b => `
-            <option value="${b.id}" ${event.bankId === b.id ? 'selected' : ''}>${b.name}</option>
-          `).join('')}
-        </select>
+        <label>実績金額</label>
+        <input type="text" inputmode="numeric" id="actual-amount" value="${formatNumber(event.amount)}" oninput="handleNumericInput(this)">
       </div>
-      <div class="form-group">
-        <label class="inline-check">
-          <input type="checkbox" id="mark-paid" ${event.status === 'paid' ? 'checked' : ''}>
-          <span>完了にする</span>
-        </label>
-      </div>
-    `;
-    dateInput.value = event.actualDate;
-    
-    const updatePenalty = () => {
-      const penalty = calculatePenalty(event.amount, event.originalDate, dateInput.value);
-      penaltyInfo.innerHTML = penalty > 0 ? `<p class="warn">延滞ペナルティ: ¥${penalty.toLocaleString()}</p>` : '';
-    };
+    ` : ''}
+    <div class="form-group">
+      <label>入出金先銀行</label>
+      <select id="event-bank-id">
+        <option value="">(未選択)</option>
+        ${masterItems.filter(i => i.type === 'bank').map(b => `
+          <option value="${b.id}" ${event.bankId === b.id ? 'selected' : ''}>${b.name}</option>
+        `).join('')}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="inline-check">
+        <input type="checkbox" id="mark-paid" ${event.status === 'paid' ? 'checked' : ''}>
+        <span>完了にする</span>
+      </label>
+    </div>
+  `;
+  dateInput.value = event.actualDate;
+  
+  const updatePenalty = () => {
+    const penalty = calculatePenalty(event.amount, event.originalDate, dateInput.value);
+    penaltyInfo.innerHTML = penalty > 0 ? `<p class="warn">延滞ペナルティ: ¥${penalty.toLocaleString()}</p>` : '';
+  };
 
-    dateInput.onchange = updatePenalty;
-    updatePenalty();
+  dateInput.onchange = updatePenalty;
+  updatePenalty();
 
-    const markPaidEl = document.getElementById('mark-paid');
-    payBtn.textContent = '保存する';
-    if (markPaidEl) {
-      markPaidEl.onchange = () => {
-        payBtn.textContent = markPaidEl.checked ? '完了にする' : '保存する';
-      };
+  const markPaidEl = document.getElementById('mark-paid');
+  payBtn.textContent = '保存する';
+  if (markPaidEl) {
+    markPaidEl.onchange = () => {
       payBtn.textContent = markPaidEl.checked ? '完了にする' : '保存する';
+    };
+    payBtn.textContent = markPaidEl.checked ? '完了にする' : '保存する';
+  }
+
+  payBtn.onclick = async () => {
+    const actualAmountEl = document.getElementById('actual-amount');
+    const finalAmount = actualAmountEl ? parseNumber(actualAmountEl.value) : event.amount;
+    const penalty = calculatePenalty(finalAmount, event.originalDate, dateInput.value);
+    const selectedBankId = document.getElementById('event-bank-id').value;
+    const markPaid = markPaidEl ? markPaidEl.checked : false;
+    const updates = {
+      amount: finalAmount,
+      actualDate: dateInput.value,
+      penaltyFee: markPaid ? penalty : 0,
+      status: markPaid ? 'paid' : 'pending',
+      bankId: selectedBankId
+    };
+    appStore.updateEvent(yearMonth, eventId, updates);
+    
+    // 銀行残高の更新
+    if (selectedBankId && markPaid) {
+      const bank = masterItems.find(i => i.id === selectedBankId);
+      if (bank) {
+        const delta = event.type === 'income' ? (finalAmount - penalty) : -(finalAmount + penalty);
+        appStore.updateMasterItem(selectedBankId, { currentBalance: (bank.currentBalance || 0) + delta });
+      }
+    }
+    
+    // カレンダー同期
+    if (appStore.data.settings?.calendarSyncEnabled) {
+      const updatedEvent = { ...event, ...updates };
+      calendarSync.updateEvent(null, updatedEvent).catch(err => console.error('Calendar update failed', err));
     }
 
-    payBtn.onclick = async () => {
-      const actualAmountEl = document.getElementById('actual-amount');
-      const finalAmount = actualAmountEl ? parseNumber(actualAmountEl.value) : event.amount;
-      const penalty = calculatePenalty(finalAmount, event.originalDate, dateInput.value);
-      const selectedBankId = document.getElementById('event-bank-id').value;
-      const markPaid = markPaidEl ? markPaidEl.checked : false;
-      const updates = {
-        amount: finalAmount,
-        actualDate: dateInput.value,
-        penaltyFee: markPaid ? penalty : 0,
-        status: markPaid ? 'paid' : 'pending',
-        bankId: selectedBankId
-      };
-      appStore.updateEvent(yearMonth, eventId, updates);
-      
-      // 銀行残高の更新
-      if (selectedBankId && markPaid) {
-        const bank = masterItems.find(i => i.id === selectedBankId);
-        if (bank) {
-          const delta = event.type === 'income' ? (finalAmount - penalty) : -(finalAmount + penalty);
-          appStore.updateMasterItem(selectedBankId, { currentBalance: (bank.currentBalance || 0) + delta });
-        }
-      }
-      
-      // カレンダー同期
-      if (appStore.data.settings?.calendarSyncEnabled) {
-        const updatedEvent = { ...event, ...updates };
-        calendarSync.updateEvent(null, updatedEvent).catch(err => console.error('Calendar update failed', err));
-      }
+    // Drive 同期
+    if (appStore.data.settings?.driveSyncEnabled) {
+      driveSync.push().catch(err => console.error('Auto drive push failed', err));
+    }
 
+    hideEventModal();
+    renderDashboard(containerEl);
+  };
+
+  deleteBtn.onclick = async () => {
+    if (await window.showConfirm('この予定をカレンダーから削除しますか？\n（マスターデータは削除されません）')) {
+      // カレンダー同期
+      if (appStore.data.settings?.calendarSyncEnabled && event.gcalEventId) {
+        calendarSync.deleteEvent(null, event).catch(err => console.error('Calendar deletion failed', err));
+      }
+      
+      appStore.deleteEvent(yearMonth, eventId);
+      
       // Drive 同期
       if (appStore.data.settings?.driveSyncEnabled) {
         driveSync.push().catch(err => console.error('Auto drive push failed', err));
       }
 
       hideEventModal();
-      renderDashboard(container);
-    };
+      renderDashboard(containerEl);
+    }
+  };
 
-    deleteBtn.onclick = async () => {
-      if (await window.showConfirm('この予定をカレンダーから削除しますか？\n（マスターデータは削除されません）')) {
-        // カレンダー同期
-        if (appStore.data.settings?.calendarSyncEnabled && event.gcalEventId) {
-          calendarSync.deleteEvent(null, event).catch(err => console.error('Calendar deletion failed', err));
+  modal.classList.remove('hidden');
+};
+
+window.hideEventModal = () => {
+  document.getElementById('event-modal').classList.add('hidden');
+};
+
+window.showEmergencyLoanModal = () => {
+  const masterLoans = appStore.data.master.loans || [];
+  const payoffSummary = calculatePayoffSummary(masterLoans);
+  const modal = document.getElementById('loan-modal');
+  const amountInput = document.getElementById('needed-amount');
+  const proposalDiv = document.getElementById('ai-proposal');
+  const applyBtn = document.getElementById('apply-loan-btn');
+
+  proposalDiv.innerHTML = '';
+  applyBtn.classList.add('hidden');
+  
+  amountInput.oninput = () => {
+    window.handleNumericInput(amountInput);
+    const amount = parseNumber(amountInput.value);
+    if (!amount || amount <= 0) {
+      proposalDiv.innerHTML = '';
+      applyBtn.classList.add('hidden');
+      return;
+    }
+
+    // AI提案ロジック
+    const candidates = masterLoans
+      .filter(l => l.active && (l.maxLimit - l.currentBalance) > 0)
+      .sort((a, b) => a.interestRate - b.interestRate);
+
+    if (candidates.length === 0) {
+      proposalDiv.innerHTML = '<p class="warn">借入可能な枠がありません。</p>';
+      applyBtn.classList.add('hidden');
+      return;
+    }
+
+    let remaining = amount;
+    let plan = [];
+    for (const c of candidates) {
+      const space = c.maxLimit - c.currentBalance;
+      const take = Math.min(remaining, space);
+      if (take > 0) {
+        plan.push({ name: c.name, amount: take, id: c.id });
+        remaining -= take;
+      }
+      if (remaining <= 0) break;
+    }
+
+    if (remaining > 0) {
+      proposalDiv.innerHTML = `<p class="warn">不足分 ¥${remaining.toLocaleString()} の枠が足りません。</p>`;
+      applyBtn.classList.add('hidden');
+    } else {
+      // 完済予定への影響を計算
+      const dummyLoans = JSON.parse(JSON.stringify(masterLoans));
+      plan.forEach(p => {
+        const l = dummyLoans.find(dl => dl.id === p.id);
+        l.currentBalance += p.amount;
+      });
+      const newSummary = calculatePayoffSummary(dummyLoans);
+      const monthDiff = newSummary.totalMonths - payoffSummary.totalMonths;
+
+      proposalDiv.innerHTML = `
+        <p>💡 AI推奨の借入計画:</p>
+        <ul>
+          ${plan.map(p => `<li>${p.name}: ¥${p.amount.toLocaleString()}</li>`).join('')}
+        </ul>
+        <p class="warn">⚠️ 完済予定が ${monthDiff} ヶ月延びて ${newSummary.payoffDate} になります。</p>
+      `;
+      applyBtn.classList.remove('hidden');
+      applyBtn.onclick = async () => {
+        if (await window.showConfirm('借入を実行して残高に反映しますか？')) {
+          plan.forEach(p => {
+            const loan = masterLoans.find(l => l.id === p.id);
+            appStore.updateLoan(p.id, { currentBalance: loan.currentBalance + p.amount });
+          });
+          hideLoanModal();
+          renderDashboard(containerEl);
         }
-        
-        appStore.deleteEvent(yearMonth, eventId);
-        
-        // Drive 同期
-        if (appStore.data.settings?.driveSyncEnabled) {
-          driveSync.push().catch(err => console.error('Auto drive push failed', err));
-        }
-
-        hideEventModal();
-        renderDashboard(container);
-      }
-    };
-
-    modal.classList.remove('hidden');
+      };
+    }
   };
 
-  window.hideEventModal = () => {
-    document.getElementById('event-modal').classList.add('hidden');
-  };
+  modal.classList.remove('hidden');
+};
 
-  window.showEmergencyLoanModal = () => {
-    const modal = document.getElementById('loan-modal');
-    const amountInput = document.getElementById('needed-amount');
-    const proposalDiv = document.getElementById('ai-proposal');
-    const applyBtn = document.getElementById('apply-loan-btn');
-
-    proposalDiv.innerHTML = '';
-    applyBtn.classList.add('hidden');
-    
-    amountInput.oninput = () => {
-      handleNumericInput(amountInput);
-      const amount = parseNumber(amountInput.value);
-      if (!amount || amount <= 0) {
-        proposalDiv.innerHTML = '';
-        applyBtn.classList.add('hidden');
-        return;
-      }
-
-      // AI提案ロジック
-      const candidates = masterLoans
-        .filter(l => l.active && (l.maxLimit - l.currentBalance) > 0)
-        .sort((a, b) => a.interestRate - b.interestRate);
-
-      if (candidates.length === 0) {
-        proposalDiv.innerHTML = '<p class="warn">借入可能な枠がありません。</p>';
-        applyBtn.classList.add('hidden');
-        return;
-      }
-
-      let remaining = amount;
-      let plan = [];
-      for (const c of candidates) {
-        const space = c.maxLimit - c.currentBalance;
-        const take = Math.min(remaining, space);
-        if (take > 0) {
-          plan.push({ name: c.name, amount: take, id: c.id });
-          remaining -= take;
-        }
-        if (remaining <= 0) break;
-      }
-
-      if (remaining > 0) {
-        proposalDiv.innerHTML = `<p class="warn">不足分 ¥${remaining.toLocaleString()} の枠が足りません。</p>`;
-        applyBtn.classList.add('hidden');
-      } else {
-        // 完済予定への影響を計算
-        const dummyLoans = JSON.parse(JSON.stringify(masterLoans));
-        plan.forEach(p => {
-          const l = dummyLoans.find(dl => dl.id === p.id);
-          l.currentBalance += p.amount;
-        });
-        const newSummary = calculatePayoffSummary(dummyLoans);
-        const monthDiff = newSummary.totalMonths - payoffSummary.totalMonths;
-
-        proposalDiv.innerHTML = `
-          <p>💡 AI推奨の借入計画:</p>
-          <ul>
-            ${plan.map(p => `<li>${p.name}: ¥${p.amount.toLocaleString()}</li>`).join('')}
-          </ul>
-          <p class="warn">⚠️ 完済予定が ${monthDiff} ヶ月延びて ${newSummary.payoffDate} になります。</p>
-        `;
-        applyBtn.classList.remove('hidden');
-        applyBtn.onclick = async () => {
-          if (await window.showConfirm('借入を実行して残高に反映しますか？')) {
-            plan.forEach(p => {
-              const loan = masterLoans.find(l => l.id === p.id);
-              appStore.updateLoan(p.id, { currentBalance: loan.currentBalance + p.amount });
-            });
-            hideLoanModal();
-            renderDashboard(container);
-          }
-        };
-      }
-    };
-
-    modal.classList.remove('hidden');
-  };
-
-  window.hideLoanModal = () => {
-    document.getElementById('loan-modal').classList.add('hidden');
-  };
-}
+window.hideLoanModal = () => {
+  document.getElementById('loan-modal').classList.add('hidden');
+};
 
 function renderCalendar(year, month, events) {
   const firstDay = new Date(year, month - 1, 1).getDay();
@@ -705,22 +736,22 @@ function renderCalendar(year, month, events) {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const isToday = dateStr === todayStr;
     const isThisWeek = dateStr > todayStr && dateStr <= nextWeekStr;
-    const dayEvents = events.filter(e => e.originalDate === dateStr);
+    const dayEvents = events.filter(e => e.actualDate === dateStr);
 
     html += `
       <div class="calendar-day ${isToday ? 'today' : ''} ${isThisWeek ? 'this-week' : ''}">
         <span class="day-num">${d}</span>
         <div class="day-events">
           ${dayEvents.map(e => {
-            const isDelayed = e.status === 'pending' && e.originalDate < todayStr;
+            const isDelayed = e.status === 'pending' && e.actualDate < todayStr;
             const isPaid = e.status === 'paid';
-            const showActualDate = e.actualDate && e.actualDate !== e.originalDate;
-            const actualDay = showActualDate ? e.actualDate.split('-')[2] : '';
+            const hasAdjustment = e.actualDate && e.actualDate !== e.originalDate;
+            const originalDay = hasAdjustment ? e.originalDate.split('-')[2] : '';
             return `
               <div class="event-item ${e.type} ${e.status} ${isDelayed ? 'delayed blink' : ''}" 
                    onclick="showEventModal('${e.id}')">
                 ${getIcon(e.name, e.type)} 
-                ${showActualDate ? `<span style="font-size: 0.6rem; background: rgba(0,0,0,0.1); padding: 0 2px; border-radius: 2px; margin-right: 2px;">${actualDay}日</span>` : ''}
+                ${hasAdjustment ? `<span style="font-size: 0.6rem; background: rgba(0,0,0,0.1); padding: 0 2px; border-radius: 2px; margin-right: 2px;" title="本来の予定日: ${originalDay}日">${originalDay}日→</span>` : ''}
                 <span style="font-weight: 700;">${e.type === 'income' ? '+' : '-'}${formatNumber(e.amount)}円</span>
                 ${e.name}
               </div>

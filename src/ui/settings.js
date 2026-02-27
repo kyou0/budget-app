@@ -232,65 +232,66 @@ window.syncAllCalendars = async (btn) => {
   }
   
   if (await window.showConfirm(`${months.length} ヶ月分のデータを同期しますか？`)) {
-    const originalText = btn.textContent;
-    btn.disabled = true;
-  btn.textContent = '同期中...';
-  
-  window.showToast('一括同期中...', 'info');
-  try {
-    const token = await googleAuth.getAccessToken([googleAuth.getScopes().CALENDAR]);
-    for (const ym of months) {
-      await calendarSync.syncMonthEvents(ym, token);
+    window.toggleLoadingOverlay(true, 'Googleカレンダーと一括同期中...');
+    try {
+      const token = await googleAuth.getAccessToken([googleAuth.getScopes().CALENDAR]);
+      for (const ym of months) {
+        await calendarSync.syncMonthEvents(ym, token);
+      }
+      appStore.addSyncLog({
+        type: 'calendar',
+        mode: 'manual',
+        status: 'success',
+        message: `Calendar sync: ${months.length}ヶ月`
+      });
+      window.showToast('一括同期完了', 'success');
+    } catch (err) {
+      console.error('Batch sync error:', err);
+      appStore.addSyncLog({
+        type: 'calendar',
+        mode: 'manual',
+        status: 'error',
+        message: `Calendar sync: ${err.message || '失敗'}`
+      });
+      window.showToast('同期中にエラーが発生しました', 'danger');
+    } finally {
+      window.toggleLoadingOverlay(false);
     }
-    appStore.addSyncLog({
-      type: 'calendar',
-      mode: 'manual',
-      status: 'success',
-      message: `Calendar sync: ${months.length}ヶ月`
-    });
-    window.showToast('一括同期完了', 'success');
-  } catch (err) {
-    console.error('Batch sync error:', err);
-    appStore.addSyncLog({
-      type: 'calendar',
-      mode: 'manual',
-      status: 'error',
-      message: `Calendar sync: ${err.message || '失敗'}`
-    });
-    window.showToast('同期中にエラーが発生しました', 'danger');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = originalText;
   }
-}
 };
 
 window.manualDrivePush = async () => {
-try {
-  await driveSync.push({ mode: 'manual' });
-  window.showToast('クラウドに保存しました', 'success');
-  location.reload();
-} catch (err) {
-  window.showToast('保存失敗: ' + err.message, 'danger');
-}
+  window.toggleLoadingOverlay(true, 'データを保存中...');
+  try {
+    await driveSync.push({ mode: 'manual' });
+    window.showToast('クラウドに保存しました', 'success');
+    location.reload();
+  } catch (err) {
+    window.showToast('保存失敗: ' + err.message, 'danger');
+  } finally {
+    window.toggleLoadingOverlay(false);
+  }
 };
 
 window.manualDrivePull = async () => {
   if (await window.showConfirm('クラウドからデータを読み込みます。現在のローカルデータは上書きされます。よろしいですか？')) {
+    window.toggleLoadingOverlay(true, 'データを読み込み中...');
     try {
       const remoteData = await driveSync.pull({ mode: 'manual' });
-    if (remoteData) {
-      appStore.data = appStore.migrate(remoteData);
-      appStore.save();
-      window.showToast('クラウドから読み込みました。', 'success');
-      location.reload();
-    } else {
-      window.showToast('クラウド上にデータが見つかりませんでした。', 'warn');
+      if (remoteData) {
+        appStore.data = appStore.migrate(remoteData);
+        appStore.save();
+        window.showToast('クラウドから読み込みました。', 'success');
+        location.reload();
+      } else {
+        window.showToast('クラウド上にデータが見つかりませんでした。', 'warn');
+      }
+    } catch (err) {
+      window.showToast('読み込み失敗: ' + err.message, 'danger');
+    } finally {
+      window.toggleLoadingOverlay(false);
     }
-  } catch (err) {
-    window.showToast('読み込み失敗: ' + err.message, 'danger');
   }
-}
 };
 
 window.clearAllData = async () => {
@@ -397,8 +398,8 @@ window.exitDemoToLogin = async () => {
   const fresh = appStore.migrate(JSON.parse(JSON.stringify(INITIAL_DATA)));
   appStore.data = fresh;
   appStore.save();
-  sessionStorage.removeItem('isLoggedIn');
-  sessionStorage.removeItem('demoTutorialShown');
+  localStorage.removeItem('isLoggedIn');
+  localStorage.removeItem('demoTutorialShown');
   location.reload();
 };
 

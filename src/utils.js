@@ -138,6 +138,41 @@ export const CARD_BRANDS = [
 ];
 
 /**
+ * 土日祝の調整を行い、Date オブジェクトを返す
+ * @param {Date} date
+ * @param {'none'|'prev_weekday'|'next_weekday'} adjustment
+ * @returns {Date}
+ */
+export function getAdjustedDate(date, adjustment) {
+  const originalMonth = date.getMonth();
+  const d = new Date(date);
+  const day = d.getDay();
+  if (adjustment === 'prev_weekday') {
+    if (day === 0) d.setDate(d.getDate() - 2); // Sun -> Fri
+    else if (day === 6) d.setDate(d.getDate() - 1); // Sat -> Fri
+  } else if (adjustment === 'next_weekday') {
+    if (day === 0) d.setDate(d.getDate() + 1); // Sun -> Mon
+    else if (day === 6) d.setDate(d.getDate() + 2); // Sat -> Mon
+  }
+
+  // 月を跨ぐ場合の調整 (翌営業日にした結果、翌月になってしまったら元の月の最終営業日に戻す)
+  const currentTotalMonths = d.getFullYear() * 12 + d.getMonth();
+  const originalTotalMonths = date.getFullYear() * 12 + originalMonth;
+
+  if (adjustment === 'next_weekday' && currentTotalMonths > originalTotalMonths) {
+    // 元の月の最終日に戻す
+    const lastDayOfOriginalMonth = new Date(date.getFullYear(), originalMonth + 1, 0);
+    // その最終日が土日の場合は金曜日に戻す
+    const lday = lastDayOfOriginalMonth.getDay();
+    if (lday === 0) lastDayOfOriginalMonth.setDate(lastDayOfOriginalMonth.getDate() - 2);
+    else if (lday === 6) lastDayOfOriginalMonth.setDate(lastDayOfOriginalMonth.getDate() - 1);
+    return lastDayOfOriginalMonth;
+  }
+
+  return d;
+}
+
+/**
  * 数値をカンマ区切り文字列に変換
  * @param {number|string} val 
  * @returns {string}
