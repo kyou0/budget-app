@@ -1,6 +1,6 @@
 import { store as appStore } from '../store.js';
 import { calculateLoanPayoff, calculatePayoffSummary, simulateLoanSchedule } from '../calc.js';
-import { formatAgeMonths, formatMonthsToYears, getAgeMonthsFromBirthdate } from '../utils.js';
+import { formatAgeMonths, formatMonthsToYears, getAgeMonthsFromBirthdate, formatNumber, parseNumber } from '../utils.js';
 
 let currentAnalysisTab = appStore.data.settings?.analysisTab || 'overview';
 
@@ -749,17 +749,18 @@ export function renderAnalysis(container) {
   });
 
   container.innerHTML = `
-    <div class="analysis-header" style="padding: 15px; background: white; border-bottom: 1px solid #eee;">
-      <h2>分析・モチベーション</h2>
+    <div class="analysis-header">
+      <h2>分析・計画</h2>
     </div>
     <div class="analysis-tabs">
       <button class="analysis-tab ${currentAnalysisTab === 'overview' ? 'active' : ''}" onclick="switchAnalysisTab('overview')">概要</button>
+      <button class="analysis-tab ${currentAnalysisTab === 'planning' ? 'active' : ''}" onclick="switchAnalysisTab('planning')">🗓️ 将来計画</button>
+      <button class="analysis-tab ${currentAnalysisTab === 'cashflow' ? 'active' : ''}" onclick="switchAnalysisTab('cashflow')">予測</button>
       <button class="analysis-tab ${currentAnalysisTab === 'simulation' ? 'active' : ''}" onclick="switchAnalysisTab('simulation')">シミュレーション</button>
-      <button class="analysis-tab ${currentAnalysisTab === 'timeline' ? 'active' : ''}" onclick="switchAnalysisTab('timeline')">年表</button>
       <button class="analysis-tab ${currentAnalysisTab === 'composition' ? 'active' : ''}" onclick="switchAnalysisTab('composition')">収支構成</button>
       <button class="analysis-tab ${currentAnalysisTab === 'breakdown' ? 'active' : ''}" onclick="switchAnalysisTab('breakdown')">借入内訳</button>
       <button class="analysis-tab ${currentAnalysisTab === 'trend' ? 'active' : ''}" onclick="switchAnalysisTab('trend')">トレンド</button>
-      <button class="analysis-tab ${currentAnalysisTab === 'cashflow' ? 'active' : ''}" onclick="switchAnalysisTab('cashflow')">予測</button>
+      <button class="analysis-tab ${currentAnalysisTab === 'timeline' ? 'active' : ''}" onclick="switchAnalysisTab('timeline')">年表</button>
     </div>
     <div class="analysis-content" style="padding: 15px;">
       ${currentAnalysisTab === 'overview' ? renderOverview({
@@ -791,6 +792,7 @@ export function renderAnalysis(container) {
         events: monthEvents,
         yearMonth
       }) : ''}
+      ${currentAnalysisTab === 'planning' ? renderPlanning({ items, loans, yearMonth }) : ''}
       ${currentAnalysisTab === 'overview' ? `
         <div class="card" style="background: white; padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
           <h3 style="margin-top: 0;">🔥 モチベーション</h3>
@@ -838,5 +840,283 @@ export function renderAnalysis(container) {
     currentAnalysisTab = tab;
     appStore.updateSettings({ analysisTab: tab });
     renderAnalysis(container);
+  };
+
+  if (currentAnalysisTab === 'planning') {
+    setupPlanningHandlers(container, items, loans, yearMonth);
+  }
+}
+
+/* =============================================
+   将来計画タブ
+   ============================================= */
+
+const PLAN_CATEGORIES = {
+  travel: '✈️ 旅行',
+  gift: '💍 ギフト・記念',
+  medical: '🏥 医療',
+  purchase: '🛒 大型購入',
+  tax: '🏛️ 税金・保険',
+  repair: '🔧 修繕・メンテ',
+  other: '📌 その他'
+};
+
+function buildForecast(items, loans, plans, monthCount = 18) {
+  const now = new Date();
+  const banks = items.filter(i => i.type === 'bank' && i.active);
+  const startBalance = banks.reduce((s, b) => s + (Number(b.currentBalance) || 0), 0);
+
+  // 月次固定収支を計算（generate.jsを使わず簡易計算）
+  const recurringItems = items.filter(i => i.type !== 'bank' && i.active);
+  const monthlyIncome = recurringItems
+    .filter(i => i.type === 'income')
+    .reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  const monthlyExpense = recurringItems
+    .filter(i => i.type === 'expense')
+    .reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  const monthlyLoanRepayment = loans
+    .filter(l => l.active && l.currentBalance > 0 && l.type !== 'クレジットカード')
+    .reduce((s, l) => s + (Number(l.monthlyPayment) || 0), 0);
+
+  const rows = [];
+  let runningBalance = startBalance;
+
+  for (let i = 0; i < monthCount; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+    // カレンダー生成済みデータがあれば優先使用
+    const calendarEvents = appStore.data.calendar?.generatedMonths?.[ym] || [];
+    let income, expense;
+    if (calendarEvents.length > 0) {
+      income = calendarEvents.filter(e => e.type === 'income').reduce((s, e) => s + (Number(e.amount) || 0), 0);
+      expense = calendarEvents.filter(e => e.type === 'expense').reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    } else {
+      income = monthlyIncome;
+      expense = monthlyExpense + monthlyLoanRepayment;
+    }
+
+    // 将来計画イベント
+    const monthPlans = plans.filter(p => p.yearMonth === ym);
+    const planIncome = monthPlans.filter(p => p.type === 'income').reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const planExpense = monthPlans.filter(p => p.type === 'expense').reduce((s, p) => s + (Number(p.amount) || 0), 0);
+
+    const net = (income + planIncome) - (expense + planExpense);
+    runningBalance += net;
+
+    rows.push({
+      ym,
+      label: `${d.getFullYear()}年${d.getMonth() + 1}月`,
+      income: income + planIncome,
+      expense: expense + planExpense,
+      planIncome,
+      planExpense,
+      net,
+      balance: runningBalance,
+      plans: monthPlans,
+      isGenerated: calendarEvents.length > 0
+    });
+  }
+  return { rows, startBalance };
+}
+
+const renderPlanning = ({ items, loans, yearMonth }) => {
+  const plans = appStore.data.master.plans || [];
+  const { rows, startBalance } = buildForecast(items, loans, plans, 18);
+  const minBalance = Math.min(...rows.map(r => r.balance));
+  const dangerMonths = rows.filter(r => r.balance < 0);
+
+  const plansByYm = {};
+  plans.forEach(p => {
+    if (!plansByYm[p.yearMonth]) plansByYm[p.yearMonth] = [];
+    plansByYm[p.yearMonth].push(p);
+  });
+
+  return `
+    <!-- ヘッダー + 警告 -->
+    ${dangerMonths.length > 0 ? `
+      <div style="background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.3); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start;">
+        <span style="font-size: 1.3rem;">⚠️</span>
+        <div>
+          <div style="font-weight: 700; color: var(--danger); margin-bottom: 4px;">残高がマイナスになる月があります</div>
+          <div style="font-size: 0.83rem; color: var(--text-2);">
+            ${dangerMonths.map(r => `${r.label}（${formatCurrency(r.balance)}）`).join('、')}
+          </div>
+        </div>
+      </div>
+    ` : `
+      <div style="background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; display: flex; gap: 10px; align-items: center;">
+        <span style="font-size: 1.3rem;">✅</span>
+        <div style="font-size: 0.85rem; color: var(--success); font-weight: 600;">18ヶ月先まで残高がプラスを維持できる見込みです（最低: ${formatCurrency(minBalance)}）</div>
+      </div>
+    `}
+
+    <!-- 計画追加フォーム -->
+    <div class="card" style="margin-bottom: 20px; padding: 18px;">
+      <div style="font-weight: 700; font-size: 0.9rem; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+        <span>＋ 将来のイベントを追加</span>
+        <span style="font-size: 0.75rem; color: var(--text-3); font-weight: 400;">旅行・大型出費・臨時収入など</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="form-group" style="margin: 0; grid-column: 1/-1;">
+          <label>イベント名</label>
+          <input type="text" id="plan-name" placeholder="例: ハワイ旅行、結婚指輪">
+        </div>
+        <div class="form-group" style="margin: 0;">
+          <label>種別</label>
+          <select id="plan-type">
+            <option value="expense">支出</option>
+            <option value="income">収入</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin: 0;">
+          <label>金額</label>
+          <input type="text" inputmode="numeric" id="plan-amount" placeholder="例: 300,000" oninput="handleNumericInput(this)">
+        </div>
+        <div class="form-group" style="margin: 0;">
+          <label>対象月</label>
+          <input type="month" id="plan-yearmonth" value="${yearMonth}">
+        </div>
+        <div class="form-group" style="margin: 0;">
+          <label>カテゴリ</label>
+          <select id="plan-category">
+            ${Object.entries(PLAN_CATEGORIES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group" style="margin: 0; grid-column: 1/-1;">
+          <label>金額モード</label>
+          <select id="plan-amount-mode">
+            <option value="fixed">確定額</option>
+            <option value="estimate">概算（ざっくり見積もり）</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin: 0; grid-column: 1/-1;">
+          <label>メモ</label>
+          <input type="text" id="plan-notes" placeholder="備考（任意）">
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+        <button class="btn primary" onclick="addPlanEvent()" style="min-width: 120px;">追加</button>
+      </div>
+    </div>
+
+    <!-- 18ヶ月フォーキャスト -->
+    <div class="card" style="padding: 18px; margin-bottom: 20px;">
+      <div style="font-weight: 700; font-size: 0.9rem; color: var(--text); margin-bottom: 4px;">📊 18ヶ月キャッシュフロー予測</div>
+      <div style="font-size: 0.78rem; color: var(--text-3); margin-bottom: 14px;">現在残高: ${formatCurrency(startBalance)} ／ ※未生成月は月次定常収支で推計</div>
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 600px;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--card-border);">
+              <th style="padding: 8px 6px; text-align: left; color: var(--text-3); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;">月</th>
+              <th style="padding: 8px 6px; text-align: right; color: var(--text-3); font-weight: 600; font-size: 0.72rem; text-transform: uppercase;">収入</th>
+              <th style="padding: 8px 6px; text-align: right; color: var(--text-3); font-weight: 600; font-size: 0.72rem; text-transform: uppercase;">支出</th>
+              <th style="padding: 8px 6px; text-align: right; color: var(--text-3); font-weight: 600; font-size: 0.72rem; text-transform: uppercase;">差引</th>
+              <th style="padding: 8px 6px; text-align: right; color: var(--text-3); font-weight: 600; font-size: 0.72rem; text-transform: uppercase;">予想残高</th>
+              <th style="padding: 8px 6px; text-align: left; color: var(--text-3); font-weight: 600; font-size: 0.72rem; text-transform: uppercase;">イベント</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((row, i) => `
+              <tr style="border-bottom: 1px solid var(--card-border); ${i === 0 ? 'background: rgba(99,102,241,0.06);' : ''} ${row.balance < 0 ? 'background: rgba(248,113,113,0.08);' : ''}">
+                <td style="padding: 8px 6px; font-weight: 600; color: ${i === 0 ? 'var(--primary)' : 'var(--text-2)'};">
+                  ${row.label}
+                  ${!row.isGenerated ? `<span style="font-size: 0.65rem; color: var(--text-3); margin-left: 4px;">推計</span>` : ''}
+                </td>
+                <td style="padding: 8px 6px; text-align: right; color: var(--success);">
+                  ${formatCurrency(row.income)}
+                  ${row.planIncome > 0 ? `<br><span style="font-size: 0.68rem; color: rgba(52,211,153,0.7);">+${formatCurrency(row.planIncome)} 計画</span>` : ''}
+                </td>
+                <td style="padding: 8px 6px; text-align: right; color: var(--danger);">
+                  ${formatCurrency(row.expense)}
+                  ${row.planExpense > 0 ? `<br><span style="font-size: 0.68rem; color: rgba(248,113,113,0.7);">+${formatCurrency(row.planExpense)} 計画</span>` : ''}
+                </td>
+                <td style="padding: 8px 6px; text-align: right; font-weight: 700; color: ${row.net >= 0 ? 'var(--success)' : 'var(--danger)'};">
+                  ${row.net >= 0 ? '+' : ''}${formatCurrency(row.net)}
+                </td>
+                <td style="padding: 8px 6px; text-align: right; font-weight: 700; color: ${row.balance < 0 ? 'var(--danger)' : row.balance < 50000 ? 'var(--warn)' : 'var(--text)'};">
+                  ${formatCurrency(row.balance)}
+                  ${row.balance < 0 ? ' ⚠️' : ''}
+                </td>
+                <td style="padding: 8px 6px;">
+                  ${row.plans.map(p => `
+                    <span style="display: inline-flex; align-items: center; gap: 4px; background: ${p.type === 'expense' ? 'rgba(248,113,113,0.15)' : 'rgba(52,211,153,0.15)'}; color: ${p.type === 'expense' ? 'var(--danger)' : 'var(--success)'}; border-radius: 4px; padding: 2px 6px; font-size: 0.72rem; margin: 1px; cursor: pointer;" onclick="deletePlanEvent('${p.id}')" title="クリックで削除">
+                      ${PLAN_CATEGORIES[p.category] || '📌'} ${p.name}
+                      ${p.amountMode === 'estimate' ? '~' : ''}${formatCurrency(p.amount)}
+                      ✕
+                    </span>
+                  `).join('')}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 登録済み計画一覧 -->
+    ${plans.length > 0 ? `
+      <div class="card" style="padding: 18px;">
+        <div style="font-weight: 700; font-size: 0.9rem; color: var(--text); margin-bottom: 14px;">📋 登録済み計画 (${plans.length}件)</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px;">
+          ${plans.sort((a, b) => a.yearMonth.localeCompare(b.yearMonth)).map(p => `
+            <div style="background: var(--surface); border: 1px solid var(--card-border); border-radius: 10px; padding: 12px; border-left: 3px solid ${p.type === 'expense' ? 'var(--danger)' : 'var(--success)'};">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                <div style="font-size: 0.78rem; color: var(--text-3);">${p.yearMonth} / ${PLAN_CATEGORIES[p.category] || '📌'}</div>
+                <button onclick="deletePlanEvent('${p.id}')" style="background: none; border: none; color: var(--text-3); cursor: pointer; padding: 0; font-size: 0.85rem; line-height: 1;" title="削除">✕</button>
+              </div>
+              <div style="font-weight: 700; color: var(--text); margin-bottom: 4px;">${p.name}</div>
+              <div style="font-size: 0.95rem; font-weight: 700; color: ${p.type === 'expense' ? 'var(--danger)' : 'var(--success)'};">
+                ${p.type === 'expense' ? '-' : '+'}${p.amountMode === 'estimate' ? '~' : ''}${formatCurrency(p.amount)}
+              </div>
+              ${p.notes ? `<div style="font-size: 0.75rem; color: var(--text-3); margin-top: 4px;">${p.notes}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
+  `;
+};
+
+function setupPlanningHandlers(container, items, loans, yearMonth) {
+  // 数値入力フォーマット（masterページ未訪問でも動くようにここでも定義）
+  if (!window.handleNumericInput) {
+    window.handleNumericInput = (el) => {
+      const raw = el.value.replace(/,/g, '');
+      if (raw === '' || raw === '-') return;
+      const num = parseFloat(raw);
+      if (!isNaN(num)) el.value = formatNumber(num);
+    };
+  }
+
+  window.addPlanEvent = () => {
+    const name = document.getElementById('plan-name')?.value?.trim();
+    const type = document.getElementById('plan-type')?.value;
+    const amountRaw = document.getElementById('plan-amount')?.value;
+    const ym = document.getElementById('plan-yearmonth')?.value;
+    const category = document.getElementById('plan-category')?.value;
+    const amountMode = document.getElementById('plan-amount-mode')?.value;
+    const notes = document.getElementById('plan-notes')?.value?.trim();
+
+    if (!name) { window.showToast('イベント名を入力してください', 'warn'); return; }
+    if (!amountRaw) { window.showToast('金額を入力してください', 'warn'); return; }
+    if (!ym) { window.showToast('対象月を選択してください', 'warn'); return; }
+
+    const amount = parseNumber(amountRaw);
+    if (!amount || amount <= 0) { window.showToast('有効な金額を入力してください', 'warn'); return; }
+
+    appStore.addPlan({ name, type, amount, yearMonth: ym, category, amountMode, notes });
+    window.showToast(`「${name}」を計画に追加しました`, 'success');
+    renderAnalysis(container);
+  };
+
+  window.deletePlanEvent = async (id) => {
+    const plan = (appStore.data.master.plans || []).find(p => p.id === id);
+    if (!plan) return;
+    if (await window.showConfirm(`「${plan.name}」を削除しますか？`)) {
+      appStore.deletePlan(id);
+      window.showToast('削除しました', 'success');
+      renderAnalysis(container);
+    }
   };
 }

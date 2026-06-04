@@ -108,6 +108,7 @@ class Store {
     if (!data.master.items) data.master.items = [];
     if (!data.master.loans) data.master.loans = [];
     if (!data.master.clients) data.master.clients = [];
+    if (!data.master.plans) data.master.plans = [];
     if (!data.calendar) data.calendar = { generatedMonths: {} };
     if (!data.calendar.generatedMonths) data.calendar.generatedMonths = {};
     if (!data.settings) data.settings = { ...INITIAL_DATA.settings };
@@ -241,6 +242,30 @@ class Store {
       this.data.master.clients.splice(index, 1);
       this.save();
     }
+  }
+
+  // 将来計画イベント CRUD
+  addPlan(plan) {
+    if (!this.data.master.plans) this.data.master.plans = [];
+    const newPlan = { ...plan, id: plan.id || crypto.randomUUID() };
+    this.data.master.plans.push(newPlan);
+    this.save();
+    return newPlan;
+  }
+
+  updatePlan(id, updates) {
+    if (!this.data.master.plans) return;
+    const idx = this.data.master.plans.findIndex(p => p.id === id);
+    if (idx !== -1) {
+      this.data.master.plans[idx] = { ...this.data.master.plans[idx], ...updates };
+      this.save();
+    }
+  }
+
+  deletePlan(id) {
+    if (!this.data.master.plans) return;
+    this.data.master.plans = this.data.master.plans.filter(p => p.id !== id);
+    this.save();
   }
 
   // クレジットカード月次請求イベントをupsert
