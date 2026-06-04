@@ -86,12 +86,25 @@
  * @property {boolean} active
  */
 
+/**
+ * @typedef {Object} PlanEvent
+ * @property {string} id
+ * @property {string} name
+ * @property {'income'|'expense'} type
+ * @property {number} amount
+ * @property {'fixed'|'estimate'} amountMode
+ * @property {string} yearMonth - YYYY-MM
+ * @property {string} [category] - travel|gift|medical|purchase|other
+ * @property {string} [notes]
+ */
+
 export const INITIAL_DATA = {
   schemaVersion: 2,
   master: {
     items: [],
     loans: [],
-    clients: []
+    clients: [],
+    plans: []
   },
   calendar: {
     generatedMonths: {}
