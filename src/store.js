@@ -243,6 +243,44 @@ class Store {
     }
   }
 
+  // クレジットカード月次請求イベントをupsert
+  upsertCardBillingEvent(cardId, yearMonth, amount, actualDate, card) {
+    const eventId = `card-billing-${cardId}-${yearMonth}`;
+    if (!this.data.calendar.generatedMonths[yearMonth]) {
+      this.data.calendar.generatedMonths[yearMonth] = [];
+    }
+    const events = this.data.calendar.generatedMonths[yearMonth];
+    const existing = events.find(e => e.id === eventId);
+    if (amount <= 0) {
+      // 金額0なら既存イベントを削除
+      const idx = events.findIndex(e => e.id === eventId);
+      if (idx !== -1) {
+        events.splice(idx, 1);
+        this.save();
+      }
+      return;
+    }
+    const event = {
+      id: eventId,
+      masterId: cardId,
+      name: `カード引落: ${card.name}`,
+      type: 'expense',
+      amount,
+      bankId: card.bankId || '',
+      originalDate: actualDate,
+      actualDate,
+      penaltyFee: 0,
+      status: existing?.status === 'paid' ? 'paid' : 'pending',
+      tag: 'card'
+    };
+    if (existing) {
+      Object.assign(existing, event);
+    } else {
+      events.push(event);
+    }
+    this.save();
+  }
+
   // Calendar Event Updates
   updateEvent(yearMonth, eventId, updates) {
     const monthEvents = this.data.calendar.generatedMonths[yearMonth];

@@ -12,6 +12,9 @@ export class Router {
     const hash = window.location.hash || '#dashboard';
     const route = this.routes[hash] || this.routes['#dashboard'];
     route();
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.classList.toggle('active', el.getAttribute('href') === hash);
+    });
   }
 
   navigate(hash) {
