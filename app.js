@@ -1,14 +1,17 @@
-import { Router } from './src/router.js';
-import { renderDashboard } from './src/ui/dashboard.js';
-import { renderAnalysis } from './src/ui/analysis.js';
-import { renderMaster } from './src/ui/master.js';
-import { renderSettings } from './src/ui/settings.js';
-import { startTutorial } from './src/ui/tutorial.js';
+// キャッシュバスティング: import.meta.url に付いた ?v= を全サブモジュールに伝播
+const _v = new URL(import.meta.url).searchParams.get('v') || '';
+const _q = _v ? `?v=${_v}` : '';
 
-import { store as appStore } from './src/store.js';
-import { googleAuth, initGoogleAuth } from './src/auth/googleAuth.js';
-import { driveSync } from './src/sync/driveSync.js';
-import { calendarSync } from './src/sync/calendarSync.js';
+const { Router }          = await import(`./src/router.js${_q}`);
+const { renderDashboard } = await import(`./src/ui/dashboard.js${_q}`);
+const { renderAnalysis }  = await import(`./src/ui/analysis.js${_q}`);
+const { renderMaster }    = await import(`./src/ui/master.js${_q}`);
+const { renderSettings }  = await import(`./src/ui/settings.js${_q}`);
+const { startTutorial }   = await import(`./src/ui/tutorial.js${_q}`);
+const { store: appStore } = await import(`./src/store.js${_q}`);
+const { googleAuth, initGoogleAuth } = await import(`./src/auth/googleAuth.js${_q}`);
+const { driveSync }       = await import(`./src/sync/driveSync.js${_q}`);
+const { calendarSync }    = await import(`./src/sync/calendarSync.js${_q}`);
 
 const container = document.getElementById('app-container');
 

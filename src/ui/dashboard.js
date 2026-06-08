@@ -277,6 +277,7 @@ export function renderDashboard(container) {
 
     <div class="actions-panel" style="padding: 10px; display: flex; gap: 10px;">
       <button onclick="showEmergencyLoanModal()" class="btn warn">💸 緊急借入</button>
+      <button onclick="clearCurrentMonthEvents()" class="btn danger" style="margin-left: auto;">🗑 今月をリセット</button>
     </div>
 
     <!-- 借入モーダル -->
@@ -696,6 +697,60 @@ window.showEmergencyLoanModal = () => {
 
 window.hideLoanModal = () => {
   document.getElementById('loan-modal').classList.add('hidden');
+};
+
+window.clearCurrentMonthEvents = async () => {
+  const yearMonth = toYearMonth(currentYear, currentMonth);
+  const events = appStore.data.calendar?.generatedMonths?.[yearMonth] || [];
+
+  if (events.length === 0) {
+    window.showToast('今月の予定はまだありません', 'info');
+    return;
+  }
+
+  const gcalCount = events.filter(e => e.gcalEventId).length;
+  const msg = [
+    `${currentYear}年${currentMonth}月の予定を全て削除します。`,
+    `　・アプリ内の予定: ${events.length}件`,
+    gcalCount > 0 ? `　・Googleカレンダーの予定: ${gcalCount}件も削除されます` : '',
+    '',
+    'この操作は元に戻せません。続けますか？'
+  ].filter(Boolean).join('\n');
+
+  if (!(await window.showConfirm(msg, '今月をリセット'))) return;
+
+  window.toggleLoadingOverlay(true, '今月の予定を削除中...');
+  try {
+    // GCal上のイベントを削除
+    if (appStore.data.settings?.calendarSyncEnabled && gcalCount > 0) {
+      for (const event of events) {
+        if (event.gcalEventId) {
+          await calendarSync.deleteEvent(null, event).catch(e => console.warn('GCal delete failed', e));
+        }
+      }
+    }
+
+    // ローカルデータを削除（clearMonthEventsがない旧バージョン対策のフォールバック付き）
+    if (typeof appStore.clearMonthEvents === 'function') {
+      appStore.clearMonthEvents(yearMonth);
+    } else {
+      // フォールバック: 直接データを操作して保存
+      if (appStore.data?.calendar?.generatedMonths) {
+        delete appStore.data.calendar.generatedMonths[yearMonth];
+        appStore.save();
+      }
+    }
+
+    // Drive同期
+    if (appStore.data.settings?.driveSyncEnabled) {
+      await driveSync.push({ mode: 'auto' }).catch(e => console.warn('Drive push failed', e));
+    }
+
+    window.showToast(`${currentMonth}月の予定を削除しました`, 'success');
+    renderDashboard(containerEl);
+  } finally {
+    window.toggleLoadingOverlay(false);
+  }
 };
 
 function renderCalendar(year, month, events) {

@@ -318,6 +318,13 @@ class Store {
     }
   }
 
+  clearMonthEvents(yearMonth) {
+    const events = this.data.calendar.generatedMonths[yearMonth] || [];
+    delete this.data.calendar.generatedMonths[yearMonth];
+    this.save();
+    return events; // 削除前のイベント一覧を返す（GCal削除に使う）
+  }
+
   deleteEvent(yearMonth, eventId) {
     const monthEvents = this.data.calendar.generatedMonths[yearMonth];
     if (monthEvents) {
