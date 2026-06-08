@@ -1048,12 +1048,13 @@ input[inputmode="numeric"] {
 /* =============================================
    LOADING
    ============================================= */
+/* 手動操作（生成・再生成など短い処理）用のフルオーバーレイ */
 .loading-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(8, 14, 26, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(8, 14, 26, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1088,68 +1089,165 @@ input[inputmode="numeric"] {
 }
 
 /* =============================================
-   SYNC PROGRESS BAR（バックグラウンド同期表示）
+   SYNC OVERLAY（ログイン後の同期・操作ブロック）
    ============================================= */
-#sync-progress-bar {
+#sync-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 9000;
+  inset: 0;
+  z-index: 8000;
+  background: rgba(8, 14, 26, 0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 80px); /* bottom-nav分 */
+  pointer-events: all; /* タッチ・クリックをブロック */
+  transition: opacity 0.35s ease;
+}
+
+#sync-overlay.hidden {
+  display: none;
+}
+
+#sync-overlay.finishing {
+  opacity: 0;
   pointer-events: none;
 }
 
-#sync-progress-track {
-  height: 3px;
-  background: rgba(99,102,241,0.15);
-  overflow: hidden;
+.sync-card {
+  margin: 0 16px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 20px 20px 18px;
+  box-shadow: 0 -4px 40px rgba(0,0,0,0.5);
 }
 
-#sync-progress-fill {
+.sync-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.sync-ring {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.sync-ring svg {
+  width: 36px;
+  height: 36px;
+  transform: rotate(-90deg);
+}
+
+.sync-ring-track {
+  fill: none;
+  stroke: rgba(99,102,241,0.15);
+  stroke-width: 3;
+}
+
+.sync-ring-fill {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 88;   /* 2πr ≈ 2×3.14×14 */
+  stroke-dashoffset: 88;
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.sync-card-title {
+  flex: 1;
+}
+
+.sync-card-title .main {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.sync-card-title .sub {
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+/* プログレスバー */
+.sync-progress-bar {
+  height: 4px;
+  background: rgba(99,102,241,0.12);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.sync-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary), #818cf8, var(--primary));
-  background-size: 200% 100%;
-  animation: syncBarMove 1.4s ease-in-out infinite;
-  transition: width 0.4s ease;
+  background: linear-gradient(90deg, var(--primary), #818cf8);
+  border-radius: 4px;
+  transition: width 0.5s ease;
   width: 0%;
 }
 
-@keyframes syncBarMove {
-  0%   { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
+/* ステップリスト */
+.sync-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-#sync-progress-label {
+.sync-step {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  background: rgba(8,14,26,0.82);
-  backdrop-filter: blur(8px);
-  font-size: 0.72rem;
-  color: var(--text-2);
-  font-weight: 600;
-  border-bottom: 1px solid rgba(99,102,241,0.15);
-  transition: opacity 0.3s;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: var(--text-3);
+  transition: color 0.2s;
 }
 
-#sync-progress-label .sync-dot {
-  width: 6px;
-  height: 6px;
+.sync-step.active {
+  color: var(--text);
+}
+
+.sync-step.done {
+  color: var(--success);
+}
+
+.sync-step-icon {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: var(--primary);
-  animation: syncDotPulse 1.2s ease-in-out infinite;
+  border: 1.5px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
   flex-shrink: 0;
+  transition: all 0.2s;
+  background: var(--surface);
 }
 
-@keyframes syncDotPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.4; transform: scale(0.7); }
+.sync-step.active .sync-step-icon {
+  border-color: var(--primary);
+  background: rgba(99,102,241,0.15);
+  animation: syncStepPulse 1.2s ease-in-out infinite;
 }
 
-#sync-progress-bar.hidden {
-  display: none;
+.sync-step.done .sync-step-icon {
+  border-color: var(--success);
+  background: rgba(16,185,129,0.12);
+  color: var(--success);
 }
+
+@keyframes syncStepPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.3); }
+  50%       { box-shadow: 0 0 0 5px rgba(99,102,241,0); }
+}
+
 
 /* =============================================
    TUTORIAL

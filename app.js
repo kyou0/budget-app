@@ -74,40 +74,119 @@ window.showConfirm = (message, title = '確認') => {
 /**
  * 全画面ローディング（同期中など）の表示・非表示
  */
-// ─── バックグラウンド同期プログレスバー ────────────────────────────
-function getSyncBar() {
-  let bar = document.getElementById('sync-progress-bar');
-  if (!bar) {
-    bar = document.createElement('div');
-    bar.id = 'sync-progress-bar';
-    bar.className = 'hidden';
-    bar.innerHTML = `
-      <div id="sync-progress-track"><div id="sync-progress-fill"></div></div>
-      <div id="sync-progress-label"><span class="sync-dot"></span><span id="sync-progress-text">同期中...</span></div>
+// ─── 同期オーバーレイ（操作ブロック＋ステップ表示） ─────────────────
+
+const SYNC_STEPS_DEF = [
+  { id: 'drive-pull',  icon: '☁️', label: 'Drive からデータを取得' },
+  { id: 'drive-push',  icon: '☁️', label: 'Drive にデータを保存' },
+  { id: 'cal',         icon: '📅', label: 'Googleカレンダーを同期' },
+];
+
+function getSyncOverlay() {
+  let el = document.getElementById('sync-overlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'sync-overlay';
+    el.className = 'hidden';
+    el.innerHTML = `
+      <div class="sync-card">
+        <div class="sync-card-header">
+          <div class="sync-ring">
+            <svg viewBox="0 0 36 36">
+              <circle class="sync-ring-track" cx="18" cy="18" r="14"/>
+              <circle class="sync-ring-fill" cx="18" cy="18" r="14"/>
+            </svg>
+          </div>
+          <div class="sync-card-title">
+            <div class="main" id="sync-title">同期中...</div>
+            <div class="sub" id="sync-subtitle">アプリのデータを最新に更新しています</div>
+          </div>
+        </div>
+        <div class="sync-progress-bar">
+          <div class="sync-progress-fill" id="sync-pbar"></div>
+        </div>
+        <div class="sync-steps" id="sync-steps-list">
+          ${SYNC_STEPS_DEF.map(s => `
+            <div class="sync-step" id="sync-step-${s.id}">
+              <div class="sync-step-icon">・</div>
+              <span>${s.icon} ${s.label}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
     `;
-    document.body.prepend(bar);
+    document.body.appendChild(el);
   }
-  return bar;
+  return el;
 }
 
-window.showSyncProgress = (message = '同期中...', percent = null) => {
-  const bar = getSyncBar();
-  bar.classList.remove('hidden');
-  const text = bar.querySelector('#sync-progress-text');
-  const fill = bar.querySelector('#sync-progress-fill');
-  if (text) text.textContent = message;
-  if (fill && percent !== null) fill.style.width = `${percent}%`;
+window.showSyncProgress = (stepId, percent = null) => {
+  const el = getSyncOverlay();
+  el.classList.remove('hidden', 'finishing');
+
+  // プログレスバー更新
+  const pbar = el.querySelector('#sync-pbar');
+  if (pbar && percent !== null) pbar.style.width = `${percent}%`;
+
+  // リング更新（88 = full circumference）
+  const ringFill = el.querySelector('.sync-ring-fill');
+  if (ringFill && percent !== null) {
+    ringFill.style.strokeDashoffset = 88 - (88 * percent / 100);
+  }
+
+  // ステップ状態更新
+  let reachedActive = false;
+  SYNC_STEPS_DEF.forEach(s => {
+    const stepEl = el.querySelector(`#sync-step-${s.id}`);
+    const iconEl = stepEl?.querySelector('.sync-step-icon');
+    if (!stepEl) return;
+    if (s.id === stepId) {
+      stepEl.classList.remove('done');
+      stepEl.classList.add('active');
+      if (iconEl) iconEl.textContent = '⟳';
+      reachedActive = true;
+    } else if (!reachedActive) {
+      stepEl.classList.remove('active');
+      stepEl.classList.add('done');
+      if (iconEl) iconEl.textContent = '✓';
+    } else {
+      stepEl.classList.remove('active', 'done');
+      if (iconEl) iconEl.textContent = '・';
+    }
+  });
+
+  // タイトル更新
+  const titleEl = el.querySelector('#sync-title');
+  const step = SYNC_STEPS_DEF.find(s => s.id === stepId);
+  if (titleEl && step) titleEl.textContent = `${step.icon} ${step.label}中...`;
 };
 
 window.hideSyncProgress = (successMessage = null) => {
-  const bar = getSyncBar();
-  const fill = bar.querySelector('#sync-progress-fill');
-  if (fill) fill.style.width = '100%';
+  const el = document.getElementById('sync-overlay');
+  if (!el) return;
+
+  // 全ステップを完了に
+  const pbar = el.querySelector('#sync-pbar');
+  if (pbar) pbar.style.width = '100%';
+  const ringFill = el.querySelector('.sync-ring-fill');
+  if (ringFill) ringFill.style.strokeDashoffset = '0';
+  SYNC_STEPS_DEF.forEach(s => {
+    const stepEl = el.querySelector(`#sync-step-${s.id}`);
+    const iconEl = stepEl?.querySelector('.sync-step-icon');
+    if (stepEl) { stepEl.classList.remove('active'); stepEl.classList.add('done'); }
+    if (iconEl) iconEl.textContent = '✓';
+  });
+  const titleEl = el.querySelector('#sync-title');
+  if (titleEl) titleEl.textContent = '同期完了 ✓';
+
   setTimeout(() => {
-    bar.classList.add('hidden');
-    if (fill) fill.style.width = '0%';
-    if (successMessage) window.showToast(successMessage, 'success');
-  }, 600);
+    el.classList.add('finishing');
+    setTimeout(() => {
+      el.classList.add('hidden');
+      el.classList.remove('finishing');
+      if (successMessage) window.showToast(successMessage, 'success');
+    }, 380);
+  }, 700);
 };
 
 // ─── フルスクリーンローディング（手動操作など短い処理用に残す） ────
@@ -329,19 +408,19 @@ async function runAutoSync() {
   if (settings.driveSyncEnabled) {
     anySync = true;
     try {
-      window.showSyncProgress('☁️ Drive からデータを取得中...', 10);
+      window.showSyncProgress('drive-pull', 10);
       const remoteData = await driveSync.pull({ mode: 'auto' });
       if (remoteData) {
         appStore.data = appStore.migrate(remoteData);
         appStore.save();
-        // データが更新されたので現在のルートを再描画
+        // データ更新後に現在の画面を再描画
         const hash = window.location.hash || '#dashboard';
         const route = { '#dashboard': () => import('./src/ui/dashboard.js').then(m => m.renderDashboard(container)),
                         '#master':    () => import('./src/ui/master.js').then(m => m.renderMaster(container)),
                         '#settings':  () => import('./src/ui/settings.js').then(m => m.renderSettings(container)) };
         if (route[hash]) route[hash]().catch(() => {});
       }
-      window.showSyncProgress('☁️ Drive にデータを保存中...', 40);
+      window.showSyncProgress('drive-push', 40);
       await driveSync.push({ mode: 'auto' });
     } catch (err) {
       console.warn('Auto drive sync failed', err);
@@ -355,23 +434,18 @@ async function runAutoSync() {
       anySync = true;
       try {
         for (let i = 0; i < months.length; i++) {
-          const ym = months[i];
-          const percent = 50 + Math.round((i / months.length) * 48);
-          window.showSyncProgress(`📅 カレンダー同期中... ${i + 1}/${months.length}`, percent);
-          await calendarSync.syncMonthEvents(ym);
+          const percent = 55 + Math.round((i / months.length) * 43);
+          window.showSyncProgress('cal', percent);
+          await calendarSync.syncMonthEvents(months[i]);
         }
         appStore.addSyncLog({
-          type: 'calendar',
-          mode: 'auto',
-          status: 'success',
+          type: 'calendar', mode: 'auto', status: 'success',
           message: `Calendar sync: ${months.length}ヶ月`
         });
       } catch (err) {
         console.warn('Auto calendar sync failed', err);
         appStore.addSyncLog({
-          type: 'calendar',
-          mode: 'auto',
-          status: 'error',
+          type: 'calendar', mode: 'auto', status: 'error',
           message: `Calendar sync: ${err.message || '失敗'}`
         });
         window.showToast('カレンダー同期に失敗しました', 'danger');
@@ -380,7 +454,7 @@ async function runAutoSync() {
   }
 
   if (anySync) {
-    window.hideSyncProgress('同期完了 ✓');
+    window.hideSyncProgress();
   }
 }
 
