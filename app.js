@@ -465,23 +465,23 @@ async function runAutoSync() {
   }
 }
 
-// 初期化
-document.addEventListener('DOMContentLoaded', () => {
-  // 起動時に設定からClient IDを読み込んで初期化
-  const DEFAULT_CLIENT_ID = '45451544416-8nlqo6bhl56arpjuuh4kekfa24ed9np5.apps.googleusercontent.com';
+// ─── 初期化 ────────────────────────────────────────────────────
+// app.js は <script type="module"> の dynamic import() で読み込まれるため、
+// 実行時点ではすでに DOM は構築済み・DOMContentLoaded 発火済み。
+// addEventListener('DOMContentLoaded', ...) は発火しないので直接呼び出す。
+
+const DEFAULT_CLIENT_ID = '45451544416-8nlqo6bhl56arpjuuh4kekfa24ed9np5.apps.googleusercontent.com';
+{
   let configClientId = appStore.data.settings?.googleClientId;
-  
-  // Client IDが未設定の場合はデフォルトを設定（利便性のため）
   if (!configClientId) {
-    configClientId = DEFAULT_CLIENT_ID;
     appStore.updateSettings({ googleClientId: DEFAULT_CLIENT_ID });
   }
+}
 
-  initApp();
+initApp();
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-      .then(() => console.log('Service Worker Registered'))
-      .catch(err => console.log('Service Worker Failed', err));
-  }
-});
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => console.log('Service Worker Registered'))
+    .catch(err => console.log('Service Worker Failed', err));
+}
