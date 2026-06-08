@@ -360,13 +360,17 @@ async function initApp() {
       await initGoogleAuth(configClientId);
       
       // 自動ログイン試行 (サインイン済みでデモモードでない場合)
-      if (!demoMode && !googleAuth.isSignedIn()) {
-        try {
-          // サイレントにトークン取得を試みる (プロンプトなし)
-          await googleAuth.getAccessToken(['openid', 'profile', 'email']);
-          console.log('Auto-reauthenticated successfully');
-        } catch (err) {
-          console.log('Silent auto-reauth failed', err);
+      if (!demoMode) {
+        if (googleAuth.isSignedIn()) {
+          console.log('Token restored from localStorage — skipping GIS call');
+        } else {
+          try {
+            // サイレントにトークン取得を試みる (プロンプトなし)
+            await googleAuth.getAccessToken(['openid', 'profile', 'email']);
+            console.log('Auto-reauthenticated successfully');
+          } catch (err) {
+            console.log('Silent auto-reauth failed', err);
+          }
         }
       }
     } catch (err) {

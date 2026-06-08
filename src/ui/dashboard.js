@@ -87,6 +87,54 @@ export function renderDashboard(container) {
       : '今月も良いペースです。この調子でいきましょう。';
 
   const settings = appStore.data.settings || {};
+
+  // ─── アドバイスカード用データ計算 ───────────────────────────
+  const banks = masterItems.filter(i => i.type === 'bank' && i.active !== false);
+  const activeLoans = masterLoans.filter(l => l.type !== 'クレジットカード' && l.active !== false);
+  const incomeItems = masterItems.filter(i => i.type === 'income' && i.active !== false);
+  const pendingCardInputs = creditCards.filter(c => {
+    const ev = (appStore.data.calendar?.generatedMonths?.[yearMonth] || []).find(e => e.id === `card-billing-${c.id}-${yearMonth}`);
+    return !ev || ev.amount <= 0;
+  });
+
+  // セットアップチェックリスト
+  const setupChecks = [
+    { done: banks.length > 0, label: '銀行口座を登録する', action: `location.hash='#master'; setTimeout(()=>{ if(window.switchMasterTab) window.switchMasterTab('banks'); }, 100)`, tip: '残高の推移を正確に把握できます' },
+    { done: incomeItems.length > 0, label: '収入を登録する', action: `location.hash='#master'; setTimeout(()=>{ if(window.switchMasterTab) window.switchMasterTab('income'); }, 100)`, tip: '毎月の余剰がわかります' },
+    { done: activeLoans.length > 0, label: '借金・ローンを登録する', action: `location.hash='#master'; setTimeout(()=>{ if(window.switchMasterTab) window.switchMasterTab('loans'); }, 100)`, tip: '完済予定日を自動計算します' },
+    { done: events.length > 0, label: `${currentMonth}月のカレンダーを生成する`, action: `generateEvents()`, tip: '支払い予定がカレンダーに展開されます' },
+    ...(pendingCardInputs.length > 0 ? pendingCardInputs.map(c => ({
+      done: false,
+      label: `💳 ${c.name} の今月の請求額を入力する`,
+      action: `document.getElementById('expense-${c.id}')?.focus()`,
+      tip: '明細が届いたら金額を入力して確定してください'
+    })) : [])
+  ];
+  const pendingSetup = setupChecks.filter(c => !c.done);
+  const doneCount = setupChecks.filter(c => c.done).length;
+  const setupComplete = pendingSetup.length === 0;
+
+  // 繰り上げ返済アドバイス
+  const adviseLoan = activeLoans
+    .filter(l => l.balance > 0)
+    .sort((a, b) => ((b.interestRate || 0) - (a.interestRate || 0)))[0];
+  const safeBuffer = banks.length > 0 ? 30000 : 0; // 生活費バッファー3万
+  const surplusForPrepay = Math.max(0, estimatedEndBalance - safeBuffer);
+  let prepayAdvice = null;
+  if (adviseLoan && surplusForPrepay >= 1000) {
+    const r = (adviseLoan.interestRate || 0) / 100 / 12;
+    const M = adviseLoan.monthlyPayment || adviseLoan.amount || 0;
+    const P = adviseLoan.balance || 0;
+    let monthsSaved = 0;
+    if (r > 0 && M > r * P) {
+      const normalMonths = Math.ceil(-Math.log(1 - r * P / M) / Math.log(1 + r));
+      const newP = Math.max(0, P - surplusForPrepay);
+      const newMonths = newP <= 0 ? 0 : Math.ceil(-Math.log(1 - r * newP / M) / Math.log(1 + r));
+      monthsSaved = Math.max(0, normalMonths - newMonths);
+    }
+    prepayAdvice = { loan: adviseLoan, amount: surplusForPrepay, monthsSaved };
+  }
+
   const isSyncing = false; // 将来的にローディング状態を管理する場合用
   const syncHistory = settings.syncHistory || [];
   const recentSyncLogs = syncHistory
@@ -219,6 +267,79 @@ export function renderDashboard(container) {
         </div>
       </div>
     </div>
+
+    <!-- ========================================
+         💡 アドバイスカード
+         ======================================== -->
+    ${(pendingSetup.length > 0 || prepayAdvice) ? `
+    <div class="advisor-card" style="margin: 0 12px 14px; border-radius: 16px; border: 1px solid var(--card-border); overflow: hidden;">
+      <!-- アドバイスヘッダー -->
+      <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-weight: 800; font-size: 0.95rem; color: #fff;">💡 あなたへのアドバイス</div>
+        <div style="font-size: 0.72rem; color: rgba(255,255,255,0.8);">セットアップ ${doneCount}/${setupChecks.length} 完了</div>
+      </div>
+
+      ${pendingSetup.length > 0 ? `
+      <!-- 未完了タスク -->
+      <div style="padding: 10px 14px; background: var(--card); border-bottom: 1px solid var(--card-border);">
+        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-3); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">📝 次にやること</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          ${pendingSetup.slice(0, 3).map((c, idx) => `
+            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--surface); border: 1px solid rgba(99,102,241,0.2);">
+              <div style="width: 22px; height: 22px; border-radius: 50%; border: 2px solid #6366f1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.72rem; font-weight: 700; color: #6366f1; margin-top: 1px;">${idx + 1}</div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-weight: 700; font-size: 0.85rem; color: var(--text);">${c.label}</div>
+                <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 2px;">${c.tip}</div>
+              </div>
+              <button onclick="${c.action}" class="btn small" style="flex-shrink: 0; border-color: rgba(99,102,241,0.4); color: #6366f1;">→ 設定</button>
+            </div>
+          `).join('')}
+          ${pendingSetup.length > 3 ? `<div style="text-align: center; font-size: 0.75rem; color: var(--text-3);">他 ${pendingSetup.length - 3} 件</div>` : ''}
+        </div>
+      </div>
+      ` : ''}
+
+      ${prepayAdvice ? `
+      <!-- 繰り上げ返済アドバイス -->
+      <div style="padding: 12px 14px; background: var(--card);">
+        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-3); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">🚀 繰り上げ返済チャンス</div>
+        <div style="padding: 12px; border-radius: 10px; background: linear-gradient(135deg, rgba(52,211,153,0.08) 0%, rgba(16,185,129,0.12) 100%); border: 1px solid rgba(52,211,153,0.25);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <div style="flex: 1;">
+              <div style="font-size: 0.85rem; font-weight: 700; color: var(--text);">
+                今月の余剰 <span style="color: var(--success);">¥${surplusForPrepay.toLocaleString()}</span> を
+                <strong>${prepayAdvice.loan.name}</strong> に繰り上げ返済
+              </div>
+              ${prepayAdvice.monthsSaved > 0 ? `
+                <div style="font-size: 0.82rem; color: var(--success); margin-top: 4px; font-weight: 700;">
+                  → 完済が <strong>${prepayAdvice.monthsSaved}ヶ月</strong> 短縮されます！
+                </div>
+              ` : `
+                <div style="font-size: 0.78rem; color: var(--text-3); margin-top: 4px;">元金が減り、利息の節約になります</div>
+              `}
+              ${prepayAdvice.loan.interestRate ? `
+                <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 2px;">金利: ${prepayAdvice.loan.interestRate}% / 残高: ¥${(prepayAdvice.loan.balance||0).toLocaleString()}</div>
+              ` : ''}
+            </div>
+            <div style="font-size: 0.72rem; color: var(--text-3); text-align: right; flex-shrink: 0;">
+              <div>月末残高予測</div>
+              <div style="font-size: 1rem; font-weight: 700; color: ${estimatedEndBalance >= 0 ? 'var(--success)' : 'var(--danger)'};">¥${estimatedEndBalance.toLocaleString()}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      ` : ''}
+
+    </div>
+    ` : setupComplete ? `
+    <div style="margin: 0 12px 14px; padding: 12px 16px; border-radius: 12px; background: var(--success-bg); border: 1px solid rgba(52,211,153,0.3); display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 1.4rem;">🎉</span>
+      <div>
+        <div style="font-weight: 700; font-size: 0.88rem; color: var(--success);">完璧です！全ての設定が完了しています</div>
+        <div style="font-size: 0.75rem; color: var(--text-3); margin-top: 2px;">このまま毎月の支払いを管理しましょう</div>
+      </div>
+    </div>
+    ` : ''}
 
     <script>
       if (!window.handleNumericInput) {
