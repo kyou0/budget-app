@@ -19,22 +19,21 @@
       <span class="icon">📅</span>
       <span class="label">カレンダー</span>
     </a>
-    <a href="#analysis" class="nav-item">
-      <span class="icon">📈</span>
-      <span class="label">分析</span>
-    </a>
     <a href="#master" class="nav-item">
-      <span class="icon">⚙️</span>
+      <span class="icon">📋</span>
       <span class="label">マスター</span>
     </a>
     <a href="#settings" class="nav-item">
-      <span class="icon">🔧</span>
+      <span class="icon">⚙️</span>
       <span class="label">設定</span>
     </a>
   </nav>
 
   <main id="app-container"></main>
 
-  <script type="module" src="app.js"></script>
+  <script type="module">
+    const v = Date.now();
+    import(`./app.js?v=${v}`);
+  </script>
 </body>
 </html>

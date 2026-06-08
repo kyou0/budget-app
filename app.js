@@ -74,6 +74,43 @@ window.showConfirm = (message, title = '確認') => {
 /**
  * 全画面ローディング（同期中など）の表示・非表示
  */
+// ─── バックグラウンド同期プログレスバー ────────────────────────────
+function getSyncBar() {
+  let bar = document.getElementById('sync-progress-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'sync-progress-bar';
+    bar.className = 'hidden';
+    bar.innerHTML = `
+      <div id="sync-progress-track"><div id="sync-progress-fill"></div></div>
+      <div id="sync-progress-label"><span class="sync-dot"></span><span id="sync-progress-text">同期中...</span></div>
+    `;
+    document.body.prepend(bar);
+  }
+  return bar;
+}
+
+window.showSyncProgress = (message = '同期中...', percent = null) => {
+  const bar = getSyncBar();
+  bar.classList.remove('hidden');
+  const text = bar.querySelector('#sync-progress-text');
+  const fill = bar.querySelector('#sync-progress-fill');
+  if (text) text.textContent = message;
+  if (fill && percent !== null) fill.style.width = `${percent}%`;
+};
+
+window.hideSyncProgress = (successMessage = null) => {
+  const bar = getSyncBar();
+  const fill = bar.querySelector('#sync-progress-fill');
+  if (fill) fill.style.width = '100%';
+  setTimeout(() => {
+    bar.classList.add('hidden');
+    if (fill) fill.style.width = '0%';
+    if (successMessage) window.showToast(successMessage, 'success');
+  }, 600);
+};
+
+// ─── フルスクリーンローディング（手動操作など短い処理用に残す） ────
 window.toggleLoadingOverlay = (show, message = '同期中...') => {
   let overlay = document.getElementById('global-loading-overlay');
   if (show) {
@@ -265,20 +302,20 @@ async function initApp() {
   }
 
   try {
-    if (googleAuth.isSignedIn() && !appStore.data.settings?.demoMode) {
-      window.toggleLoadingOverlay(true, 'データを同期しています...');
-      await runAutoSync();
-      window.toggleLoadingOverlay(false);
-    }
-
+    // ─── まず画面を先に表示してから同期をバックグラウンドで実行 ───
     router.init();
-    
+
     // チュートリアルが必要な場合
     if (demoMode && !demoTutorialShown) {
       localStorage.setItem('demoTutorialShown', 'true');
       setTimeout(() => startTutorial({ mode: 'demo' }), 500);
     } else if (!appStore.data.settings?.tutorialCompleted) {
       setTimeout(() => startTutorial(), 1000);
+    }
+
+    // 同期はバックグラウンドで非同期実行（UIをブロックしない）
+    if (googleAuth.isSignedIn() && !appStore.data.settings?.demoMode) {
+      runAutoSync().catch(err => console.warn('Background sync error', err));
     }
   } catch (err) {
     console.error('Router init failed', err);
@@ -287,15 +324,24 @@ async function initApp() {
 
 async function runAutoSync() {
   const settings = appStore.data.settings || {};
+  let anySync = false;
 
   if (settings.driveSyncEnabled) {
+    anySync = true;
     try {
-      window.toggleLoadingOverlay(true, 'Google Driveと同期中...');
+      window.showSyncProgress('☁️ Drive からデータを取得中...', 10);
       const remoteData = await driveSync.pull({ mode: 'auto' });
       if (remoteData) {
         appStore.data = appStore.migrate(remoteData);
         appStore.save();
+        // データが更新されたので現在のルートを再描画
+        const hash = window.location.hash || '#dashboard';
+        const route = { '#dashboard': () => import('./src/ui/dashboard.js').then(m => m.renderDashboard(container)),
+                        '#master':    () => import('./src/ui/master.js').then(m => m.renderMaster(container)),
+                        '#settings':  () => import('./src/ui/settings.js').then(m => m.renderSettings(container)) };
+        if (route[hash]) route[hash]().catch(() => {});
       }
+      window.showSyncProgress('☁️ Drive にデータを保存中...', 40);
       await driveSync.push({ mode: 'auto' });
     } catch (err) {
       console.warn('Auto drive sync failed', err);
@@ -306,9 +352,12 @@ async function runAutoSync() {
   if (settings.calendarSyncEnabled) {
     const months = Object.keys(appStore.data.calendar?.generatedMonths || {});
     if (months.length > 0) {
+      anySync = true;
       try {
-        window.toggleLoadingOverlay(true, 'Googleカレンダーと同期中...');
-        for (const ym of months) {
+        for (let i = 0; i < months.length; i++) {
+          const ym = months[i];
+          const percent = 50 + Math.round((i / months.length) * 48);
+          window.showSyncProgress(`📅 カレンダー同期中... ${i + 1}/${months.length}`, percent);
           await calendarSync.syncMonthEvents(ym);
         }
         appStore.addSyncLog({
@@ -328,6 +377,10 @@ async function runAutoSync() {
         window.showToast('カレンダー同期に失敗しました', 'danger');
       }
     }
+  }
+
+  if (anySync) {
+    window.hideSyncProgress('同期完了 ✓');
   }
 }
 

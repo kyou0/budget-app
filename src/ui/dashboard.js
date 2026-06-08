@@ -100,67 +100,135 @@ export function renderDashboard(container) {
     .sort((a, b) => a.actualDate.localeCompare(b.actualDate))[0];
 
   container.innerHTML = `
+    <!-- ヘッダー -->
     <div class="dashboard-header">
       <div class="month-nav">
         <button onclick="changeMonth(-1)" class="btn small">&lt;</button>
         <h2>${currentYear}年${currentMonth}月</h2>
         <button onclick="changeMonth(1)" class="btn small">&gt;</button>
       </div>
-      <div class="actions" style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
-        ${settings.driveSyncEnabled && googleAuth.isSignedIn() ? `<span class="sync-status" title="Drive同期有効">☁️</span>` : ''}
-        <button onclick="generateYearEvents()" class="btn small" title="年内の全予定を一括生成します">年内一括</button>
-        <button onclick="generateEvents()" class="btn ${events.length === 0 ? 'primary' : ''}">
-          ${currentMonth}月の予定を${events.length === 0 ? '生成' : '再生成'}
-        </button>
+      <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+        ${settings.driveSyncEnabled && googleAuth.isSignedIn() ? `<span title="Drive同期有効" style="font-size:1.1rem;">☁️</span>` : ''}
         ${events.length > 0 && settings.calendarSyncEnabled ? `
-          <button onclick="syncCurrentMonthToCalendar()" class="btn small success" style="padding: 8px;">
-            GCal同期
-          </button>
+          <button onclick="syncCurrentMonthToCalendar()" class="btn small success">GCal</button>
         ` : ''}
+        <button onclick="generateYearEvents()" class="btn small" title="年内一括生成">年内一括</button>
       </div>
     </div>
-    ${recentSyncLogs.length > 0 ? `
-      <div style="margin: 0 10px 10px 10px; padding: 10px 12px; background: #f9fafb; border-radius: 8px; font-size: 0.8rem; color: #6b7280;">
-        <div style="font-weight: 600; margin-bottom: 6px; color: #374151;">同期ログ（直近）</div>
-        ${recentSyncLogs.map(log => `
-          <div style="display: flex; justify-content: space-between; gap: 10px;">
-            <div>${log.type === 'drive' ? 'Drive' : 'Calendar'} ${log.status === 'success' ? '成功' : '失敗'}${log.mode === 'auto' ? '（自動）' : '（手動）'}</div>
-            <div style="white-space: nowrap;">${new Date(log.timestamp).toLocaleString()}</div>
+
+    <!-- ========================================
+         毎月の操作フロー（ここが唯一の操作ハブ）
+         ======================================== -->
+    <div class="monthly-flow" style="margin: 0 12px 14px; border-radius: 16px; overflow: hidden; border: 1px solid var(--card-border);">
+
+      <!-- フローヘッダー -->
+      <div style="background: var(--grad-primary); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-weight: 800; font-size: 0.95rem; color: #fff;">${currentMonth}月のやること</div>
+        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.8);">ここだけ触ればOK</div>
+      </div>
+
+      <!-- STEP 1: カレンダー生成 -->
+      <div class="flow-step" style="padding: 12px 16px; background: var(--card); border-bottom: 1px solid var(--card-border); display: flex; align-items: center; gap: 12px;">
+        <div class="step-badge" style="width: 28px; height: 28px; border-radius: 50%; background: ${events.length > 0 ? 'var(--success-bg)' : 'var(--primary-glow)'}; border: 2px solid ${events.length > 0 ? 'var(--success)' : 'var(--primary)'}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.8rem; font-weight: 700; color: ${events.length > 0 ? 'var(--success)' : 'var(--primary)'};">
+          ${events.length > 0 ? '✓' : '1'}
+        </div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-weight: 700; font-size: 0.88rem; color: var(--text);">${currentMonth}月の予定を生成する</div>
+          <div style="font-size: 0.75rem; color: var(--text-3); margin-top: 2px;">固定費・収入・返済などをカレンダーに展開します</div>
+        </div>
+        <button onclick="generateEvents()" class="btn ${events.length === 0 ? 'primary' : 'small'}" style="flex-shrink: 0;">
+          ${events.length === 0 ? '生成する' : '再生成'}
+        </button>
+      </div>
+
+      <!-- STEP 2: クレジット請求入力 -->
+      <div class="flow-step" style="padding: 12px 16px; background: var(--card); border-bottom: 1px solid var(--card-border);">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: ${creditCards.length > 0 ? '12px' : '0'};">
+          <div class="step-badge" style="width: 28px; height: 28px; border-radius: 50%; background: ${creditCards.every(c => { const ym2 = toYearMonth(currentYear,currentMonth); const ev = (appStore.data.calendar?.generatedMonths?.[ym2]||[]).find(e=>e.id===`card-billing-${c.id}-${ym2}`); return ev && ev.amount > 0; }) && creditCards.length > 0 ? 'var(--success-bg)' : 'rgba(251,191,36,0.15)'}; border: 2px solid ${creditCards.every(c => { const ym2 = toYearMonth(currentYear,currentMonth); const ev = (appStore.data.calendar?.generatedMonths?.[ym2]||[]).find(e=>e.id===`card-billing-${c.id}-${ym2}`); return ev && ev.amount > 0; }) && creditCards.length > 0 ? 'var(--success)' : 'var(--warn)'}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.8rem; font-weight: 700; color: ${creditCards.every(c => { const ym2 = toYearMonth(currentYear,currentMonth); const ev = (appStore.data.calendar?.generatedMonths?.[ym2]||[]).find(e=>e.id===`card-billing-${c.id}-${ym2}`); return ev && ev.amount > 0; }) && creditCards.length > 0 ? 'var(--success)' : 'var(--warn)'};">
+            ${creditCards.every(c => { const ym2 = toYearMonth(currentYear,currentMonth); const ev = (appStore.data.calendar?.generatedMonths?.[ym2]||[]).find(e=>e.id===`card-billing-${c.id}-${ym2}`); return ev && ev.amount > 0; }) && creditCards.length > 0 ? '✓' : '2'}
           </div>
-        `).join('')}
+          <div style="flex: 1;">
+            <div style="font-weight: 700; font-size: 0.88rem; color: var(--text);">💳 クレジットカードの請求額を入力</div>
+            <div style="font-size: 0.75rem; color: var(--text-3); margin-top: 2px;">明細が届いたら各カードの金額を入力して「確定」。引落日に自動反映されます</div>
+          </div>
+        </div>
+        ${creditCards.length === 0 ? `
+          <div style="text-align: center; padding: 16px; border: 1px dashed var(--card-border); border-radius: 10px; font-size: 0.82rem; color: var(--text-3);">
+            カードがまだ登録されていません。
+            <button onclick="location.hash='#master'; setTimeout(()=>{ if(window.switchMasterTab) window.switchMasterTab('cards'); }, 100)" class="btn small" style="margin-left: 8px;">⚙️ カードを登録する</button>
+          </div>
+        ` : `
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px;">
+            ${creditCards.map(card => {
+              const ym2 = toYearMonth(currentYear, currentMonth);
+              const billingEvent = (appStore.data.calendar?.generatedMonths?.[ym2] || []).find(e => e.id === `card-billing-${card.id}-${ym2}`);
+              const currentAmount = billingEvent?.amount || 0;
+              const bank = masterItems.find(b => b.id === card.bankId);
+              const logoUrl = card.logo || getLogoUrl(card.name);
+              const isDone = currentAmount > 0;
+              return `
+                <div style="border-radius: 10px; border: 1px solid ${isDone ? 'rgba(52,211,153,0.3)' : 'var(--card-border)'}; background: ${isDone ? 'rgba(52,211,153,0.05)' : 'var(--surface)'}; padding: 10px 12px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <div>
+                      <div style="font-weight: 700; font-size: 0.85rem; color: var(--text);">${card.name}</div>
+                      <div style="font-size: 0.7rem; color: var(--text-3);">引落: ${card.paymentDay}日 / ${bank ? bank.name : '銀行未設定'}</div>
+                    </div>
+                    ${logoUrl ? `<img src="${logoUrl}" alt="" style="height: 18px; max-width: 44px; object-fit: contain; background: white; border-radius: 3px; padding: 2px;">` : `<span style="font-size: 1.2rem;">💳</span>`}
+                  </div>
+                  <div style="display: flex; gap: 6px; align-items: center;">
+                    <input type="text" inputmode="numeric"
+                      id="expense-${card.id}"
+                      value="${currentAmount > 0 ? formatNumber(currentAmount) : ''}"
+                      placeholder="請求額を入力"
+                      oninput="handleNumericInput(this); saveExpenseInput('${card.id}', this.value)"
+                      style="flex:1; padding: 7px 10px; border-radius: 8px; font-size: 0.9rem; font-weight: 700; text-align: right;">
+                    <button class="btn small ${isDone ? '' : 'primary'}" onclick="confirmExpense('${card.id}')" style="flex-shrink:0; height: 34px; min-width: 48px;">
+                      ${isDone ? '更新' : '確定'}
+                    </button>
+                  </div>
+                  ${isDone ? `<div style="font-size: 0.72rem; color: var(--success); margin-top: 4px; text-align: right;">✓ ¥${currentAmount.toLocaleString()} 登録済み</div>` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
       </div>
-    ` : ''}
 
-    ${welcomeLabel ? `
-      <div style="margin: 0 10px 10px 10px; padding: 10px 12px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd; color: #0c4a6e;">
-        <strong>${welcomeLabel}</strong>、がんばりましょう！ ${tipsMessage}
-      </div>
-    ` : ''}
-
-    <div class="summary-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px;">
-      <div class="summary-card" style="background: white; padding: 15px; border-radius: 8px;">
-        <h4 style="margin: 0; font-size: 0.8rem; color: #6b7280;">現在の銀行残高</h4>
-        <div class="value" style="font-size: 1.2rem; font-weight: bold;">¥${totalBankBalance.toLocaleString()}</div>
-      </div>
-      <div class="summary-card" style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary); display: flex; flex-direction: column; justify-content: center;">
-        <h4 style="margin: 0; font-size: 0.8rem; color: #6b7280;">月末予想残高</h4>
-        <div class="value" style="font-size: 1.2rem; font-weight: bold; color: var(--primary);">¥${estimatedEndBalance.toLocaleString()}</div>
+      <!-- STEP 3: 支払い確認 -->
+      <div class="flow-step" style="padding: 12px 16px; background: var(--card); display: flex; align-items: center; gap: 12px;">
+        <div class="step-badge" style="width: 28px; height: 28px; border-radius: 50%; background: ${delayedEvents.length > 0 ? 'var(--danger-bg)' : thisWeekEvents.length > 0 ? 'rgba(251,191,36,0.12)' : 'var(--surface)'}; border: 2px solid ${delayedEvents.length > 0 ? 'var(--danger)' : thisWeekEvents.length > 0 ? 'var(--warn)' : 'var(--card-border)'}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.8rem; font-weight: 700; color: ${delayedEvents.length > 0 ? 'var(--danger)' : thisWeekEvents.length > 0 ? 'var(--warn)' : 'var(--text-3)'};">
+          ${delayedEvents.length > 0 ? '!' : '3'}
+        </div>
+        <div style="flex: 1;">
+          <div style="font-weight: 700; font-size: 0.88rem; color: var(--text);">支払いを確認・完了マークする</div>
+          <div style="font-size: 0.75rem; color: var(--text-3); margin-top: 2px;">
+            ${delayedEvents.length > 0
+              ? `<span style="color:var(--danger); font-weight:700;">⚠️ 期限切れ ${delayedEvents.length}件あり</span> — 下のカレンダーから確認`
+              : thisWeekEvents.length > 0
+              ? `今週の支払いが ${thisWeekEvents.length}件あります — 下のカレンダーを確認`
+              : '問題なし。下のカレンダーで支払い完了を押してください'}
+          </div>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-3); flex-shrink: 0; text-align: right;">
+          <div>収入予定</div>
+          <div style="font-weight: 700; color: var(--success);">¥${pendingIncome.toLocaleString()}</div>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-3); flex-shrink: 0; text-align: right;">
+          <div>支出予定</div>
+          <div style="font-weight: 700; color: var(--danger);">¥${pendingExpense.toLocaleString()}</div>
+        </div>
       </div>
     </div>
 
     <script>
-      // グローバルに関数を公開（再描画時に失われないように）
       if (!window.handleNumericInput) {
         window.handleNumericInput = (el) => {
           const cursor = el.selectionStart;
           const oldVal = el.value;
-          const newVal = (val) => {
-            if (val === undefined || val === null || val === '') return '';
-            const num = Number(val.replace(/,/g, ''));
-            if (isNaN(num)) return val;
-            return num.toLocaleString();
-          };
-          const formatted = newVal(oldVal);
+          const raw = oldVal.replace(/,/g, '');
+          const num = Number(raw);
+          if (isNaN(num) || raw === '') return;
+          const formatted = num.toLocaleString();
           if (oldVal === formatted) return;
           el.value = formatted;
           const diff = formatted.length - oldVal.length;
@@ -168,53 +236,6 @@ export function renderDashboard(container) {
         };
       }
     </script>
-
-    <div style="margin: 0 10px 10px 10px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-      <h4 style="margin: 0 0 10px 0; font-size: 0.9rem;">💳 クレジットカードの月次請求</h4>
-      <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 10px;">
-        今月の請求額（カード明細などで確定した金額）を入力して確定してください。引落日に自動的に反映されます。
-      </div>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px;">
-        ${creditCards.length === 0 ? `
-          <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #6b7280; font-size: 0.8rem; border: 1px dashed #e5e7eb; border-radius: 8px;">
-            マスターでクレジットカードを登録するとここに表示されます。
-          </div>
-        ` : creditCards.map(card => {
-          const bank = masterItems.find(b => b.id === card.bankId);
-          const logoUrl = card.logo || getLogoUrl(card.name);
-          return `
-            <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; background: #f9fafb;">
-              <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                  <div style="font-weight: bold; font-size: 0.95rem;">${card.name}</div>
-                  <div style="font-size: 0.7rem; color: #6b7280;">${bank ? bank.name : '(未設定)'}</div>
-                </div>
-                ${logoUrl ? `<img src="${logoUrl}" alt="" style="height: 20px; max-width: 50px; object-fit: contain; background: white; padding: 1px; border-radius: 3px; border: 1px solid #eee;">` : `<span>💳</span>`}
-              </div>
-              <div style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">
-                限度額: ¥${(card.maxLimit || 0).toLocaleString()} / 締日: ${card.deadlineDay ? `${card.deadlineDay}日` : '—'} / 引落: ${card.paymentDay}日${card.payMonthOffset ? ` (${card.payMonthOffset === 1 ? '翌月' : '翌々月'})` : ''}
-              </div>
-              <div style="display: flex; gap: 6px; margin-top: 8px; align-items: center;">
-                <div style="flex: 1;">
-                  <div style="font-size: 0.7rem; color: #6b7280; margin-bottom: 2px;">今月の請求額</div>
-                  <input type="text" inputmode="numeric" id="expense-${card.id}" value="${formatNumber(expenseInputValues[card.id])}" placeholder="金額を入力" oninput="handleNumericInput(this); saveExpenseInput('${card.id}', this.value)" style="width: 100%; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem; box-sizing: border-box;">
-                </div>
-                <button class="btn small primary" onclick="confirmExpense('${card.id}')" style="align-self: flex-end; height: 34px;">確定</button>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-      <div style="font-size: 0.75rem; color: #6b7280; margin-top: 8px;">
-        ※月が変わると入力欄は自動的にリセットされます（履歴は残ります）。
-      </div>
-    </div>
-
-    ${delayedEvents.length > 0 ? `
-      <div class="alert-banner blink" style="margin: 0 10px 10px 10px; padding: 10px; background: var(--danger); color: white; border-radius: 8px; font-weight: bold; text-align: center;">
-        ⚠️ 延滞中の支払いが ${delayedEvents.length} 件あります！
-      </div>
-    ` : ''}
 
     ${masterLoans.length > 0 ? `
       <div class="debt-summary-container">
@@ -329,56 +350,22 @@ window.confirmExpense = (id) => {
     return;
   }
 
+  // 引落日を算出
   const payDate = window.computePayDate(currentYear, currentMonth, card);
   const payDateStr = toYMD(payDate);
   const payMonthKey = toYearMonth(payDate.getFullYear(), payDate.getMonth() + 1);
 
-  const transactions = appStore.data.transactions || [];
-  const txKey = `expense-confirm-${id}-${yearMonth}`;
-  const existingIndex = transactions.findIndex(t => t.key === txKey);
-  const tx = {
-    id: existingIndex >= 0 ? transactions[existingIndex].id : crypto.randomUUID(),
-    key: txKey,
-    type: 'expense',
-    category: card.name,
-    categoryKey: id,
-    date: payDateStr,
-    amount: -Math.abs(amount),
-    status: 'confirmed',
-    yearMonth
-  };
-  if (existingIndex >= 0) transactions[existingIndex] = tx;
-  else transactions.push(tx);
-  appStore.data.transactions = transactions;
-  appStore.save();
+  // upsertCardBillingEvent で一元管理
+  appStore.upsertCardBillingEvent(id, payMonthKey, amount, payDateStr, card);
 
-  const eventId = `confirm-${id}-${yearMonth}`;
-  const monthEvents = appStore.data.calendar.generatedMonths[payMonthKey] || [];
-  const eventIndex = monthEvents.findIndex(e => e.id === eventId);
-  const eventData = {
-    id: eventId,
-    masterId: id,
-    name: `確定支出: ${card.name}`,
-    type: 'expense',
-    amount: Math.abs(amount),
-    amountMode: 'fixed',
-    bankId: card.bankId || '',
-    originalDate: payDateStr,
-    actualDate: payDateStr,
-    penaltyFee: 0,
-    status: 'pending'
-  };
-  if (eventIndex >= 0) {
-    const existing = monthEvents[eventIndex];
-    monthEvents[eventIndex] = existing.status === 'paid' ? existing : { ...existing, ...eventData };
-  } else {
-    monthEvents.push(eventData);
-  }
-  appStore.data.calendar.generatedMonths[payMonthKey] = monthEvents;
-  appStore.save();
-
+  // expenseConfirmInputs にも保存（月変わりリセット用）
   window.saveExpenseInput(id, amount);
-  window.showToast(`${card.name} を確定しました`, 'success');
+
+  if (appStore.data.settings?.driveSyncEnabled) {
+    driveSync.push({ mode: 'auto' }).catch(err => console.error('Auto drive push failed', err));
+  }
+
+  window.showToast(`${card.name} ¥${amount.toLocaleString()} を確定しました`, 'success');
   renderDashboard(containerEl);
 };
 

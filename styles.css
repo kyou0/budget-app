@@ -1088,6 +1088,70 @@ input[inputmode="numeric"] {
 }
 
 /* =============================================
+   SYNC PROGRESS BAR（バックグラウンド同期表示）
+   ============================================= */
+#sync-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9000;
+  pointer-events: none;
+}
+
+#sync-progress-track {
+  height: 3px;
+  background: rgba(99,102,241,0.15);
+  overflow: hidden;
+}
+
+#sync-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), #818cf8, var(--primary));
+  background-size: 200% 100%;
+  animation: syncBarMove 1.4s ease-in-out infinite;
+  transition: width 0.4s ease;
+  width: 0%;
+}
+
+@keyframes syncBarMove {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+#sync-progress-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: rgba(8,14,26,0.82);
+  backdrop-filter: blur(8px);
+  font-size: 0.72rem;
+  color: var(--text-2);
+  font-weight: 600;
+  border-bottom: 1px solid rgba(99,102,241,0.15);
+  transition: opacity 0.3s;
+}
+
+#sync-progress-label .sync-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: syncDotPulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes syncDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.7); }
+}
+
+#sync-progress-bar.hidden {
+  display: none;
+}
+
+/* =============================================
    TUTORIAL
    ============================================= */
 .tutorial-overlay {

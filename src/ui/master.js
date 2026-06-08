@@ -18,49 +18,93 @@ export function renderMaster(container) {
     .join('');
   const visibleItems = items.filter(i => i.type !== 'bank' && i.type === currentItemType);
 
+  // 月次サマリー計算（収支項目タブ用）
+  const activeIncomeItems = items.filter(i => i.type === 'income' && i.active);
+  const activeExpenseItems = items.filter(i => i.type === 'expense' && i.active);
+  const monthlyIncome = activeIncomeItems.reduce((s, i) => s + (i.amount || 0), 0);
+  const monthlyExpense = activeExpenseItems.reduce((s, i) => s + (i.amount || 0), 0);
+  const monthlyBalance = monthlyIncome - monthlyExpense;
+
+  const tabMeta = {
+    items:   { icon: '📝', label: '収支項目',        desc: '毎月カレンダーに自動展開される固定費・収入を登録します。ここに登録した金額が予定として表示されます。' },
+    banks:   { icon: '🏦', label: '銀行口座',        desc: '銀行口座と現在の残高を登録。月末予想残高の計算に使われます。' },
+    cards:   { icon: '💳', label: 'クレカ',          desc: 'カードの引落日・銀行を登録。毎月の請求額は📅カレンダー画面で入力します。' },
+    loans:   { icon: '💸', label: '借入先',          desc: 'ローン・借金の残高・返済額・金利を登録。返済シミュレーションに使われます。' },
+    clients: { icon: '🤝', label: 'クライアント',    desc: '収入クライアントの単価・支払いサイトを登録します。' },
+  };
+
   container.innerHTML = `
-    <div class="tabs">
-      <button class="tab-btn ${currentTab === 'items' ? 'active' : ''}" onclick="switchMasterTab('items')">📝 収支項目</button>
-      <button class="tab-btn ${currentTab === 'banks' ? 'active' : ''}" onclick="switchMasterTab('banks')">🏦 銀行口座</button>
-      <button class="tab-btn ${currentTab === 'cards' ? 'active' : ''}" onclick="switchMasterTab('cards')">💳 クレジット</button>
-      <button class="tab-btn ${currentTab === 'loans' ? 'active' : ''}" onclick="switchMasterTab('loans')">💸 借入先</button>
-      <button class="tab-btn ${currentTab === 'clients' ? 'active' : ''}" onclick="switchMasterTab('clients')">🤝 クライアント</button>
+    <!-- ページヘッダー -->
+    <div style="padding: 16px 16px 0; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <h1 style="font-size: 1.15rem; font-weight: 800; margin: 0; color: var(--text);">マスター設定</h1>
+        <p style="font-size: 0.75rem; color: var(--text-3); margin: 2px 0 0;">一度登録 → カレンダーへ自動反映</p>
+      </div>
+      <button onclick="location.hash='#dashboard'" class="btn small" style="display:flex;align-items:center;gap:4px;">📅 カレンダーへ</button>
     </div>
 
-    ${currentTab === 'cards' ? `
-      <div style="margin: 0 16px 16px; padding: 12px; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; font-size: 0.85rem; color: #1e40af;">
-        💡 <strong>クレジットカード管理:</strong> ローンとは別に、毎月の請求額を管理するためのマスターです。名前からロゴが自動取得されますが、手動で選択も可能です。
+    <!-- タブナビ -->
+    <div style="display: flex; gap: 6px; padding: 12px 16px 0; overflow-x: auto; scrollbar-width: none;">
+      ${Object.entries(tabMeta).map(([key, m]) => `
+        <button
+          onclick="switchMasterTab('${key}')"
+          style="flex-shrink:0; padding: 6px 14px; border-radius: 20px; border: 1.5px solid ${currentTab === key ? 'var(--primary)' : 'var(--card-border)'}; background: ${currentTab === key ? 'var(--primary)' : 'var(--card)'}; color: ${currentTab === key ? '#fff' : 'var(--text-2)'}; font-size: 0.82rem; font-weight: ${currentTab === key ? '700' : '500'}; cursor: pointer; white-space: nowrap;">
+          ${m.icon} ${m.label}
+        </button>
+      `).join('')}
+    </div>
+
+    <!-- タブ説明 -->
+    <div style="margin: 10px 16px 0; padding: 9px 12px; background: var(--surface); border-radius: 10px; font-size: 0.78rem; color: var(--text-3); line-height: 1.5;">
+      ${tabMeta[currentTab]?.desc || ''}
+    </div>
+
+    ${currentTab === 'items' ? `
+    <!-- 月次サマリーバー -->
+    <div style="margin: 10px 16px 0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+      <div style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); border-radius: 10px; padding: 10px 12px; text-align: center;">
+        <div style="font-size: 0.7rem; color: var(--text-3); margin-bottom: 2px;">月収入合計</div>
+        <div style="font-size: 1rem; font-weight: 800; color: var(--success);">¥${monthlyIncome.toLocaleString()}</div>
       </div>
+      <div style="background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.18); border-radius: 10px; padding: 10px 12px; text-align: center;">
+        <div style="font-size: 0.7rem; color: var(--text-3); margin-bottom: 2px;">月支出合計</div>
+        <div style="font-size: 1rem; font-weight: 800; color: var(--danger);">¥${monthlyExpense.toLocaleString()}</div>
+      </div>
+      <div style="background: ${monthlyBalance >= 0 ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.06)'}; border: 1px solid ${monthlyBalance >= 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}; border-radius: 10px; padding: 10px 12px; text-align: center;">
+        <div style="font-size: 0.7rem; color: var(--text-3); margin-bottom: 2px;">月収支</div>
+        <div style="font-size: 1rem; font-weight: 800; color: ${monthlyBalance >= 0 ? 'var(--success)' : 'var(--danger)'};">${monthlyBalance >= 0 ? '+' : ''}¥${monthlyBalance.toLocaleString()}</div>
+      </div>
+    </div>
     ` : ''}
 
-    <div class="master-header">
-      <h2>${
-        currentTab === 'items' ? '収支マスター' : 
-        currentTab === 'banks' ? '銀行マスター' : 
-        currentTab === 'cards' ? 'クレジットマスター' :
-        currentTab === 'loans' ? '借入先マスター' : 
-        'クライアントマスター'
-      }</h2>
+    <!-- リスト＋追加ボタン -->
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px 0;">
+      <div style="font-weight: 700; font-size: 0.9rem; color: var(--text);">
+        ${tabMeta[currentTab]?.icon} ${tabMeta[currentTab]?.label}一覧
+      </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        ${currentTab === 'clients' ? `<button id="bulk-generate-btn" class="btn">一括生成</button>` : ''}
+        ${currentTab === 'clients' ? `<button id="bulk-generate-btn" class="btn small">一括生成</button>` : ''}
         ${currentTab === 'cards' ? `
-          <a href="credit-cards-demo.json" download style="font-size: 0.8rem; color: var(--primary); text-decoration: none; margin-right: 8px;">[テンプレート]</a>
-          <button id="import-btn" class="btn">一括インポート</button>
+          <button id="import-btn" class="btn small">インポート</button>
           <input type="file" id="import-file" class="hidden" accept=".json">
         ` : ''}
-        <button id="add-btn" class="btn primary">新規追加</button>
+        <button id="add-btn" class="btn primary" style="padding: 7px 16px; font-size: 0.85rem;">＋ 追加</button>
       </div>
     </div>
 
-    <div class="master-list">
+    <div class="master-list" style="padding: 8px 16px 100px;">
       ${currentTab === 'items' ? `
-        <div class="sub-tabs">
-          <button class="sub-tab ${currentItemType === 'income' ? 'active' : ''}" onclick="switchItemType('income')">収入</button>
-          <button class="sub-tab ${currentItemType === 'expense' ? 'active' : ''}" onclick="switchItemType('expense')">支出</button>
+        <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+          <button onclick="switchItemType('income')" style="flex:1; padding: 8px; border-radius: 10px; border: 1.5px solid ${currentItemType === 'income' ? 'var(--success)' : 'var(--card-border)'}; background: ${currentItemType === 'income' ? 'rgba(16,185,129,0.1)' : 'var(--card)'}; color: ${currentItemType === 'income' ? 'var(--success)' : 'var(--text-2)'}; font-weight: ${currentItemType === 'income' ? '700' : '500'}; cursor: pointer; font-size: 0.85rem;">
+            ↑ 収入 (${activeIncomeItems.length}件)
+          </button>
+          <button onclick="switchItemType('expense')" style="flex:1; padding: 8px; border-radius: 10px; border: 1.5px solid ${currentItemType === 'expense' ? 'var(--danger)' : 'var(--card-border)'}; background: ${currentItemType === 'expense' ? 'rgba(239,68,68,0.08)' : 'var(--card)'}; color: ${currentItemType === 'expense' ? 'var(--danger)' : 'var(--text-2)'}; font-weight: ${currentItemType === 'expense' ? '700' : '500'}; cursor: pointer; font-size: 0.85rem;">
+            ↓ 支出 (${activeExpenseItems.length}件)
+          </button>
         </div>
         ${renderItemsList(visibleItems)}
-      ` : 
-        currentTab === 'banks' ? renderBanksList(items.filter(i => i.type === 'bank')) : 
+      ` :
+        currentTab === 'banks' ? renderBanksList(items.filter(i => i.type === 'bank')) :
         currentTab === 'cards' ? renderCardsList(cards) :
         currentTab === 'loans' ? renderLoansList(otherLoans) :
         renderClientsList(clients)}
@@ -246,15 +290,17 @@ export function renderMaster(container) {
             </div>
           ` : currentTab === 'cards' ? `
             <input type="hidden" id="loan-type" value="クレジットカード">
+            <div style="margin-bottom: 14px; padding: 10px 12px; background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.18); border-radius: 8px; font-size: 0.78rem; color: var(--text-3);">
+              💡 毎月の請求額は <strong style="color:var(--primary);">カレンダー画面</strong> で入力します。ここではカードの基本情報のみ登録してください。
+            </div>
             <div class="form-row">
               <div class="form-group">
                 <label>限度額</label>
                 <input type="text" inputmode="numeric" id="loan-limit" oninput="handleNumericInput(this)" required placeholder="例: 500,000">
               </div>
-              <div class="form-group">
-                <label>今月確定額</label>
-                <input type="text" inputmode="numeric" id="card-billing-amount" oninput="handleNumericInput(this)" placeholder="例: 38,000">
-                <div class="hint-text">入力すると今月の引落予定として登録されます。</div>
+              <div class="form-group" style="display:flex;flex-direction:column;justify-content:flex-end;">
+                <label style="visibility:hidden;">dummy</label>
+                <div style="font-size:0.75rem;color:var(--text-3);padding:8px 0;">引落日・銀行を設定するとカレンダーへ正確に反映されます</div>
               </div>
             </div>
             <div class="form-row">
@@ -768,51 +814,64 @@ function renderItemsList(items) {
   });
 
   if (items.length === 0) {
-    return `<div style="font-size: 0.85rem; color: #6b7280; padding: 10px 0;">項目がありません。</div>`;
+    return `<div style="font-size: 0.85rem; color: var(--text-3); padding: 20px 0; text-align: center;">項目がありません。「＋ 追加」から登録してください。</div>`;
   }
+  const isIncome = items[0]?.type === 'income';
+  const accentColor = isIncome ? 'var(--success)' : 'var(--danger)';
+  const accentBg   = isIncome ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.05)';
+  const accentBorder = isIncome ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.15)';
+  const sign = isIncome ? '+' : '-';
 
   return tagGroups
     .filter(group => grouped[group.key] && grouped[group.key].length > 0)
-    .map(group => `
-      <div class="master-group">
-        <div class="master-group-title">
-          <span>${group.label}</span>
-          <span class="master-group-count">${grouped[group.key].length}</span>
+    .map(group => {
+      const groupTotal = grouped[group.key].filter(i => i.active).reduce((s, i) => s + (i.amount || 0), 0);
+      return `
+      <div style="margin-bottom: 18px;">
+        <!-- グループヘッダー -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--card-border);">
+          <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-2);">${group.label}</span>
+          <span style="font-size: 0.78rem; font-weight: 600; color: ${accentColor};">${sign}¥${groupTotal.toLocaleString()}/月</span>
         </div>
-        <div class="master-group-grid">
+        <!-- アイテムリスト -->
+        <div style="display: flex; flex-direction: column; gap: 8px;">
           ${grouped[group.key].map(item => `
-            <div class="master-item master-item-card ${item.active ? '' : 'inactive'}" onclick="editMasterItem('${item.id}')">
-              <div class="info">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <span class="type ${item.type}">
-                    ${item.type === 'income' ? '収入' : '支出'}
-                  </span>
-                  ${item.tag ? `<span class="tag-badge tag-${normalizeTag(item.tag)}">${tagLabels[item.tag] || tagLabels[normalizeTag(item.tag)] || item.tag}</span>` : ''}
+            <div onclick="editMasterItem('${item.id}')"
+              style="background: ${item.active ? accentBg : 'var(--surface)'}; border: 1px solid ${item.active ? accentBorder : 'var(--card-border)'}; border-radius: 12px; padding: 12px 14px; cursor: pointer; opacity: ${item.active ? '1' : '0.55'}; transition: opacity 0.2s;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                <!-- 左: 名前・日付 -->
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    ${getIcon(item.name, item.type)} ${item.name}
+                  </div>
+                  <div style="font-size: 0.75rem; color: var(--text-3); display: flex; gap: 8px; flex-wrap: wrap;">
+                    <span>📅 毎月 ${formatRule(item.scheduleRule || {type:'monthly', day:item.day})}</span>
+                    <span>🏦 ${bankMap[item.bankId] || '未設定'}</span>
+                    ${!item.active ? `<span style="color:var(--warn);font-weight:600;">● 無効</span>` : ''}
+                  </div>
                 </div>
-                <span class="name">${getIcon(item.name, item.type)} ${item.name}</span>
-                <span class="amount">
-                  ${item.amountMode === 'variable' ? '<span style="color:var(--warn)">見積</span> ' : ''}¥${item.amount.toLocaleString()}
-                </span>
-                <div style="font-size: 0.8rem; color: #4b5563; margin-top: 4px;">
-                  📅 ${formatRule(item.scheduleRule || {type:'monthly', day:item.day})}
-                  ${item.adjustment !== 'none' ? ` (${item.adjustment === 'prev_weekday' ? '前倒し' : '後倒し'})` : ''}
-                </div>
-                <div class="bank-link" style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">
-                  🏦 ${bankMap[item.bankId] || '(銀行未設定)'}
+                <!-- 右: 金額（大きく） -->
+                <div style="text-align: right; flex-shrink: 0;">
+                  ${item.amountMode === 'variable' ? `<div style="font-size: 0.65rem; color: var(--warn); font-weight: 600; margin-bottom: 1px;">変動</div>` : ''}
+                  <div style="font-size: 1.25rem; font-weight: 800; color: ${accentColor}; letter-spacing: -0.5px;">
+                    ${sign}¥${(item.amount || 0).toLocaleString()}
+                  </div>
+                  <div style="font-size: 0.65rem; color: var(--text-3);">/ 月</div>
                 </div>
               </div>
-              <div class="actions">
-                <button onclick="event.stopPropagation(); editMasterItem('${item.id}')" class="btn small">編集</button>
-                <button onclick="event.stopPropagation(); toggleMasterItem('${item.id}')" class="btn small ${item.active ? 'warn' : 'success'}">
+              <!-- アクションボタン -->
+              <div style="display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end;">
+                <button onclick="event.stopPropagation(); toggleMasterItem('${item.id}')" class="btn small ${item.active ? 'warn' : 'success'}" style="font-size: 0.72rem; padding: 3px 10px;">
                   ${item.active ? '無効化' : '有効化'}
                 </button>
-                <button onclick="event.stopPropagation(); deleteMasterItem('${item.id}')" class="btn small danger">削除</button>
+                <button onclick="event.stopPropagation(); deleteMasterItem('${item.id}')" class="btn small danger" style="font-size: 0.72rem; padding: 3px 10px;">削除</button>
               </div>
             </div>
           `).join('')}
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function formatRule(rule) {
@@ -828,30 +887,36 @@ function formatRule(rule) {
 }
 
 function renderBanksList(banks) {
+  if (banks.length === 0) {
+    return `<div style="font-size: 0.85rem; color: var(--text-3); padding: 20px 0; text-align: center;">銀行口座がありません。</div>`;
+  }
+  const totalBalance = banks.filter(b => b.active).reduce((s, b) => s + (b.currentBalance || 0), 0);
   return `
-    <div class="master-group">
-      <div class="master-group-title">
-        <span>銀行口座</span>
-        <span class="master-group-count">${banks.length}</span>
-      </div>
-      <div class="master-group-grid">
-        ${banks.map(bank => `
-          <div class="master-item master-item-card ${bank.active ? '' : 'inactive'}" onclick="editMasterItem('${bank.id}')">
-            <div class="info">
-              <span class="type bank">${getIcon(bank.name, 'bank')} 銀行</span>
-              <span class="name">${bank.name}</span>
-              <span class="amount">残: ¥${(bank.currentBalance || 0).toLocaleString()}</span>
+    <div style="margin-bottom: 8px; padding: 10px 14px; background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.18); border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-size: 0.8rem; color: var(--text-2); font-weight: 600;">合計残高</span>
+      <span style="font-size: 1.1rem; font-weight: 800; color: var(--primary);">¥${totalBalance.toLocaleString()}</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      ${banks.map(bank => `
+        <div onclick="editMasterItem('${bank.id}')"
+          style="background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px 14px; cursor: pointer; opacity: ${bank.active ? '1' : '0.55'};">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <div style="font-size: 0.95rem; font-weight: 700; color: var(--text);">
+              🏦 ${bank.name}
             </div>
-            <div class="actions">
-              <button onclick="event.stopPropagation(); editMasterItem('${bank.id}')" class="btn small">編集</button>
-              <button onclick="event.stopPropagation(); toggleMasterItem('${bank.id}')" class="btn small ${bank.active ? 'warn' : 'success'}">
-                ${bank.active ? '無効化' : '有効化'}
-              </button>
-              <button onclick="event.stopPropagation(); deleteMasterItem('${bank.id}')" class="btn small danger" style="padding: 4px; font-size: 0.7rem;">削除</button>
+            <div style="text-align: right;">
+              <div style="font-size: 1.25rem; font-weight: 800; color: var(--primary);">¥${(bank.currentBalance || 0).toLocaleString()}</div>
+              <div style="font-size: 0.65rem; color: var(--text-3);">現在残高</div>
             </div>
           </div>
-        `).join('')}
-      </div>
+          <div style="display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end;">
+            <button onclick="event.stopPropagation(); toggleMasterItem('${bank.id}')" class="btn small ${bank.active ? 'warn' : 'success'}" style="font-size: 0.72rem; padding: 3px 10px;">
+              ${bank.active ? '無効化' : '有効化'}
+            </button>
+            <button onclick="event.stopPropagation(); deleteMasterItem('${bank.id}')" class="btn small danger" style="font-size: 0.72rem; padding: 3px 10px;">削除</button>
+          </div>
+        </div>
+      `).join('')}
     </div>
   `;
 }
@@ -871,43 +936,48 @@ function renderLoansList(loans) {
     return `<div style="font-size: 0.85rem; color: #6b7280; padding: 10px 0;">借入先がありません。</div>`;
   }
 
-  return groupKeys.map(type => `
-    <div class="master-group">
-      <div class="master-group-title">
-        <span>${type}</span>
-        <span class="master-group-count">${grouped[type].length}</span>
+  const totalBalance = loans.filter(l => l.active).reduce((s, l) => s + (l.currentBalance || 0), 0);
+  const totalMonthlyPayment = loans.filter(l => l.active).reduce((s, l) => s + (l.monthlyPayment || 0), 0);
+  return `
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+      <div style="background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.18); border-radius: 10px; padding: 10px 12px; text-align: center;">
+        <div style="font-size: 0.7rem; color: var(--text-3); margin-bottom: 2px;">総借入残高</div>
+        <div style="font-size: 1rem; font-weight: 800; color: var(--danger);">¥${totalBalance.toLocaleString()}</div>
       </div>
-      <div class="master-group-grid">
-        ${grouped[type].map(loan => `
-          <div class="master-item master-item-card ${loan.active ? '' : 'inactive'}" style="border-left-color: var(--danger);" onclick="editLoan('${loan.id}')">
-            <div class="info">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span class="type expense">借入</span>
-                <span style="font-size: 0.7rem; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; color: #6b7280;">${loan.type || '未分類'}</span>
-              </div>
-              <span class="name">${getIcon(loan.name, 'loan')} ${loan.name}</span>
-              <div style="display: flex; gap: 15px; font-size: 0.9rem;">
-                <span class="amount">残: ¥${(loan.currentBalance || 0).toLocaleString()}</span>
-                <span class="day">返済: ¥${(loan.monthlyPayment || 0).toLocaleString()}</span>
-              </div>
-              <div style="font-size: 0.8rem; color: #4b5563; margin-top: 4px;">
-                📅 ${formatRule(loan.scheduleRule || {type:'monthly', day:loan.paymentDay})} 
-                (${bankMap[loan.bankId] || '銀行未設定'})
-              </div>
-              ${loan.notes ? `<div style="font-size: 0.7rem; color: #6b7280; margin-top: 4px; font-style: italic;">📝 ${loan.notes}</div>` : ''}
-            </div>
-            <div class="actions">
-              <button onclick="event.stopPropagation(); editLoan('${loan.id}')" class="btn small">編集</button>
-              <button onclick="event.stopPropagation(); toggleLoan('${loan.id}')" class="btn small ${loan.active ? 'warn' : 'success'}">
-                ${loan.active ? '無効化' : '有効化'}
-              </button>
-              <button onclick="event.stopPropagation(); deleteLoan('${loan.id}')" class="btn small danger">削除</button>
-            </div>
-          </div>
-        `).join('')}
+      <div style="background: rgba(239,68,68,0.05); border: 1px solid rgba(239,68,68,0.12); border-radius: 10px; padding: 10px 12px; text-align: center;">
+        <div style="font-size: 0.7rem; color: var(--text-3); margin-bottom: 2px;">月返済合計</div>
+        <div style="font-size: 1rem; font-weight: 800; color: var(--danger);">¥${totalMonthlyPayment.toLocaleString()}</div>
       </div>
     </div>
-  `).join('');
+    ${groupKeys.map(type => `
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-2); margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid var(--card-border);">${type}</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          ${grouped[type].map(loan => `
+            <div onclick="editLoan('${loan.id}')"
+              style="background: rgba(239,68,68,0.05); border: 1px solid rgba(239,68,68,0.15); border-left: 3px solid var(--danger); border-radius: 12px; padding: 12px 14px; cursor: pointer; opacity: ${loan.active ? '1' : '0.55'};">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 4px;">${getIcon(loan.name, 'loan')} ${loan.name}</div>
+                  <div style="font-size: 0.75rem; color: var(--text-3);">📅 ${formatRule(loan.scheduleRule || {type:'monthly', day:loan.paymentDay})} &nbsp;🏦 ${bankMap[loan.bankId] || '未設定'}</div>
+                  ${loan.notes ? `<div style="font-size: 0.7rem; color: var(--text-3); margin-top: 3px; font-style: italic;">📝 ${loan.notes}</div>` : ''}
+                </div>
+                <div style="text-align: right; flex-shrink: 0;">
+                  <div style="font-size: 0.65rem; color: var(--text-3);">残高</div>
+                  <div style="font-size: 1.15rem; font-weight: 800; color: var(--danger);">¥${(loan.currentBalance || 0).toLocaleString()}</div>
+                  <div style="font-size: 0.7rem; color: var(--text-3); margin-top: 2px;">月返済 <strong style="color:var(--danger)">¥${(loan.monthlyPayment || 0).toLocaleString()}</strong></div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end;">
+                <button onclick="event.stopPropagation(); toggleLoan('${loan.id}')" class="btn small ${loan.active ? 'warn' : 'success'}" style="font-size: 0.72rem; padding: 3px 10px;">${loan.active ? '無効化' : '有効化'}</button>
+                <button onclick="event.stopPropagation(); deleteLoan('${loan.id}')" class="btn small danger" style="font-size: 0.72rem; padding: 3px 10px;">削除</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('')}
+  `;
 }
 
 function renderCardsList(cards) {
@@ -921,58 +991,46 @@ function renderCardsList(cards) {
   }
 
   return `
-    <div class="master-group">
-      <div class="master-group-title">
-        <span>登録済みカード</span>
-        <span class="master-group-count">${cards.length}</span>
-      </div>
-      <div class="master-group-grid">
-        ${cards.map(card => {
-          const logoUrl = card.logo || getLogoUrl(card.name);
-          const billingEvent = monthEvents.find(e => e.id === `card-billing-${card.id}-${ym}`);
-          const billingAmount = billingEvent ? billingEvent.amount : null;
-          return `
-            <div class="master-item master-item-card card-type ${card.active ? '' : 'inactive'}" onclick="editLoan('${card.id}')">
-              <div class="info">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                  <div class="card-chip"></div>
-                  ${logoUrl ? `<img src="${logoUrl}" alt="" style="height: 32px; max-width: 80px; object-fit: contain; background: white; padding: 4px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">` : `<span style="font-size: 2rem;">💳</span>`}
+    <div style="font-size: 0.75rem; color: var(--text-3); margin-bottom: 10px; padding: 8px 12px; background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.15); border-radius: 8px;">
+      💡 毎月の請求額は <strong style="color:var(--primary);">📅 カレンダー</strong> 画面の「STEP 2」で入力します。ここではカード情報のみ登録。
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      ${cards.map(card => {
+        const logoUrl = card.logo || getLogoUrl(card.name);
+        const billingEvent = monthEvents.find(e => e.id === `card-billing-${card.id}-${ym}`);
+        const billingAmount = billingEvent ? billingEvent.amount : null;
+        const isDone = billingAmount !== null && billingAmount > 0;
+        return `
+          <div onclick="editLoan('${card.id}')"
+            style="background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 14px 16px; cursor: pointer; opacity: ${card.active ? '1' : '0.55'};">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                  ${logoUrl ? `<img src="${logoUrl}" alt="" style="height: 20px; max-width: 50px; object-fit: contain; background: white; border-radius: 3px; padding: 2px;">` : `<span style="font-size:1.2rem;">💳</span>`}
+                  <span style="font-size: 0.95rem; font-weight: 700; color: var(--text);">${card.name}</span>
                 </div>
-                <span class="name">${card.name}</span>
-                <div class="bank-link" style="font-size: 0.85rem; margin-bottom: 12px; opacity: 0.9;">
-                  🏦 ${bankMap[card.bankId] || '(銀行未設定)'}
+                <div style="font-size: 0.75rem; color: var(--text-3); display: flex; gap: 10px; flex-wrap: wrap;">
+                  <span>🏦 ${bankMap[card.bankId] || '銀行未設定'}</span>
+                  <span>引落 ${card.paymentDay}日</span>
+                  <span>限度 ¥${(card.maxLimit || 0).toLocaleString()}</span>
                 </div>
-                <div class="info-grid">
-                  <div>
-                    <div>LIMIT</div>
-                    <div>¥${(card.maxLimit || 0).toLocaleString()}</div>
-                  </div>
-                  <div>
-                    <div>引落日</div>
-                    <div>${card.paymentDay}日</div>
-                  </div>
-                  <div>
-                    <div>今月確定額</div>
-                    <div>${billingAmount !== null ? `¥${billingAmount.toLocaleString()}` : '—'}</div>
-                  </div>
-                  <div>
-                    <div>STATUS</div>
-                    <div>${card.active ? 'ACTIVE' : 'INACTIVE'}</div>
-                  </div>
-                </div>
-                ${card.notes ? `<div style="font-size: 0.7rem; color: rgba(255,255,255,0.7); margin-top: 10px; font-style: italic; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px;">📝 ${card.notes}</div>` : ''}
               </div>
-              <div class="actions" style="margin-top: 15px;">
-                <button onclick="event.stopPropagation(); editLoan('${card.id}')" class="btn small" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">編集</button>
-                <button onclick="event.stopPropagation(); toggleLoan('${card.id}')" class="btn small" style="background: ${card.active ? 'rgba(245,158,11,0.4)' : 'rgba(16,185,129,0.4)'}; color: white; border: 1px solid rgba(255,255,255,0.2);">
-                  ${card.active ? '無効化' : '有効化'}
-                </button>
-                <button onclick="event.stopPropagation(); deleteLoan('${card.id}')" class="btn small" style="background: rgba(239,68,68,0.4); color: white; border: 1px solid rgba(255,255,255,0.2);">削除</button>
+              <div style="text-align: right; flex-shrink: 0;">
+                <div style="font-size: 0.65rem; color: var(--text-3);">今月請求額</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: ${isDone ? 'var(--danger)' : 'var(--text-3)'};">
+                  ${isDone ? `-¥${billingAmount.toLocaleString()}` : '未入力'}
+                </div>
+                ${isDone ? `<div style="font-size: 0.65rem; color: var(--success);">✓ 確定済み</div>` : `<div style="font-size: 0.65rem; color: var(--warn);">← カレンダーで入力</div>`}
               </div>
             </div>
-          `;
-        }).join('')}
-      </div>
+            ${card.notes ? `<div style="font-size: 0.7rem; color: var(--text-3); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--card-border); font-style: italic;">📝 ${card.notes}</div>` : ''}
+            <div style="display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end;">
+              <button onclick="event.stopPropagation(); toggleLoan('${card.id}')" class="btn small ${card.active ? 'warn' : 'success'}" style="font-size: 0.72rem; padding: 3px 10px;">${card.active ? '無効化' : '有効化'}</button>
+              <button onclick="event.stopPropagation(); deleteLoan('${card.id}')" class="btn small danger" style="font-size: 0.72rem; padding: 3px 10px;">削除</button>
+            </div>
+          </div>
+        `;
+      }).join('')}
     </div>
   `;
 }
@@ -981,44 +1039,40 @@ function renderClientsList(clients) {
   const bankMap = Object.fromEntries(appStore.data.master.items.filter(i => i.type === 'bank').map(b => [b.id, b.name]));
 
   if (clients.length === 0) {
-    return `<div style="font-size: 0.85rem; color: #6b7280; padding: 10px 0;">クライアントがありません。</div>`;
+    return `<div style="font-size: 0.85rem; color: var(--text-3); padding: 20px 0; text-align: center;">クライアントがありません。</div>`;
   }
 
+  const totalIncome = clients.filter(c => c.active).reduce((s, c) => s + (c.amount || 0), 0);
   return `
-    <div class="master-group">
-      <div class="master-group-title">
-        <span>クライアント</span>
-        <span class="master-group-count">${clients.length}</span>
-      </div>
-      <div class="master-group-grid">
-        ${clients.map(client => `
-          <div class="master-item master-item-card ${client.active ? '' : 'inactive'}" onclick="editClient('${client.id}')">
-            <div class="info">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span class="type income">収入</span>
-                <span style="font-size: 0.7rem; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; color: #6b7280;">クライアント</span>
+    <div style="margin-bottom: 8px; padding: 10px 14px; background: rgba(16,185,129,0.07); border: 1px solid rgba(16,185,129,0.2); border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-size: 0.8rem; color: var(--text-2); font-weight: 600;">月収入合計</span>
+      <span style="font-size: 1.1rem; font-weight: 800; color: var(--success);">+¥${totalIncome.toLocaleString()}</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      ${clients.map(client => `
+        <div onclick="editClient('${client.id}')"
+          style="background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.18); border-left: 3px solid var(--success); border-radius: 12px; padding: 12px 14px; cursor: pointer; opacity: ${client.active ? '1' : '0.55'};">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 4px;">🤝 ${client.name}</div>
+              <div style="font-size: 0.75rem; color: var(--text-3); display: flex; gap: 8px; flex-wrap: wrap;">
+                <span>📅 ${formatRule(client.scheduleRule || { type: 'monthly', day: client.paymentDay || 15 })}</span>
+                <span>🏦 ${bankMap[client.bankId] || '未設定'}</span>
+                ${client.amountMode === 'variable' ? `<span style="color:var(--warn);font-weight:600;">変動</span>` : ''}
               </div>
-              <span class="name">🤝 ${client.name}</span>
-              <div style="display: flex; gap: 15px; font-size: 0.9rem;">
-                <span class="amount">入金: ¥${(client.amount || 0).toLocaleString()}</span>
-                <span class="day">${client.amountMode === 'variable' ? '変動' : '固定'}</span>
-              </div>
-              <div style="font-size: 0.8rem; color: #4b5563; margin-top: 4px;">
-                📅 ${formatRule(client.scheduleRule || { type: 'monthly', day: client.paymentDay || 15 })}
-                (${bankMap[client.bankId] || '銀行未設定'})
-              </div>
-              ${client.notes ? `<div style="font-size: 0.7rem; color: #6b7280; margin-top: 4px; font-style: italic;">📝 ${client.notes}</div>` : ''}
+              ${client.notes ? `<div style="font-size: 0.7rem; color: var(--text-3); margin-top: 3px; font-style: italic;">📝 ${client.notes}</div>` : ''}
             </div>
-            <div class="actions">
-              <button onclick="event.stopPropagation(); editClient('${client.id}')" class="btn small">編集</button>
-              <button onclick="event.stopPropagation(); toggleClient('${client.id}')" class="btn small ${client.active ? 'warn' : 'success'}">
-                ${client.active ? '無効化' : '有効化'}
-              </button>
-              <button onclick="event.stopPropagation(); deleteClient('${client.id}')" class="btn small danger">削除</button>
+            <div style="text-align: right; flex-shrink: 0;">
+              <div style="font-size: 1.2rem; font-weight: 800; color: var(--success);">+¥${(client.amount || 0).toLocaleString()}</div>
+              <div style="font-size: 0.65rem; color: var(--text-3);">/ 月</div>
             </div>
           </div>
-        `).join('')}
-      </div>
+          <div style="display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end;">
+            <button onclick="event.stopPropagation(); toggleClient('${client.id}')" class="btn small ${client.active ? 'warn' : 'success'}" style="font-size: 0.72rem; padding: 3px 10px;">${client.active ? '無効化' : '有効化'}</button>
+            <button onclick="event.stopPropagation(); deleteClient('${client.id}')" class="btn small danger" style="font-size: 0.72rem; padding: 3px 10px;">削除</button>
+          </div>
+        </div>
+      `).join('')}
     </div>
   `;
 }
@@ -1073,15 +1127,6 @@ function showModal(data = null) {
       if (form['loan-bank-id']) form['loan-bank-id'].value = data.bankId || '';
       if (form['loan-adjustment']) form['loan-adjustment'].value = data.adjustment || 'none';
       if (form['loan-notes']) form['loan-notes'].value = data.notes || '';
-      // 今月確定額: 今月のカレンダーイベントから読み込む
-      if (form['card-billing-amount']) {
-        const now = new Date();
-        const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const eventId = `card-billing-${data.id}-${ym}`;
-        const monthEvents = appStore.data.calendar.generatedMonths[ym] || [];
-        const existing = monthEvents.find(e => e.id === eventId);
-        form['card-billing-amount'].value = existing ? formatNumber(existing.amount) : '';
-      }
     } else if (currentTab === 'loans') {
       if (form['loan-type']) {
         const options = Array.from(form['loan-type'].options).map(o => o.value);
@@ -1271,17 +1316,6 @@ function saveData() {
       const loans = appStore.data.master.loans || [];
       const added = loans.find(l => l.name === cardData.name && l.type === 'クレジットカード');
       cardId = added?.id;
-    }
-    // 今月確定額をカレンダーイベントとして登録
-    const billingRaw = form['card-billing-amount']?.value || '';
-    const billingAmount = billingRaw.trim() !== '' ? parseNumber(billingRaw) : 0;
-    if (cardId) {
-      const now = new Date();
-      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const payDay = Math.min(cardData.paymentDay, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate());
-      const actualDate = `${ym}-${String(payDay).padStart(2, '0')}`;
-      const savedCard = (appStore.data.master.loans || []).find(l => l.id === cardId) || cardData;
-      appStore.upsertCardBillingEvent(cardId, ym, billingAmount, actualDate, { ...savedCard, id: cardId });
     }
   } else if (currentTab === 'loans') {
     requireField(requireText, form['master-name']);
