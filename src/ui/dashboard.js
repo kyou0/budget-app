@@ -111,14 +111,18 @@ export function renderDashboard(container) {
     .filter(e => e.type === 'income' && e.amountMode === 'variable' && e.actualDate?.startsWith(yearMonth))
     .sort((a, b) => a.actualDate.localeCompare(b.actualDate));
   const plansThisMonth = getMonthlyPlans(yearMonth);
-  const planEvents = plansThisMonth.map(plan => ({
+  const datedPlansThisMonth = plansThisMonth.filter(plan => plan.actualDate?.startsWith(yearMonth));
+  const materializedPlanIds = new Set(baseEventsWithIncomeOverrides.filter(event => event.planId).map(event => event.planId));
+  const planEvents = plansThisMonth
+    .filter(plan => !plan.actualDate || !materializedPlanIds.has(plan.id))
+    .map(plan => ({
     id: `plan-preview-${plan.id}`,
     masterId: plan.id,
     name: `計画: ${plan.name}`,
     type: plan.type,
     amount: Number(plan.amount) || 0,
-    actualDate: `${plan.yearMonth}-15`,
-    originalDate: `${plan.yearMonth}-15`,
+    actualDate: plan.actualDate || `${plan.yearMonth}-15`,
+    originalDate: plan.actualDate || `${plan.yearMonth}-15`,
     status: 'pending',
     isPlan: true
   }));
@@ -434,6 +438,42 @@ export function renderDashboard(container) {
           <div class="variable-income-empty">時給案件などはマスターで収入/クライアントを「変動」にすると、ここで今月額を更新できます。</div>
         `}
         <button class="btn small" onclick="location.hash='#analysis'; setTimeout(()=>{ if(window.switchAnalysisTab) window.switchAnalysisTab('planning'); }, 100)">旅行・指輪など先の予定を入れる</button>
+      </div>
+
+      <div class="control-card dated-cashflow-task">
+        <div class="control-head">
+          <div>
+            <span class="task-kicker">今月だけの確定分</span>
+            <h3>日付つき収支を入れる</h3>
+          </div>
+        </div>
+        <p>入金日や支払日が確定しているものを、その日付で今月に入れます。登録すると月末見込みとカレンダー同期対象に反映されます。</p>
+        <div class="dated-cashflow-form">
+          <input type="date" id="dated-plan-date" value="${yearMonth}-${String(new Date().getDate()).padStart(2, '0')}">
+          <select id="dated-plan-type">
+            <option value="income">入金</option>
+            <option value="expense">支払い</option>
+          </select>
+          <input type="text" id="dated-plan-name" placeholder="例: 案件入金、旅行支払い">
+          <input type="text" inputmode="numeric" id="dated-plan-amount" placeholder="金額" oninput="handleNumericInput(this)">
+          <button type="button" id="dated-plan-add" class="btn primary small">追加</button>
+        </div>
+        ${datedPlansThisMonth.length > 0 ? `
+          <div class="dated-cashflow-list">
+            ${datedPlansThisMonth.sort((a, b) => a.actualDate.localeCompare(b.actualDate)).map(plan => `
+              <div class="dated-cashflow-row ${plan.type}">
+                <div>
+                  <strong>${plan.actualDate.slice(5).replace('-', '/')} ${plan.name}</strong>
+                  <span>${plan.type === 'income' ? '入金' : '支払い'} / カレンダー反映済み</span>
+                </div>
+                <b>${plan.type === 'income' ? '+' : '-'}${money(plan.amount)}</b>
+                <button type="button" class="btn small danger dated-plan-delete" data-plan-id="${plan.id}">削除</button>
+              </div>
+            `).join('')}
+          </div>
+        ` : `
+          <div class="variable-income-empty">今月だけの日付確定済み収支はまだありません。</div>
+        `}
       </div>
 
       <div class="control-card loan-task">
@@ -805,6 +845,23 @@ export function renderDashboard(container) {
       </div>
     </div>
   `;
+
+  const datedPlanAddButton = container.querySelector('#dated-plan-add');
+  if (datedPlanAddButton) {
+    datedPlanAddButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.addDatedCashflow();
+    });
+  }
+  if (!container.dataset.dashboardDatedCashflowDelegated) {
+    container.addEventListener('click', (event) => {
+      const deleteButton = event.target.closest?.('.dated-plan-delete');
+      if (!deleteButton) return;
+      event.preventDefault();
+      window.deleteDatedCashflow(deleteButton.dataset.planId);
+    });
+    container.dataset.dashboardDatedCashflowDelegated = 'true';
+  }
 }
 
 window.changeMonth = (diff) => {
@@ -910,6 +967,68 @@ window.confirmIncomeAmount = (eventId) => {
   }
 
   window.showToast(`今月の入金額 ¥${amount.toLocaleString()} を反映しました`, 'success');
+  renderDashboard(containerEl);
+};
+
+window.addDatedCashflow = async () => {
+  const date = document.getElementById('dated-plan-date')?.value;
+  const type = document.getElementById('dated-plan-type')?.value || 'expense';
+  const name = document.getElementById('dated-plan-name')?.value?.trim();
+  const amount = parseNumber(document.getElementById('dated-plan-amount')?.value || '');
+  const yearMonth = toYearMonth(currentYear, currentMonth);
+
+  if (!date || !date.startsWith(yearMonth)) {
+    window.showToast(`${currentMonth}月の日付を指定してください`, 'warn');
+    return;
+  }
+  if (!name) {
+    window.showToast('内容を入力してください', 'warn');
+    return;
+  }
+  if (!amount || amount <= 0) {
+    window.showToast('金額を入力してください', 'warn');
+    return;
+  }
+
+  const plan = appStore.addPlan({
+    name,
+    type,
+    amount,
+    yearMonth,
+    actualDate: date,
+    category: 'current_month',
+    amountMode: 'fixed',
+    notes: '今月画面から追加'
+  });
+  const event = appStore.upsertPlanCalendarEvent(plan);
+
+  if (appStore.data.settings?.calendarSyncEnabled && event) {
+    calendarSync.syncEvent(yearMonth, event.id).catch(err => console.error('Calendar event sync failed', err));
+  }
+  if (appStore.data.settings?.driveSyncEnabled) {
+    driveSync.push({ mode: 'auto' }).catch(err => console.error('Auto drive push failed', err));
+  }
+
+  window.showToast(`${date.slice(5).replace('-', '/')} の${type === 'income' ? '入金' : '支払い'}を追加しました`, 'success');
+  renderDashboard(containerEl);
+};
+
+window.deleteDatedCashflow = async (planId) => {
+  const plan = (appStore.data.master.plans || []).find(p => p.id === planId);
+  if (!plan) return;
+  if (!(await window.showConfirm(`「${plan.name}」を削除しますか？`))) return;
+
+  const yearMonth = plan.actualDate?.slice(0, 7) || plan.yearMonth;
+  const event = (appStore.data.calendar?.generatedMonths?.[yearMonth] || []).find(e => e.id === `plan-${planId}`);
+  if (event?.gcalEventId) {
+    calendarSync.deleteEvent(null, event).catch(err => console.error('Calendar event deletion failed', err));
+  }
+  appStore.deletePlan(planId);
+  appStore.deletePlanCalendarEvent(planId);
+  if (appStore.data.settings?.driveSyncEnabled) {
+    driveSync.push({ mode: 'auto' }).catch(err => console.error('Auto drive push failed', err));
+  }
+  window.showToast('削除しました', 'success');
   renderDashboard(containerEl);
 };
 
@@ -1041,7 +1160,7 @@ window.syncCurrentMonthToCalendar = async (isAuto = false) => {
     return;
   }
   
-  if (!isAuto) window.toggleLoadingOverlay(true, 'カレンダー同期中...');
+  if (!isAuto) window.showSyncProgress('cal', 55);
   try {
     await calendarSync.syncMonthEvents(yearMonth);
     appStore.addSyncLog({
@@ -1062,7 +1181,7 @@ window.syncCurrentMonthToCalendar = async (isAuto = false) => {
     });
     window.showToast('カレンダー同期に失敗しました', 'danger');
   } finally {
-    if (!isAuto) window.toggleLoadingOverlay(false);
+    if (!isAuto) window.hideSyncProgress();
   }
 };
 

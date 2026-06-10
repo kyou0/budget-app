@@ -116,6 +116,11 @@ function getSyncOverlay() {
             </div>
           `).join('')}
         </div>
+        <div class="sync-wait-note" id="sync-wait-note">同期中もほかの操作はできます。Googleカレンダーが長い時は、ここで進捗だけ見守ります。</div>
+        <div class="sync-cat" aria-hidden="true">
+          <span class="sync-cat-face">=^._.^=</span>
+          <span>カレンダー待ち番</span>
+        </div>
       </div>
     `;
     document.body.appendChild(el);
@@ -400,10 +405,10 @@ async function initApp() {
 }
 
 async function runAutoSync() {
-  const settings = appStore.data.settings || {};
+  let settings = appStore.data.settings || {};
   let anySync = false;
 
-  if (settings.driveSyncEnabled) {
+  if (settings.driveSyncEnabled || googleAuth.isSignedIn()) {
     anySync = true;
     try {
       window.showSyncProgress('drive-pull', 10);
@@ -411,6 +416,7 @@ async function runAutoSync() {
       if (remoteData) {
         appStore.data = appStore.migrate(remoteData);
         appStore.save();
+        settings = appStore.data.settings || {};
         // データ更新後に現在の画面を再描画
         const hash = window.location.hash || '#dashboard';
         const route = { '#dashboard': () => import('./src/ui/dashboard.js').then(m => m.renderDashboard(container)),
@@ -418,8 +424,10 @@ async function runAutoSync() {
                         '#settings':  () => import('./src/ui/settings.js').then(m => m.renderSettings(container)) };
         if (route[hash]) route[hash]().catch(() => {});
       }
-      window.showSyncProgress('drive-push', 40);
-      await driveSync.push({ mode: 'auto' });
+      if (settings.driveSyncEnabled) {
+        window.showSyncProgress('drive-push', 40);
+        await driveSync.push({ mode: 'auto' });
+      }
     } catch (err) {
       console.warn('Auto drive sync failed', err);
       window.showToast('Drive同期に失敗しました', 'danger');

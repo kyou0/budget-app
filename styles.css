@@ -1096,14 +1096,12 @@ input[inputmode="numeric"] {
   position: fixed;
   inset: 0;
   z-index: 8000;
-  background: rgba(8, 14, 26, 0.72);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: linear-gradient(180deg, transparent 0%, rgba(8, 14, 26, 0.16) 100%);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   padding-bottom: calc(env(safe-area-inset-bottom) + 80px); /* bottom-nav分 */
-  pointer-events: all; /* タッチ・クリックをブロック */
+  pointer-events: none;
   transition: opacity 0.35s ease;
 }
 
@@ -1122,7 +1120,8 @@ input[inputmode="numeric"] {
   border: 1px solid var(--card-border);
   border-radius: 20px;
   padding: 20px 20px 18px;
-  box-shadow: 0 -4px 40px rgba(0,0,0,0.5);
+  box-shadow: 0 -4px 40px rgba(15, 23, 42, 0.18);
+  pointer-events: auto;
 }
 
 .sync-card-header {
@@ -1242,6 +1241,43 @@ input[inputmode="numeric"] {
   border-color: var(--success);
   background: rgba(16,185,129,0.12);
   color: var(--success);
+}
+
+.sync-wait-note {
+  margin-top: 14px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text-3);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.sync-cat {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  color: var(--text-3);
+  font-size: 0.75rem;
+}
+
+.sync-cat-face {
+  display: inline-flex;
+  min-width: 58px;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary);
+  font-weight: 900;
+  animation: syncCatBlink 2.8s ease-in-out infinite;
+}
+
+@keyframes syncCatBlink {
+  0%, 88%, 100% { opacity: 1; transform: translateY(0); }
+  92% { opacity: 0.45; transform: translateY(1px); }
 }
 
 @keyframes syncStepPulse {
@@ -2165,7 +2201,7 @@ tr:hover td { background: var(--surface-hover) !important; }
 .control-board {
   margin: 0 16px 16px;
   display: grid;
-  grid-template-columns: minmax(300px, 1.25fr) minmax(240px, 0.85fr) minmax(280px, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 12px;
 }
 
@@ -2365,6 +2401,74 @@ tr:hover td { background: var(--surface-hover) !important; }
   line-height: 1.55;
 }
 
+.dated-cashflow-task {
+  border-color: rgba(14, 165, 233, 0.2);
+}
+
+.dated-cashflow-form {
+  display: grid;
+  grid-template-columns: minmax(132px, 0.8fr) minmax(86px, 0.55fr) minmax(150px, 1fr) minmax(110px, 0.75fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.dated-cashflow-form input,
+.dated-cashflow-form select {
+  min-width: 0;
+  width: 100%;
+}
+
+.dated-cashflow-form #dated-plan-amount {
+  text-align: right;
+  font-weight: 800;
+}
+
+.dated-cashflow-list {
+  display: grid;
+  gap: 8px;
+}
+
+.dated-cashflow-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.dated-cashflow-row.income {
+  border-color: rgba(4, 120, 87, 0.2);
+  background: var(--success-bg);
+}
+
+.dated-cashflow-row.expense {
+  border-color: rgba(220, 38, 38, 0.18);
+  background: var(--danger-bg);
+}
+
+.dated-cashflow-row strong {
+  display: block;
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.dated-cashflow-row span {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: 0.72rem;
+}
+
+.dated-cashflow-row b {
+  color: var(--text);
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+
 .form-guide {
   margin: 0 0 12px;
   padding: 10px 12px;
@@ -2450,6 +2554,11 @@ tr:hover td { background: var(--surface-hover) !important; }
   }
 
   .variable-income-row {
+    grid-template-columns: 1fr;
+  }
+
+  .dated-cashflow-form,
+  .dated-cashflow-row {
     grid-template-columns: 1fr;
   }
 

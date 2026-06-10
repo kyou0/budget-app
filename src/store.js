@@ -276,6 +276,55 @@ class Store {
     this.save();
   }
 
+  upsertPlanCalendarEvent(plan) {
+    if (!plan || !plan.id || !plan.actualDate) return null;
+    const yearMonth = plan.actualDate.slice(0, 7);
+    if (!this.data.calendar.generatedMonths[yearMonth]) {
+      this.data.calendar.generatedMonths[yearMonth] = [];
+    }
+    const eventId = `plan-${plan.id}`;
+    const events = this.data.calendar.generatedMonths[yearMonth];
+    const existingIndex = events.findIndex(e => e.id === eventId);
+    const event = {
+      id: eventId,
+      masterId: plan.id,
+      planId: plan.id,
+      name: plan.name,
+      type: plan.type,
+      amount: Number(plan.amount) || 0,
+      amountMode: plan.amountMode || 'fixed',
+      originalDate: plan.actualDate,
+      actualDate: plan.actualDate,
+      penaltyFee: 0,
+      status: 'pending',
+      isPlan: true,
+      category: plan.category || 'other',
+      notes: plan.notes || ''
+    };
+    if (existingIndex !== -1) {
+      events[existingIndex] = {
+        ...events[existingIndex],
+        ...event,
+        gcalEventId: events[existingIndex].gcalEventId,
+        gcalCalendarId: events[existingIndex].gcalCalendarId,
+        gcalSyncHash: undefined
+      };
+    } else {
+      events.push(event);
+    }
+    this.save();
+    return event;
+  }
+
+  deletePlanCalendarEvent(planId) {
+    const eventId = `plan-${planId}`;
+    Object.keys(this.data.calendar.generatedMonths || {}).forEach(yearMonth => {
+      this.data.calendar.generatedMonths[yearMonth] = this.data.calendar.generatedMonths[yearMonth]
+        .filter(event => event.id !== eventId);
+    });
+    this.save();
+  }
+
   // クレジットカード月次請求イベントをupsert
   upsertCardBillingEvent(cardId, yearMonth, amount, actualDate, card) {
     const eventId = `card-billing-${cardId}-${yearMonth}`;

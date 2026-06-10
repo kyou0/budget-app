@@ -94,6 +94,7 @@
  * @property {number} amount
  * @property {'fixed'|'estimate'} amountMode
  * @property {string} yearMonth - YYYY-MM
+ * @property {string} [actualDate] - YYYY-MM-DD
  * @property {string} [category] - travel|gift|medical|purchase|other
  * @property {string} [notes]
  */
