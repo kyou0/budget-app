@@ -1,5 +1,5 @@
 import { store as appStore } from '../store.js';
-import { getIcon, getLogoUrl, CARD_BRANDS, formatNumber, parseNumber } from '../utils.js';
+import { getIcon, getLogoUrl, getLogoFallbackLabel, CARD_BRANDS, formatNumber, parseNumber } from '../utils.js';
 import { driveSync } from '../sync/driveSync.js';
 import { generateClientEvents } from '../generate.js';
 
@@ -355,9 +355,11 @@ export function renderMaster(container) {
               <div id="logo-selection" class="logo-candidate-grid">
                 ${CARD_BRANDS.map(brand => {
                   const url = brand.logoUrl || `https://www.google.com/s2/favicons?domain=${brand.domain}&sz=64`;
+                  const fallback = brand.shortName || brand.name;
                   return `
                     <div class="logo-candidate" onclick="selectCardLogo('${url}', this)">
-                      <img src="${url}" alt="${brand.name}">
+                      <img src="${url}" alt="${brand.name}" onerror="this.hidden=true; this.parentElement.classList.add('logo-fallback');">
+                      <b>${fallback}</b>
                       <span>${brand.name}</span>
                     </div>
                   `;
@@ -1059,13 +1061,19 @@ function renderCardsList(cards) {
     <div style="display: flex; flex-direction: column; gap: 10px;">
       ${cards.map(card => {
         const logoUrl = card.logo || getLogoUrl(card.name);
+        const logoFallback = getLogoFallbackLabel(card.name);
         return `
           <div onclick="editLoan('${card.id}')"
             style="background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 14px 16px; cursor: pointer; opacity: ${card.active ? '1' : '0.55'};">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
               <div style="flex: 1; min-width: 0;">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                  ${logoUrl ? `<img src="${logoUrl}" alt="" style="height: 20px; max-width: 50px; object-fit: contain; background: white; border-radius: 3px; padding: 2px;">` : `<span style="font-size:1.2rem;">💳</span>`}
+                  ${logoUrl ? `
+                    <span class="card-logo-badge">
+                      <img src="${logoUrl}" alt="${logoFallback}" onerror="this.hidden=true; this.nextElementSibling.hidden=false;">
+                      <b hidden>${logoFallback}</b>
+                    </span>
+                  ` : `<span class="card-logo-badge"><b>${logoFallback}</b></span>`}
                   <span style="font-size: 0.95rem; font-weight: 700; color: var(--text);">${card.name}</span>
                 </div>
                 <div style="font-size: 0.75rem; color: var(--text-3); display: flex; gap: 10px; flex-wrap: wrap;">

@@ -111,18 +111,26 @@ export function getLogoUrl(name) {
   return null;
 }
 
+export function getLogoFallbackLabel(name) {
+  if (!name) return 'CARD';
+  const n = name.toLowerCase();
+  const brand = CARD_BRANDS.find(b => n.includes(b.key));
+  return (brand?.shortName || brand?.name || name).slice(0, 8);
+}
+
 /**
  * クレジットカードブランドのリスト
  */
 export const CARD_BRANDS = [
-  { name: 'JCB', key: 'jcb', domain: 'global.jcb', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/4/40/JCB_logo.svg' },
-  { name: 'Visa', key: 'visa', domain: 'visa.co.jp' },
-  { name: 'Mastercard', key: 'master', domain: 'mastercard.co.jp' },
-  { name: 'Amex', key: 'amex', domain: 'americanexpress.com' },
-  { name: 'Diners', key: 'diners', domain: 'diners.co.jp' },
-  { name: '楽天カード', key: '楽天', domain: 'rakuten-card.co.jp' },
-  { name: 'PayPayカード', key: 'paypay', domain: 'paypay-card.co.jp' },
-  { name: '三井住友カード', key: '三井住友', domain: 'smbc-card.com' },
+  { name: 'JCB', shortName: 'JCB', key: 'jcb', domain: 'global.jcb', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/4/40/JCB_logo.svg' },
+  { name: 'Visa', shortName: 'VISA', key: 'visa', domain: 'visa.co.jp', logoUrl: 'https://cdn.simpleicons.org/visa' },
+  { name: 'Mastercard', shortName: 'MC', key: 'master', domain: 'mastercard.co.jp', logoUrl: 'https://cdn.simpleicons.org/mastercard' },
+  { name: 'Amex', shortName: 'AMEX', key: 'amex', domain: 'americanexpress.com', logoUrl: 'https://cdn.simpleicons.org/americanexpress' },
+  { name: 'Diners', shortName: 'Diners', key: 'diners', domain: 'diners.co.jp', logoUrl: 'https://cdn.simpleicons.org/dinersclub' },
+  { name: '楽天カード', shortName: '楽天', key: '楽天', domain: 'rakuten-card.co.jp', logoUrl: 'https://cdn.simpleicons.org/rakuten' },
+  { name: 'PayPayカード', shortName: 'PayPay', key: 'paypay', domain: 'www.paypay-card.co.jp' },
+  { name: '三井住友カード', shortName: 'SMBC', key: '三井住友', domain: 'www.smbc-card.com' },
+  { name: 'SMBCカード', shortName: 'SMBC', key: 'smbc', domain: 'www.smbc-card.com' },
   { name: '三菱UFJカード', key: '三菱ufj', domain: 'cr.mufg.jp' },
   { name: 'エポスカード', key: 'エポス', domain: 'eposcard.co.jp' },
   { name: 'イオンカード', key: 'イオン', domain: 'aeon.co.jp' },

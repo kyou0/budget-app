@@ -1005,12 +1005,58 @@ input[inputmode="numeric"] {
   padding: 3px;
 }
 
+.logo-candidate b {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 32px;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.logo-candidate.logo-fallback b {
+  display: flex;
+}
+
 .logo-candidate span {
   font-size: 0.58rem;
   text-align: center;
   word-break: break-all;
   color: var(--text-3);
   font-weight: 500;
+}
+
+.card-logo-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 24px;
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: #fff;
+  border: 1px solid var(--card-border);
+  color: var(--text);
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.card-logo-badge img {
+  max-width: 50px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.card-logo-badge b {
+  font-size: 0.62rem;
+  font-weight: 900;
 }
 
 /* =============================================
