@@ -354,11 +354,12 @@ export function renderMaster(container) {
               <input type="hidden" id="loan-logo">
               <div id="logo-selection" class="logo-candidate-grid">
                 ${CARD_BRANDS.map(brand => {
-                  const url = brand.logoUrl || `https://www.google.com/s2/favicons?domain=${brand.domain}&sz=64`;
+                  const url = brand.textLogo ? '' : (brand.logoUrl || `https://www.google.com/s2/favicons?domain=${brand.domain}&sz=64`);
                   const fallback = brand.shortName || brand.name;
+                  const onClick = url ? `selectCardLogo('${url}', this)` : `selectCardLogo('', this)`;
                   return `
-                    <div class="logo-candidate" onclick="selectCardLogo('${url}', this)">
-                      <img src="${url}" alt="${brand.name}" onerror="this.hidden=true; this.parentElement.classList.add('logo-fallback');">
+                    <div class="logo-candidate ${brand.textLogo ? 'logo-fallback' : ''}" onclick="${onClick}">
+                      ${url ? `<img src="${url}" alt="${brand.name}" onerror="this.hidden=true; this.parentElement.classList.add('logo-fallback');">` : ''}
                       <b>${fallback}</b>
                       <span>${brand.name}</span>
                     </div>

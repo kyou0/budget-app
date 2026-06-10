@@ -4,12 +4,13 @@ import { calculatePenalty, calculatePayoffSummary } from '../calc.js';
 import { googleAuth } from '../auth/googleAuth.js';
 import { driveSync } from '../sync/driveSync.js';
 import { calendarSync } from '../sync/calendarSync.js';
-import { formatAgeMonths, formatMonthsToYears, getAgeMonthsFromBirthdate, getIcon, getLogoUrl, formatNumber, parseNumber, getAdjustedDate } from '../utils.js';
+import { formatAgeMonths, formatMonthsToYears, getAgeMonthsFromBirthdate, getIcon, getLogoFallbackLabel, getLogoUrl, formatNumber, parseNumber, getAdjustedDate } from '../utils.js';
 
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
 let containerEl = null;
 let survivalInputRenderTimer = null;
+let dashboardQuestionJumpBound = false;
 
 const toYearMonth = (year, month) => `${year}-${String(month).padStart(2, '0')}`;
 const toYMD = (date) => date.toISOString().split('T')[0];
@@ -20,6 +21,23 @@ const getEventAmount = (event) => Number(event.amount) || 0;
 const getMonthlyPlans = (yearMonth) => (appStore.data.master.plans || [])
   .filter(plan => plan.yearMonth === yearMonth)
   .filter(plan => plan.active !== false);
+
+const bindDashboardQuestionJump = () => {
+  if (dashboardQuestionJumpBound) return;
+  document.addEventListener('click', (event) => {
+    const startNode = event.target?.nodeType === 1 ? event.target : event.target?.parentElement;
+    const jumpButton = startNode?.closest?.('.question-pill.actionable');
+    if (!jumpButton) return;
+    event.preventDefault();
+    const target = document.getElementById(jumpButton.dataset.jumpTarget || '');
+    const focusTarget = document.getElementById(jumpButton.dataset.focusTarget || '');
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(() => {
+      (focusTarget || target)?.focus?.();
+    }, 250);
+  }, true);
+  dashboardQuestionJumpBound = true;
+};
 
 if (!window.handleNumericInput) {
   window.handleNumericInput = (el) => {
@@ -37,6 +55,7 @@ if (!window.handleNumericInput) {
 }
 
 export function renderDashboard(container) {
+  bindDashboardQuestionJump();
   containerEl = container;
   const yearMonth = toYearMonth(currentYear, currentMonth);
   const masterLoans = appStore.data.master.loans || [];
@@ -217,10 +236,28 @@ export function renderDashboard(container) {
     return !ev || ev.amount <= 0;
   });
   const monthlyQuestions = [
-    ...(pendingCardInputs.length > 0 ? [`カード請求が未確定: ${pendingCardInputs.length}枚`] : []),
-    ...(roughStartingCash <= 0 ? ['今月使える手元資金をざっくり入力'] : []),
-    ...(plansThisMonth.length > 0 ? [`今月の予定支出/収入: ${plansThisMonth.length}件`] : []),
-    ...(delayedEvents.length > 0 ? [`延滞中: ${delayedEvents.length}件`] : [])
+    ...(pendingCardInputs.length > 0 ? [{
+      label: `カード請求が未確定: ${pendingCardInputs.length}枚`,
+      detail: '請求額入力へ',
+      targetId: 'card-billing-step',
+      focusId: `expense-${pendingCardInputs[0].id}`
+    }] : []),
+    ...(roughStartingCash <= 0 ? [{
+      label: '今月使える手元資金をざっくり入力',
+      detail: '入力欄へ',
+      targetId: 'starting-cash-input',
+      focusId: 'starting-cash-input'
+    }] : []),
+    ...(plansThisMonth.length > 0 ? [{
+      label: `今月の予定支出/収入: ${plansThisMonth.length}件`,
+      detail: '支払い一覧へ',
+      targetId: 'payments-detail'
+    }] : []),
+    ...(delayedEvents.length > 0 ? [{
+      label: `延滞中: ${delayedEvents.length}件`,
+      detail: '延滞確認へ',
+      targetId: 'payments-detail'
+    }] : [])
   ];
 
   // セットアップチェックリスト
@@ -515,7 +552,7 @@ export function renderDashboard(container) {
         </div>
         <label>
           <span>今月使える手元資金</span>
-          <input type="text" inputmode="numeric" value="${roughStartingCash ? formatNumber(roughStartingCash) : ''}" placeholder="例: 120,000" oninput="handleNumericInput(this); updateSurvivalInput('startingCash', this.value)">
+          <input id="starting-cash-input" type="text" inputmode="numeric" value="${roughStartingCash ? formatNumber(roughStartingCash) : ''}" placeholder="例: 120,000" oninput="handleNumericInput(this); updateSurvivalInput('startingCash', this.value)">
         </label>
         <label>
           <span>臨時収入・追加案件</span>
@@ -543,7 +580,10 @@ export function renderDashboard(container) {
           <small>ここがズレると予測もズレます</small>
         </div>
         ${monthlyQuestions.length > 0 ? monthlyQuestions.map(q => `
-          <div class="question-pill">${q}</div>
+          <button class="question-pill actionable" data-jump-target="${q.targetId}" data-focus-target="${q.focusId || ''}" title="${q.detail}" type="button">
+            <span>${q.label}</span>
+            <b>${q.detail}</b>
+          </button>
         `).join('') : `
           <div class="question-pill done">今月の主要チェックは完了しています</div>
         `}
@@ -600,7 +640,7 @@ export function renderDashboard(container) {
       </div>
 
       <!-- STEP 2: クレジット請求入力 -->
-      <div class="flow-step" style="padding: 12px 16px; background: var(--card); border-bottom: 1px solid var(--card-border);">
+      <div id="card-billing-step" class="flow-step" style="padding: 12px 16px; background: var(--card); border-bottom: 1px solid var(--card-border); scroll-margin-top: 86px;">
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: ${creditCards.length > 0 ? '12px' : '0'};">
           <div class="step-badge" style="width: 28px; height: 28px; border-radius: 50%; background: ${creditCards.every(c => { const ym2 = toYearMonth(currentYear,currentMonth); const ev = (appStore.data.calendar?.generatedMonths?.[ym2]||[]).find(e=>e.id===`card-billing-${c.id}-${ym2}`); return ev && ev.amount > 0; }) && creditCards.length > 0 ? 'var(--success-bg)' : 'rgba(251,191,36,0.15)'}; border: 2px solid ${creditCards.every(c => { const ym2 = toYearMonth(currentYear,currentMonth); const ev = (appStore.data.calendar?.generatedMonths?.[ym2]||[]).find(e=>e.id===`card-billing-${c.id}-${ym2}`); return ev && ev.amount > 0; }) && creditCards.length > 0 ? 'var(--success)' : 'var(--warn)'}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.8rem; font-weight: 700; color: ${creditCards.every(c => { const ym2 = toYearMonth(currentYear,currentMonth); const ev = (appStore.data.calendar?.generatedMonths?.[ym2]||[]).find(e=>e.id===`card-billing-${c.id}-${ym2}`); return ev && ev.amount > 0; }) && creditCards.length > 0 ? 'var(--success)' : 'var(--warn)'};">
             ${creditCards.every(c => { const ym2 = toYearMonth(currentYear,currentMonth); const ev = (appStore.data.calendar?.generatedMonths?.[ym2]||[]).find(e=>e.id===`card-billing-${c.id}-${ym2}`); return ev && ev.amount > 0; }) && creditCards.length > 0 ? '✓' : '2'}
@@ -623,6 +663,7 @@ export function renderDashboard(container) {
               const currentAmount = billingEvent?.amount || 0;
               const bank = masterItems.find(b => b.id === card.bankId);
               const logoUrl = card.logo || getLogoUrl(card.name);
+              const logoFallback = getLogoFallbackLabel(card.name);
               const isDone = currentAmount > 0;
               return `
                 <div style="border-radius: 10px; border: 1px solid ${isDone ? 'rgba(52,211,153,0.3)' : 'var(--card-border)'}; background: ${isDone ? 'rgba(52,211,153,0.05)' : 'var(--surface)'}; padding: 10px 12px;">
@@ -631,7 +672,10 @@ export function renderDashboard(container) {
                       <div style="font-weight: 700; font-size: 0.85rem; color: var(--text);">${card.name}</div>
                       <div style="font-size: 0.7rem; color: var(--text-3);">引落: ${card.paymentDay}日 / ${bank ? bank.name : '銀行未設定'}</div>
                     </div>
-                    ${logoUrl ? `<img src="${logoUrl}" alt="" style="height: 18px; max-width: 44px; object-fit: contain; background: white; border-radius: 3px; padding: 2px;">` : `<span style="font-size: 1.2rem;">💳</span>`}
+                    <span class="card-logo-badge compact">
+                      ${logoUrl ? `<img src="${logoUrl}" alt="${logoFallback}" onerror="this.hidden=true; this.nextElementSibling.hidden=false;">` : ''}
+                      <b ${logoUrl ? 'hidden' : ''}>${logoFallback}</b>
+                    </span>
                   </div>
                   <div style="display: flex; gap: 6px; align-items: center;">
                     <input type="text" inputmode="numeric"

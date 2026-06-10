@@ -1,4 +1,4 @@
-const CACHE_NAME = 'budget-app-v33-logo-fallback';
+const CACHE_NAME = 'budget-app-v36-logo-action';
 const ASSETS = [
   './',
   './index.html',

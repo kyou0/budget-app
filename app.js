@@ -419,9 +419,9 @@ async function runAutoSync() {
         settings = appStore.data.settings || {};
         // データ更新後に現在の画面を再描画
         const hash = window.location.hash || '#dashboard';
-        const route = { '#dashboard': () => import('./src/ui/dashboard.js').then(m => m.renderDashboard(container)),
-                        '#master':    () => import('./src/ui/master.js').then(m => m.renderMaster(container)),
-                        '#settings':  () => import('./src/ui/settings.js').then(m => m.renderSettings(container)) };
+        const route = { '#dashboard': () => import(`./src/ui/dashboard.js${_q}`).then(m => m.renderDashboard(container)),
+                        '#master':    () => import(`./src/ui/master.js${_q}`).then(m => m.renderMaster(container)),
+                        '#settings':  () => import(`./src/ui/settings.js${_q}`).then(m => m.renderSettings(container)) };
         if (route[hash]) route[hash]().catch(() => {});
       }
       if (settings.driveSyncEnabled) {
