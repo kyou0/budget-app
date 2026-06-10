@@ -354,24 +354,15 @@ async function initApp() {
   }
 
   // Google Auth 初期化
+  // 起動時に自動でトークン取得まで行うと、localhost のポート違いなどで
+  // Google OAuth の origin_mismatch 画面へ遷移してアプリが空に見える。
+  // ここではライブラリ初期化と保存済みトークン復元だけ行い、認証要求は同期操作時に限定する。
   const configClientId = appStore.data.settings?.googleClientId;
   if (configClientId) {
     try {
       await initGoogleAuth(configClientId);
-      
-      // 自動ログイン試行 (サインイン済みでデモモードでない場合)
-      if (!demoMode) {
-        if (googleAuth.isSignedIn()) {
-          console.log('Token restored from localStorage — skipping GIS call');
-        } else {
-          try {
-            // サイレントにトークン取得を試みる (プロンプトなし)
-            await googleAuth.getAccessToken(['openid', 'profile', 'email']);
-            console.log('Auto-reauthenticated successfully');
-          } catch (err) {
-            console.log('Silent auto-reauth failed', err);
-          }
-        }
+      if (googleAuth.isSignedIn()) {
+        console.log('Token restored from localStorage — startup auth request skipped');
       }
     } catch (err) {
       console.warn('GIS init failed', err);

@@ -14,7 +14,7 @@
   <!-- キャッシュバスティング: デプロイごとに BUILD_VERSION を更新 -->
   <script>
     (function() {
-      const v = '20250608-5';
+      const v = '20260610-auth-startup-fix-1';
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = 'styles.css?v=' + v;
@@ -25,8 +25,12 @@
 <body>
   <nav class="bottom-nav">
     <a href="#dashboard" class="nav-item">
-      <span class="icon">📅</span>
-      <span class="label">カレンダー</span>
+      <span class="icon">🛟</span>
+      <span class="label">今月</span>
+    </a>
+    <a href="#analysis" class="nav-item">
+      <span class="icon">🔮</span>
+      <span class="label">見通し</span>
     </a>
     <a href="#master" class="nav-item">
       <span class="icon">📋</span>

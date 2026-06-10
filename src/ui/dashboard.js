@@ -9,9 +9,32 @@ import { formatAgeMonths, formatMonthsToYears, getAgeMonthsFromBirthdate, getIco
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
 let containerEl = null;
+let survivalInputRenderTimer = null;
 
 const toYearMonth = (year, month) => `${year}-${String(month).padStart(2, '0')}`;
 const toYMD = (date) => date.toISOString().split('T')[0];
+const money = (value) => `¥${Math.round(Number(value) || 0).toLocaleString()}`;
+
+const getEventAmount = (event) => Number(event.amount) || 0;
+
+const getMonthlyPlans = (yearMonth) => (appStore.data.master.plans || [])
+  .filter(plan => plan.yearMonth === yearMonth)
+  .filter(plan => plan.active !== false);
+
+if (!window.handleNumericInput) {
+  window.handleNumericInput = (el) => {
+    const cursor = el.selectionStart;
+    const oldVal = el.value;
+    const raw = oldVal.replace(/,/g, '');
+    const num = Number(raw);
+    if (Number.isNaN(num) || raw === '') return;
+    const formatted = num.toLocaleString();
+    if (oldVal === formatted) return;
+    el.value = formatted;
+    const diff = formatted.length - oldVal.length;
+    el.setSelectionRange(cursor + diff, cursor + diff);
+  };
+}
 
 export function renderDashboard(container) {
   containerEl = container;
@@ -61,12 +84,34 @@ export function renderDashboard(container) {
     .reduce((sum, i) => sum + (i.currentBalance || 0), 0);
 
   // 今月の予定収支 (実施日が今月のもの)
-  const pendingIncome = events
+  const generatedPreviewEvents = generateMonthEvents(
+    appStore.data.master.items || [],
+    masterLoans,
+    appStore.data.master.clients || [],
+    currentYear,
+    currentMonth
+  );
+  const monthBaseEvents = events.length > 0 ? events : generatedPreviewEvents;
+  const plansThisMonth = getMonthlyPlans(yearMonth);
+  const planEvents = plansThisMonth.map(plan => ({
+    id: `plan-preview-${plan.id}`,
+    masterId: plan.id,
+    name: `計画: ${plan.name}`,
+    type: plan.type,
+    amount: Number(plan.amount) || 0,
+    actualDate: `${plan.yearMonth}-15`,
+    originalDate: `${plan.yearMonth}-15`,
+    status: 'pending',
+    isPlan: true
+  }));
+  const survivalEvents = [...monthBaseEvents, ...planEvents];
+
+  const pendingIncome = survivalEvents
     .filter(e => e.type === 'income' && e.status === 'pending' && e.actualDate.startsWith(yearMonth))
-    .reduce((sum, e) => sum + e.amount, 0);
-  const pendingExpense = events
+    .reduce((sum, e) => sum + getEventAmount(e), 0);
+  const pendingExpense = survivalEvents
     .filter(e => e.type === 'expense' && e.status === 'pending' && e.actualDate.startsWith(yearMonth))
-    .reduce((sum, e) => sum + e.amount, 0);
+    .reduce((sum, e) => sum + getEventAmount(e), 0);
   
   const estimatedEndBalance = totalBankBalance + pendingIncome - pendingExpense;
 
@@ -87,15 +132,75 @@ export function renderDashboard(container) {
       : '今月も良いペースです。この調子でいきましょう。';
 
   const settings = appStore.data.settings || {};
+  const survivalInput = settings.survivalInputs?.yearMonth === yearMonth
+    ? settings.survivalInputs
+    : { yearMonth, startingCash: 0, extraIncome: 0, extraExpense: 0, extraRepayment: 0 };
+  const roughStartingCash = Number(survivalInput.startingCash) || 0;
+  const roughExtraIncome = Number(survivalInput.extraIncome) || 0;
+  const roughExtraExpense = Number(survivalInput.extraExpense) || 0;
+  const plannedExtraRepayment = Number(survivalInput.extraRepayment) || 0;
+  const fixedIncome = survivalEvents
+    .filter(e => e.type === 'income' && !e.isPlan && e.actualDate.startsWith(yearMonth))
+    .reduce((sum, e) => sum + getEventAmount(e), 0);
+  const planIncome = planEvents
+    .filter(e => e.type === 'income')
+    .reduce((sum, e) => sum + getEventAmount(e), 0);
+  const planExpense = planEvents
+    .filter(e => e.type === 'expense')
+    .reduce((sum, e) => sum + getEventAmount(e), 0);
+  const cardExpense = survivalEvents
+    .filter(e => e.type === 'expense' && e.actualDate.startsWith(yearMonth) && (e.tag === 'card' || e.id?.startsWith('card-billing-') || e.name?.includes('カード')))
+    .reduce((sum, e) => sum + getEventAmount(e), 0);
+  const debtExpense = survivalEvents
+    .filter(e => e.type === 'expense' && e.actualDate.startsWith(yearMonth) && (e.name?.startsWith('返済:') || e.tag === 'loan'))
+    .reduce((sum, e) => sum + getEventAmount(e), 0);
+  const fixedExpense = Math.max(0, pendingExpense - cardExpense - debtExpense - planExpense);
+  const survivalIncome = fixedIncome + roughExtraIncome + planIncome;
+  const survivalExpense = pendingExpense + roughExtraExpense + plannedExtraRepayment;
+  const survivalBalance = roughStartingCash + survivalIncome - survivalExpense;
+  const shortage = Math.max(0, -survivalBalance);
+  const survivalStatus = delayedEvents.length > 0
+    ? 'overdue'
+    : shortage > 0
+      ? 'danger'
+      : survivalBalance < 30000
+        ? 'tight'
+        : 'safe';
+  const nextRiskEvents = survivalEvents
+    .filter(e => e.type === 'expense' && e.status === 'pending' && e.actualDate.startsWith(yearMonth))
+    .sort((a, b) => a.actualDate.localeCompare(b.actualDate))
+    .slice(0, 5);
 
   // ─── アドバイスカード用データ計算 ───────────────────────────
   const banks = masterItems.filter(i => i.type === 'bank' && i.active !== false);
   const activeLoans = masterLoans.filter(l => l.type !== 'クレジットカード' && l.active !== false);
+  const prepayTargetLoan = activeLoans
+    .filter(l => (Number(l.currentBalance) || 0) > 0)
+    .sort((a, b) => {
+      const rateDiff = (Number(b.interestRate) || 0) - (Number(a.interestRate) || 0);
+      if (rateDiff !== 0) return rateDiff;
+      return (Number(b.currentBalance) || 0) - (Number(a.currentBalance) || 0);
+    })[0];
+  const loansAfterPrepay = plannedExtraRepayment > 0 && prepayTargetLoan
+    ? masterLoans.map(loan => loan.id === prepayTargetLoan.id
+      ? { ...loan, currentBalance: Math.max(0, (Number(loan.currentBalance) || 0) - plannedExtraRepayment) }
+      : loan)
+    : masterLoans;
+  const payoffAfterPrepay = calculatePayoffSummary(loansAfterPrepay);
+  const prepayMonthsSaved = Number.isFinite(payoffSummary.totalMonths) && Number.isFinite(payoffAfterPrepay.totalMonths)
+    ? Math.max(0, payoffSummary.totalMonths - payoffAfterPrepay.totalMonths)
+    : 0;
   const incomeItems = masterItems.filter(i => i.type === 'income' && i.active !== false);
   const pendingCardInputs = creditCards.filter(c => {
     const ev = (appStore.data.calendar?.generatedMonths?.[yearMonth] || []).find(e => e.id === `card-billing-${c.id}-${yearMonth}`);
     return !ev || ev.amount <= 0;
   });
+  const monthlyQuestions = [
+    ...(pendingCardInputs.length > 0 ? [`カード請求が未確定: ${pendingCardInputs.length}枚`] : []),
+    ...(roughStartingCash <= 0 ? ['今月使える手元資金をざっくり入力'] : []),
+    ...(plansThisMonth.length > 0 ? [`今月の予定支出/収入: ${plansThisMonth.length}件`] : []),
+    ...(delayedEvents.length > 0 ? [`延滞中: ${delayedEvents.length}件`] : [])
+  ];
 
   // セットアップチェックリスト
   const setupChecks = [
@@ -116,15 +221,15 @@ export function renderDashboard(container) {
 
   // 繰り上げ返済アドバイス
   const adviseLoan = activeLoans
-    .filter(l => l.balance > 0)
+    .filter(l => l.currentBalance > 0)
     .sort((a, b) => ((b.interestRate || 0) - (a.interestRate || 0)))[0];
   const safeBuffer = banks.length > 0 ? 30000 : 0; // 生活費バッファー3万
-  const surplusForPrepay = Math.max(0, estimatedEndBalance - safeBuffer);
+  const surplusForPrepay = Math.max(0, survivalBalance - safeBuffer);
   let prepayAdvice = null;
   if (adviseLoan && surplusForPrepay >= 1000) {
     const r = (adviseLoan.interestRate || 0) / 100 / 12;
     const M = adviseLoan.monthlyPayment || adviseLoan.amount || 0;
-    const P = adviseLoan.balance || 0;
+    const P = adviseLoan.currentBalance || 0;
     let monthsSaved = 0;
     if (r > 0 && M > r * P) {
       const normalMonths = Math.ceil(-Math.log(1 - r * P / M) / Math.log(1 + r));
@@ -146,6 +251,42 @@ export function renderDashboard(container) {
   const nextRepayment = events
     .filter(e => e.status === 'pending' && e.name.startsWith('返済:') && e.actualDate.startsWith(yearMonth))
     .sort((a, b) => a.actualDate.localeCompare(b.actualDate))[0];
+  const statusCopy = {
+    safe: {
+      label: '今月は耐えられそう',
+      tone: 'safe',
+      message: `月末見込みは ${money(survivalBalance)}。このままなら滞納リスクは低めです。`
+    },
+    tight: {
+      label: 'ギリギリ運用',
+      tone: 'tight',
+      message: `月末見込みは ${money(survivalBalance)}。カード確定額や臨時支出が増えると危ないラインです。`
+    },
+    danger: {
+      label: 'このままだと不足',
+      tone: 'danger',
+      message: `${money(shortage)} 足りません。支払い延期・臨時収入・借入候補を確認してください。`
+    },
+    overdue: {
+      label: '延滞を先に処理',
+      tone: 'danger',
+      message: `期限切れの支払いが ${delayedEvents.length} 件あります。いつ払えるかを先に決めましょう。`
+    }
+  }[survivalStatus];
+  const primaryAction = shortage > 0
+    ? '緊急借入・延期を検討'
+    : pendingCardInputs.length > 0
+      ? 'カード請求額を確定'
+      : plansThisMonth.length === 0
+        ? '先の予定を追加'
+        : '支払い一覧を確認';
+  const primaryActionHandler = shortage > 0
+    ? 'showEmergencyLoanModal()'
+    : pendingCardInputs.length > 0
+      ? `document.getElementById('expense-${pendingCardInputs[0].id}')?.focus()`
+      : plansThisMonth.length === 0
+        ? `location.hash='#analysis'; setTimeout(()=>{ if(window.switchAnalysisTab) window.switchAnalysisTab('planning'); }, 100)`
+        : `document.getElementById('payments-detail')?.scrollIntoView({behavior:'smooth'})`;
 
   container.innerHTML = `
     <!-- ヘッダー -->
@@ -163,6 +304,188 @@ export function renderDashboard(container) {
         <button onclick="generateYearEvents()" class="btn small" title="年内一括生成">年内一括</button>
       </div>
     </div>
+
+    <section class="survival-hero survival-${statusCopy.tone}">
+      <div class="survival-main">
+        <div class="eyebrow">今月の生存判定</div>
+        <h1>${statusCopy.label}</h1>
+        <p>${statusCopy.message}</p>
+        <div class="survival-actions">
+          <button class="btn primary" onclick="${primaryActionHandler}">${primaryAction}</button>
+          <button class="btn" onclick="location.hash='#analysis'; setTimeout(()=>{ if(window.switchAnalysisTab) window.switchAnalysisTab('planning'); }, 100)">将来の予定を試す</button>
+        </div>
+      </div>
+      <div class="survival-number">
+        <span>月末見込み</span>
+        <strong class="${survivalBalance < 0 ? 'negative' : 'positive'}">${money(survivalBalance)}</strong>
+        <small>ざっくり手元資金 + 今月収入 - 今月支出</small>
+      </div>
+    </section>
+
+    <section class="generation-strip ${events.length > 0 ? 'done' : ''}">
+      <div>
+        <strong>${events.length > 0 ? '今月の予定データは作成済み' : '今月の予定データはまだ未作成'}</strong>
+        <span>${events.length > 0 ? `${events.length}件の予定をもとに判定しています` : '固定収入・固定費・返済予定を保存して、支払い処理できる状態にします'}</span>
+      </div>
+      <button onclick="generateEvents()" class="btn ${events.length > 0 ? 'small' : 'primary'}">${events.length > 0 ? '再生成' : '予定を作成'}</button>
+    </section>
+
+    <section class="control-board">
+      <div class="control-card primary-task">
+        <div class="control-head">
+          <div>
+            <span class="task-kicker">毎月やること 1</span>
+            <h3>カード請求額を確定する</h3>
+          </div>
+          <strong>${creditCards.length > 0 ? `${creditCards.length - pendingCardInputs.length}/${creditCards.length}` : '未登録'}</strong>
+        </div>
+        <p>カードごとに明細が確定したら金額だけ入れます。引落日に支出予定として反映します。</p>
+        ${creditCards.length === 0 ? `
+          <button class="btn primary" onclick="location.hash='#master'; setTimeout(()=>{ if(window.switchMasterTab) window.switchMasterTab('cards'); }, 100)">カードを登録する</button>
+        ` : `
+          <div class="card-billing-list">
+            ${creditCards.map(card => {
+              const payDate = window.computePayDate(currentYear, currentMonth, card);
+              const payMonthKey = toYearMonth(payDate.getFullYear(), payDate.getMonth() + 1);
+              const billingEvent = (appStore.data.calendar?.generatedMonths?.[payMonthKey] || []).find(e => e.id === `card-billing-${card.id}-${payMonthKey}`);
+              const currentAmount = billingEvent?.amount || 0;
+              return `
+                <div class="card-billing-row ${currentAmount > 0 ? 'done' : ''}">
+                  <div>
+                    <strong>${card.name}</strong>
+                    <span>引落 ${payDate.getMonth() + 1}/${payDate.getDate()}</span>
+                  </div>
+                  <input type="text" inputmode="numeric"
+                    id="ops-expense-${card.id}"
+                    value="${currentAmount > 0 ? formatNumber(currentAmount) : ''}"
+                    placeholder="請求額"
+                    oninput="handleNumericInput(this); saveExpenseInput('${card.id}', this.value)">
+                  <button class="btn small ${currentAmount > 0 ? '' : 'primary'}" onclick="confirmExpense('${card.id}')">${currentAmount > 0 ? '更新' : '確定'}</button>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+      </div>
+
+      <div class="control-card">
+        <div class="control-head">
+          <div>
+            <span class="task-kicker">毎月やること 2</span>
+            <h3>収支を調整する</h3>
+          </div>
+        </div>
+        <p>固定収入以外の案件、旅行・買い物などの一時支出をざっくり入れて、今月足りるかを見ます。</p>
+        <div class="mini-input-grid">
+          <label>
+            <span>臨時収入</span>
+            <input type="text" inputmode="numeric" value="${roughExtraIncome ? formatNumber(roughExtraIncome) : ''}" placeholder="例: 80,000" oninput="handleNumericInput(this); updateSurvivalInput('extraIncome', this.value)">
+          </label>
+          <label>
+            <span>追加支出</span>
+            <input type="text" inputmode="numeric" value="${roughExtraExpense ? formatNumber(roughExtraExpense) : ''}" placeholder="例: 50,000" oninput="handleNumericInput(this); updateSurvivalInput('extraExpense', this.value)">
+          </label>
+        </div>
+        <button class="btn small" onclick="location.hash='#analysis'; setTimeout(()=>{ if(window.switchAnalysisTab) window.switchAnalysisTab('planning'); }, 100)">旅行・指輪など先の予定を入れる</button>
+      </div>
+
+      <div class="control-card loan-task">
+        <div class="control-head">
+          <div>
+            <span class="task-kicker">毎月やること 3</span>
+            <h3>返済ペースを決める</h3>
+          </div>
+        </div>
+        <div class="loan-summary-mini">
+          <div><span>借金残高</span><strong>${activeLoans.length > 0 ? money(payoffSummary.totalBalance) : '未登録'}</strong></div>
+          <div><span>毎月返済</span><strong>${activeLoans.length > 0 ? money(payoffSummary.monthlyTotal) : '未登録'}</strong></div>
+          <div><span>完済予定</span><strong>${activeLoans.length > 0 ? payoffSummary.payoffDate : '借入を登録すると表示'}</strong></div>
+        </div>
+        ${activeLoans.length > 0 ? `
+          <label class="prepay-input">
+            <span>今月の繰上げ返済予定</span>
+            <input type="text" inputmode="numeric" value="${plannedExtraRepayment ? formatNumber(plannedExtraRepayment) : ''}" placeholder="例: 30,000" oninput="handleNumericInput(this); updateSurvivalInput('extraRepayment', this.value)">
+          </label>
+          ${plannedExtraRepayment > 0 ? `
+            <div class="prepay-result ${survivalBalance < 0 ? 'bad' : 'good'}">
+              ${prepayTargetLoan ? `${prepayTargetLoan.name} に充当すると完済予定は ${payoffAfterPrepay.payoffDate}${prepayMonthsSaved > 0 ? `（${prepayMonthsSaved}ヶ月短縮）` : ''}。` : '返済対象の借入がありません。'}
+              ${survivalBalance < 0 ? `ただし今月は ${money(shortage)} 不足します。` : `今月末見込みは ${money(survivalBalance)} です。`}
+            </div>
+          ` : `
+            <div class="prepay-result">余裕が出た月だけ入れればOK。今月足りるかと完済予定を同時に見ます。</div>
+          `}
+        ` : `
+          <button class="btn primary" onclick="location.hash='#master'; setTimeout(()=>{ if(window.switchMasterTab) window.switchMasterTab('loans'); }, 100)">借入を登録する</button>
+        `}
+      </div>
+    </section>
+
+    <section class="survival-grid">
+      <div class="survival-panel quick-inputs">
+        <div class="panel-title">
+          <span>今月の前提</span>
+          <small>正確な口座残高じゃなくてOK</small>
+        </div>
+        <label>
+          <span>今月使える手元資金</span>
+          <input type="text" inputmode="numeric" value="${roughStartingCash ? formatNumber(roughStartingCash) : ''}" placeholder="例: 120,000" oninput="handleNumericInput(this); updateSurvivalInput('startingCash', this.value)">
+        </label>
+        <label>
+          <span>臨時収入・追加案件</span>
+          <input type="text" inputmode="numeric" value="${roughExtraIncome ? formatNumber(roughExtraIncome) : ''}" placeholder="例: 80,000" oninput="handleNumericInput(this); updateSurvivalInput('extraIncome', this.value)">
+        </label>
+        <label>
+          <span>臨時支出・調整額</span>
+          <input type="text" inputmode="numeric" value="${roughExtraExpense ? formatNumber(roughExtraExpense) : ''}" placeholder="例: 50,000" oninput="handleNumericInput(this); updateSurvivalInput('extraExpense', this.value)">
+        </label>
+      </div>
+
+      <div class="survival-panel totals">
+        <div class="panel-title"><span>今月の内訳</span></div>
+        <div class="money-row income"><span>固定/予定収入</span><strong>${money(fixedIncome)}</strong></div>
+        <div class="money-row income"><span>臨時・計画収入</span><strong>${money(roughExtraIncome + planIncome)}</strong></div>
+        <div class="money-row expense"><span>カード引落</span><strong>${money(cardExpense)}</strong></div>
+        <div class="money-row expense"><span>借金返済</span><strong>${money(debtExpense)}</strong></div>
+        <div class="money-row expense"><span>繰上げ返済予定</span><strong>${money(plannedExtraRepayment)}</strong></div>
+        <div class="money-row expense"><span>固定費・予定支出</span><strong>${money(fixedExpense + planExpense + roughExtraExpense)}</strong></div>
+      </div>
+
+      <div class="survival-panel questions">
+        <div class="panel-title">
+          <span>未確認ポイント</span>
+          <small>ここがズレると予測もズレます</small>
+        </div>
+        ${monthlyQuestions.length > 0 ? monthlyQuestions.map(q => `
+          <div class="question-pill">${q}</div>
+        `).join('') : `
+          <div class="question-pill done">今月の主要チェックは完了しています</div>
+        `}
+      </div>
+    </section>
+
+    <section class="survival-panel next-payments" id="payments-detail">
+      <div class="panel-title">
+        <span>次に落ちる支払い</span>
+        <small>カレンダーより先に、ここだけ見ればOK</small>
+      </div>
+      ${nextRiskEvents.length > 0 ? `
+        <div class="payment-list">
+          ${nextRiskEvents.map(e => {
+            const isLate = e.actualDate < todayStr;
+            return `
+              <button class="payment-row ${isLate ? 'late' : ''}" onclick="${e.isPlan ? `location.hash='#analysis'; setTimeout(()=>{ if(window.switchAnalysisTab) window.switchAnalysisTab('planning'); }, 100)` : `showEventModal('${e.id}')`}">
+                <span class="payment-date">${e.actualDate.slice(5).replace('-', '/')}</span>
+                <span class="payment-name">${e.name}</span>
+                <strong>${money(e.amount)}</strong>
+                <em>${isLate ? '延滞中' : e.isPlan ? '計画' : '予定'}</em>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      ` : `
+        <div class="empty-state">今月の支払い予定はまだありません。予定を生成するか、将来計画を追加してください。</div>
+      `}
+    </section>
 
     <!-- ========================================
          毎月の操作フロー（ここが唯一の操作ハブ）
@@ -459,13 +782,32 @@ window.saveExpenseInput = (id, value) => {
   });
 };
 
+window.updateSurvivalInput = (field, value) => {
+  const yearMonth = toYearMonth(currentYear, currentMonth);
+  const amount = parseNumber(value);
+  const current = appStore.data.settings?.survivalInputs?.yearMonth === yearMonth
+    ? appStore.data.settings.survivalInputs
+    : { yearMonth, startingCash: 0, extraIncome: 0 };
+  appStore.updateSettings({
+    survivalInputs: {
+      ...current,
+      yearMonth,
+      [field]: Number.isFinite(amount) ? amount : 0
+    }
+  });
+  window.clearTimeout(survivalInputRenderTimer);
+  survivalInputRenderTimer = window.setTimeout(() => {
+    if (containerEl) renderDashboard(containerEl);
+  }, 300);
+};
+
 window.confirmExpense = (id) => {
   const yearMonth = toYearMonth(currentYear, currentMonth);
   const masterLoans = appStore.data.master.loans || [];
   const creditCards = masterLoans.filter(l => l.type === 'クレジットカード' && l.active !== false);
   const card = creditCards.find(c => c.id === id);
   if (!card) return;
-  const inputEl = document.getElementById(`expense-${id}`);
+  const inputEl = document.getElementById(`ops-expense-${id}`) || document.getElementById(`expense-${id}`);
   const amount = inputEl ? parseNumber(inputEl.value) : 0;
   if (!amount || amount <= 0) {
     window.showToast('金額を入力してください', 'warn');

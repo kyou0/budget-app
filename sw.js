@@ -1,4 +1,4 @@
-const CACHE_NAME = 'budget-app-v27';
+const CACHE_NAME = 'budget-app-v30-auth-startup-fix';
 const ASSETS = [
   './',
   './index.html',
@@ -51,6 +51,27 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  const shouldPreferNetwork = (
+    event.request.mode === 'navigate' ||
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css')
+  );
+
+  if (shouldPreferNetwork) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((response) => response || caches.match('./')))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((response) => {
       if (response) return response;
