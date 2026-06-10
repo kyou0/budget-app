@@ -1,14 +1,17 @@
-import { Router } from './src/router.js';
-import { renderDashboard } from './src/ui/dashboard.js';
-import { renderAnalysis } from './src/ui/analysis.js';
-import { renderMaster } from './src/ui/master.js';
-import { renderSettings } from './src/ui/settings.js';
-import { startTutorial } from './src/ui/tutorial.js';
+// キャッシュバスティング: import.meta.url に付いた ?v= を全サブモジュールに伝播
+const _v = new URL(import.meta.url).searchParams.get('v') || '';
+const _q = _v ? `?v=${_v}` : '';
 
-import { store as appStore } from './src/store.js';
-import { googleAuth, initGoogleAuth } from './src/auth/googleAuth.js';
-import { driveSync } from './src/sync/driveSync.js';
-import { calendarSync } from './src/sync/calendarSync.js';
+const { Router }          = await import(`./src/router.js${_q}`);
+const { renderDashboard } = await import(`./src/ui/dashboard.js${_q}`);
+const { renderAnalysis }  = await import(`./src/ui/analysis.js${_q}`);
+const { renderMaster }    = await import(`./src/ui/master.js${_q}`);
+const { renderSettings }  = await import(`./src/ui/settings.js${_q}`);
+const { startTutorial }   = await import(`./src/ui/tutorial.js${_q}`);
+const { store: appStore } = await import(`./src/store.js${_q}`);
+const { googleAuth, initGoogleAuth } = await import(`./src/auth/googleAuth.js${_q}`);
+const { driveSync }       = await import(`./src/sync/driveSync.js${_q}`);
+const { calendarSync }    = await import(`./src/sync/calendarSync.js${_q}`);
 
 const container = document.getElementById('app-container');
 
@@ -74,6 +77,122 @@ window.showConfirm = (message, title = '確認') => {
 /**
  * 全画面ローディング（同期中など）の表示・非表示
  */
+// ─── 同期オーバーレイ（操作ブロック＋ステップ表示） ─────────────────
+
+const SYNC_STEPS_DEF = [
+  { id: 'drive-pull',  icon: '☁️', label: 'Drive からデータを取得' },
+  { id: 'drive-push',  icon: '☁️', label: 'Drive にデータを保存' },
+  { id: 'cal',         icon: '📅', label: 'Googleカレンダーを同期' },
+];
+
+function getSyncOverlay() {
+  let el = document.getElementById('sync-overlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'sync-overlay';
+    el.className = 'hidden';
+    el.innerHTML = `
+      <div class="sync-card">
+        <div class="sync-card-header">
+          <div class="sync-ring">
+            <svg viewBox="0 0 36 36">
+              <circle class="sync-ring-track" cx="18" cy="18" r="14"/>
+              <circle class="sync-ring-fill" cx="18" cy="18" r="14"/>
+            </svg>
+          </div>
+          <div class="sync-card-title">
+            <div class="main" id="sync-title">同期中...</div>
+            <div class="sub" id="sync-subtitle">アプリのデータを最新に更新しています</div>
+          </div>
+        </div>
+        <div class="sync-progress-bar">
+          <div class="sync-progress-fill" id="sync-pbar"></div>
+        </div>
+        <div class="sync-steps" id="sync-steps-list">
+          ${SYNC_STEPS_DEF.map(s => `
+            <div class="sync-step" id="sync-step-${s.id}">
+              <div class="sync-step-icon">・</div>
+              <span>${s.icon} ${s.label}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
+window.showSyncProgress = (stepId, percent = null) => {
+  const el = getSyncOverlay();
+  el.classList.remove('hidden', 'finishing');
+
+  // プログレスバー更新
+  const pbar = el.querySelector('#sync-pbar');
+  if (pbar && percent !== null) pbar.style.width = `${percent}%`;
+
+  // リング更新（88 = full circumference）
+  const ringFill = el.querySelector('.sync-ring-fill');
+  if (ringFill && percent !== null) {
+    ringFill.style.strokeDashoffset = 88 - (88 * percent / 100);
+  }
+
+  // ステップ状態更新
+  let reachedActive = false;
+  SYNC_STEPS_DEF.forEach(s => {
+    const stepEl = el.querySelector(`#sync-step-${s.id}`);
+    const iconEl = stepEl?.querySelector('.sync-step-icon');
+    if (!stepEl) return;
+    if (s.id === stepId) {
+      stepEl.classList.remove('done');
+      stepEl.classList.add('active');
+      if (iconEl) iconEl.textContent = '⟳';
+      reachedActive = true;
+    } else if (!reachedActive) {
+      stepEl.classList.remove('active');
+      stepEl.classList.add('done');
+      if (iconEl) iconEl.textContent = '✓';
+    } else {
+      stepEl.classList.remove('active', 'done');
+      if (iconEl) iconEl.textContent = '・';
+    }
+  });
+
+  // タイトル更新
+  const titleEl = el.querySelector('#sync-title');
+  const step = SYNC_STEPS_DEF.find(s => s.id === stepId);
+  if (titleEl && step) titleEl.textContent = `${step.icon} ${step.label}中...`;
+};
+
+window.hideSyncProgress = (successMessage = null) => {
+  const el = document.getElementById('sync-overlay');
+  if (!el) return;
+
+  // 全ステップを完了に
+  const pbar = el.querySelector('#sync-pbar');
+  if (pbar) pbar.style.width = '100%';
+  const ringFill = el.querySelector('.sync-ring-fill');
+  if (ringFill) ringFill.style.strokeDashoffset = '0';
+  SYNC_STEPS_DEF.forEach(s => {
+    const stepEl = el.querySelector(`#sync-step-${s.id}`);
+    const iconEl = stepEl?.querySelector('.sync-step-icon');
+    if (stepEl) { stepEl.classList.remove('active'); stepEl.classList.add('done'); }
+    if (iconEl) iconEl.textContent = '✓';
+  });
+  const titleEl = el.querySelector('#sync-title');
+  if (titleEl) titleEl.textContent = '同期完了 ✓';
+
+  setTimeout(() => {
+    el.classList.add('finishing');
+    setTimeout(() => {
+      el.classList.add('hidden');
+      el.classList.remove('finishing');
+      if (successMessage) window.showToast(successMessage, 'success');
+    }, 380);
+  }, 700);
+};
+
+// ─── フルスクリーンローディング（手動操作など短い処理用に残す） ────
 window.toggleLoadingOverlay = (show, message = '同期中...') => {
   let overlay = document.getElementById('global-loading-overlay');
   if (show) {
@@ -235,20 +354,15 @@ async function initApp() {
   }
 
   // Google Auth 初期化
+  // 起動時に自動でトークン取得まで行うと、localhost のポート違いなどで
+  // Google OAuth の origin_mismatch 画面へ遷移してアプリが空に見える。
+  // ここではライブラリ初期化と保存済みトークン復元だけ行い、認証要求は同期操作時に限定する。
   const configClientId = appStore.data.settings?.googleClientId;
   if (configClientId) {
     try {
       await initGoogleAuth(configClientId);
-      
-      // 自動ログイン試行 (サインイン済みでデモモードでない場合)
-      if (!demoMode && !googleAuth.isSignedIn()) {
-        try {
-          // サイレントにトークン取得を試みる (プロンプトなし)
-          await googleAuth.getAccessToken(['openid', 'profile', 'email']);
-          console.log('Auto-reauthenticated successfully');
-        } catch (err) {
-          console.log('Silent auto-reauth failed', err);
-        }
+      if (googleAuth.isSignedIn()) {
+        console.log('Token restored from localStorage — startup auth request skipped');
       }
     } catch (err) {
       console.warn('GIS init failed', err);
@@ -265,20 +379,20 @@ async function initApp() {
   }
 
   try {
-    if (googleAuth.isSignedIn() && !appStore.data.settings?.demoMode) {
-      window.toggleLoadingOverlay(true, 'データを同期しています...');
-      await runAutoSync();
-      window.toggleLoadingOverlay(false);
-    }
-
+    // ─── まず画面を先に表示してから同期をバックグラウンドで実行 ───
     router.init();
-    
+
     // チュートリアルが必要な場合
     if (demoMode && !demoTutorialShown) {
       localStorage.setItem('demoTutorialShown', 'true');
       setTimeout(() => startTutorial({ mode: 'demo' }), 500);
     } else if (!appStore.data.settings?.tutorialCompleted) {
       setTimeout(() => startTutorial(), 1000);
+    }
+
+    // 同期はバックグラウンドで非同期実行（UIをブロックしない）
+    if (googleAuth.isSignedIn() && !appStore.data.settings?.demoMode) {
+      runAutoSync().catch(err => console.warn('Background sync error', err));
     }
   } catch (err) {
     console.error('Router init failed', err);
@@ -287,15 +401,24 @@ async function initApp() {
 
 async function runAutoSync() {
   const settings = appStore.data.settings || {};
+  let anySync = false;
 
   if (settings.driveSyncEnabled) {
+    anySync = true;
     try {
-      window.toggleLoadingOverlay(true, 'Google Driveと同期中...');
+      window.showSyncProgress('drive-pull', 10);
       const remoteData = await driveSync.pull({ mode: 'auto' });
       if (remoteData) {
         appStore.data = appStore.migrate(remoteData);
         appStore.save();
+        // データ更新後に現在の画面を再描画
+        const hash = window.location.hash || '#dashboard';
+        const route = { '#dashboard': () => import('./src/ui/dashboard.js').then(m => m.renderDashboard(container)),
+                        '#master':    () => import('./src/ui/master.js').then(m => m.renderMaster(container)),
+                        '#settings':  () => import('./src/ui/settings.js').then(m => m.renderSettings(container)) };
+        if (route[hash]) route[hash]().catch(() => {});
       }
+      window.showSyncProgress('drive-push', 40);
       await driveSync.push({ mode: 'auto' });
     } catch (err) {
       console.warn('Auto drive sync failed', err);
@@ -306,48 +429,50 @@ async function runAutoSync() {
   if (settings.calendarSyncEnabled) {
     const months = Object.keys(appStore.data.calendar?.generatedMonths || {});
     if (months.length > 0) {
+      anySync = true;
       try {
-        window.toggleLoadingOverlay(true, 'Googleカレンダーと同期中...');
-        for (const ym of months) {
-          await calendarSync.syncMonthEvents(ym);
+        for (let i = 0; i < months.length; i++) {
+          const percent = 55 + Math.round((i / months.length) * 43);
+          window.showSyncProgress('cal', percent);
+          await calendarSync.syncMonthEvents(months[i]);
         }
         appStore.addSyncLog({
-          type: 'calendar',
-          mode: 'auto',
-          status: 'success',
+          type: 'calendar', mode: 'auto', status: 'success',
           message: `Calendar sync: ${months.length}ヶ月`
         });
       } catch (err) {
         console.warn('Auto calendar sync failed', err);
         appStore.addSyncLog({
-          type: 'calendar',
-          mode: 'auto',
-          status: 'error',
+          type: 'calendar', mode: 'auto', status: 'error',
           message: `Calendar sync: ${err.message || '失敗'}`
         });
         window.showToast('カレンダー同期に失敗しました', 'danger');
       }
     }
   }
+
+  if (anySync) {
+    window.hideSyncProgress();
+  }
 }
 
-// 初期化
-document.addEventListener('DOMContentLoaded', () => {
-  // 起動時に設定からClient IDを読み込んで初期化
-  const DEFAULT_CLIENT_ID = '45451544416-8nlqo6bhl56arpjuuh4kekfa24ed9np5.apps.googleusercontent.com';
+// ─── 初期化 ────────────────────────────────────────────────────
+// app.js は <script type="module"> の dynamic import() で読み込まれるため、
+// 実行時点ではすでに DOM は構築済み・DOMContentLoaded 発火済み。
+// addEventListener('DOMContentLoaded', ...) は発火しないので直接呼び出す。
+
+const DEFAULT_CLIENT_ID = '45451544416-8nlqo6bhl56arpjuuh4kekfa24ed9np5.apps.googleusercontent.com';
+{
   let configClientId = appStore.data.settings?.googleClientId;
-  
-  // Client IDが未設定の場合はデフォルトを設定（利便性のため）
   if (!configClientId) {
-    configClientId = DEFAULT_CLIENT_ID;
     appStore.updateSettings({ googleClientId: DEFAULT_CLIENT_ID });
   }
+}
 
-  initApp();
+initApp();
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-      .then(() => console.log('Service Worker Registered'))
-      .catch(err => console.log('Service Worker Failed', err));
-  }
-});
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => console.log('Service Worker Registered'))
+    .catch(err => console.log('Service Worker Failed', err));
+}

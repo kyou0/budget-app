@@ -125,6 +125,11 @@ class Store {
     if (!data.settings.expenseConfirmInputs || typeof data.settings.expenseConfirmInputs !== 'object') {
       data.settings.expenseConfirmInputs = { yearMonth: '', values: {} };
     }
+    if (!data.settings.survivalInputs || typeof data.settings.survivalInputs !== 'object') {
+      data.settings.survivalInputs = { yearMonth: '', startingCash: 0, extraIncome: 0, extraExpense: 0, extraRepayment: 0 };
+    }
+    if (typeof data.settings.survivalInputs.extraExpense !== 'number') data.settings.survivalInputs.extraExpense = 0;
+    if (typeof data.settings.survivalInputs.extraRepayment !== 'number') data.settings.survivalInputs.extraRepayment = 0;
     if (!data.transactions) data.transactions = [];
 
     return data;
@@ -316,6 +321,13 @@ class Store {
         this.save();
       }
     }
+  }
+
+  clearMonthEvents(yearMonth) {
+    const events = this.data.calendar.generatedMonths[yearMonth] || [];
+    delete this.data.calendar.generatedMonths[yearMonth];
+    this.save();
+    return events; // 削除前のイベント一覧を返す（GCal削除に使う）
   }
 
   deleteEvent(yearMonth, eventId) {

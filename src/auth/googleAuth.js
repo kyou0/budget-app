@@ -7,6 +7,33 @@ let grantedScopes = '';
 let clientId = null;
 let authPromise = null;
 
+// ─── トークンの永続化 ────────────────────────────────────────
+const TOKEN_KEY = 'budget_app_gtoken';
+
+function _saveToken(token, expiresAt, scopes) {
+  try {
+    localStorage.setItem(TOKEN_KEY, JSON.stringify({ t: token, e: expiresAt, s: scopes }));
+  } catch (e) { /* ignore */ }
+}
+
+function _loadToken() {
+  try {
+    const raw = localStorage.getItem(TOKEN_KEY);
+    if (!raw) return null;
+    const { t, e, s } = JSON.parse(raw);
+    // 有効期限が5分以上残っている場合のみ復元
+    if (t && e && Date.now() < e - 5 * 60 * 1000) {
+      return { token: t, expiresAt: e, scopes: s || '' };
+    }
+    localStorage.removeItem(TOKEN_KEY);
+    return null;
+  } catch (e) { return null; }
+}
+
+function _clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 const CALENDAR_LIST_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
@@ -56,6 +83,16 @@ export async function initGoogleAuth(configClientId) {
           if (window.showToast) window.showToast("Google認証エラーが発生しました", "danger");
         }
       });
+
+      // localStorageからトークンを復元（リロード後の再ログイン防止）
+      const saved = _loadToken();
+      if (saved && !accessToken) {
+        accessToken = saved.token;
+        tokenExpiresAt = saved.expiresAt;
+        grantedScopes = saved.scopes;
+        console.log('Access token restored from localStorage');
+      }
+
       return true;
     } catch (err) {
       console.error('GIS init error:', err);
@@ -128,7 +165,9 @@ export const googleAuth = {
         accessToken = response.access_token;
         tokenExpiresAt = Date.now() + (Number(response.expires_in) * 1000);
         grantedScopes = response.scope || '';
-        console.log('Access token obtained successfully');
+        // localStorageに永続化（次回リロード時の再ログイン防止）
+        _saveToken(accessToken, tokenExpiresAt, grantedScopes);
+        console.log('Access token obtained and persisted');
         resolve(accessToken);
       };
 
@@ -158,8 +197,13 @@ export const googleAuth = {
       google.accounts.oauth2.revoke(accessToken, () => {
         accessToken = null;
         tokenExpiresAt = 0;
+        grantedScopes = '';
       });
     }
+    _clearToken();
+    accessToken = null;
+    tokenExpiresAt = 0;
+    grantedScopes = '';
   },
 
   getScopes() {

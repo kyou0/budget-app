@@ -124,6 +124,13 @@ export const INITIAL_DATA = {
     userBirthdate: '',
     analysisHistory: [],
     analysisTab: 'overview',
+    survivalInputs: {
+      yearMonth: '',
+      startingCash: 0,
+      extraIncome: 0,
+      extraExpense: 0,
+      extraRepayment: 0
+    },
     expenseConfirmInputs: {
       yearMonth: '',
       values: {}

@@ -7,34 +7,46 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="./favicon.ico">
   <link rel="shortcut icon" href="./favicon.ico">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- キャッシュバスティング: デプロイごとに BUILD_VERSION を更新 -->
+  <script>
+    (function() {
+      const v = '20260610-auth-startup-fix-1';
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'styles.css?v=' + v;
+      document.head.appendChild(link);
+    })();
+  </script>
 </head>
 <body>
   <nav class="bottom-nav">
     <a href="#dashboard" class="nav-item">
-      <span class="icon">📅</span>
-      <span class="label">カレンダー</span>
+      <span class="icon">🛟</span>
+      <span class="label">今月</span>
     </a>
     <a href="#analysis" class="nav-item">
-      <span class="icon">📈</span>
-      <span class="label">分析</span>
+      <span class="icon">🔮</span>
+      <span class="label">見通し</span>
     </a>
     <a href="#master" class="nav-item">
-      <span class="icon">⚙️</span>
+      <span class="icon">📋</span>
       <span class="label">マスター</span>
     </a>
     <a href="#settings" class="nav-item">
-      <span class="icon">🔧</span>
+      <span class="icon">⚙️</span>
       <span class="label">設定</span>
     </a>
   </nav>
 
   <main id="app-container"></main>
 
-  <script type="module" src="app.js"></script>
+  <script type="module">
+    const v = Date.now();
+    import(`./app.js?v=${v}`);
+  </script>
 </body>
 </html>
