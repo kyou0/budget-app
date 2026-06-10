@@ -135,6 +135,10 @@ export const INITIAL_DATA = {
       yearMonth: '',
       values: {}
     },
+    incomeConfirmInputs: {
+      yearMonth: '',
+      values: {}
+    },
     loanTypeOptions: [
       '消費者金融',
       '銀行カードローン',

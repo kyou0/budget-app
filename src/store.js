@@ -125,6 +125,9 @@ class Store {
     if (!data.settings.expenseConfirmInputs || typeof data.settings.expenseConfirmInputs !== 'object') {
       data.settings.expenseConfirmInputs = { yearMonth: '', values: {} };
     }
+    if (!data.settings.incomeConfirmInputs || typeof data.settings.incomeConfirmInputs !== 'object') {
+      data.settings.incomeConfirmInputs = { yearMonth: '', values: {} };
+    }
     if (!data.settings.survivalInputs || typeof data.settings.survivalInputs !== 'object') {
       data.settings.survivalInputs = { yearMonth: '', startingCash: 0, extraIncome: 0, extraExpense: 0, extraRepayment: 0 };
     }

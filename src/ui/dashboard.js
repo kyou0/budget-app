@@ -42,6 +42,7 @@ export function renderDashboard(container) {
   const masterLoans = appStore.data.master.loans || [];
   const creditCards = masterLoans.filter(l => l.type === 'クレジットカード' && l.active !== false);
   const masterItems = appStore.data.master.items || [];
+  const settings = appStore.data.settings || {};
   const payoffSummary = calculatePayoffSummary(masterLoans);
   
   // 前後1ヶ月分のイベントも収集（土日調整による月跨ぎ表示バグへの対応）
@@ -92,6 +93,23 @@ export function renderDashboard(container) {
     currentMonth
   );
   const monthBaseEvents = events.length > 0 ? events : generatedPreviewEvents;
+  const incomeInputs = settings.incomeConfirmInputs || { yearMonth: '', values: {} };
+  const incomeInputValues = incomeInputs.yearMonth === yearMonth ? (incomeInputs.values || {}) : {};
+  const applyVariableIncomeOverrides = (eventList) => eventList.map(event => {
+    if (event.type !== 'income' || event.amountMode !== 'variable' || !event.actualDate?.startsWith(yearMonth)) {
+      return event;
+    }
+    const estimatedAmount = Number(event.estimatedAmount ?? event.amount) || 0;
+    if (!Object.prototype.hasOwnProperty.call(incomeInputValues, event.id)) {
+      return { ...event, estimatedAmount, incomeAdjusted: false };
+    }
+    const amount = Number(incomeInputValues[event.id]) || 0;
+    return { ...event, estimatedAmount, amount, incomeAdjusted: true };
+  });
+  const baseEventsWithIncomeOverrides = applyVariableIncomeOverrides(monthBaseEvents);
+  const variableIncomeEvents = baseEventsWithIncomeOverrides
+    .filter(e => e.type === 'income' && e.amountMode === 'variable' && e.actualDate?.startsWith(yearMonth))
+    .sort((a, b) => a.actualDate.localeCompare(b.actualDate));
   const plansThisMonth = getMonthlyPlans(yearMonth);
   const planEvents = plansThisMonth.map(plan => ({
     id: `plan-preview-${plan.id}`,
@@ -104,7 +122,7 @@ export function renderDashboard(container) {
     status: 'pending',
     isPlan: true
   }));
-  const survivalEvents = [...monthBaseEvents, ...planEvents];
+  const survivalEvents = [...baseEventsWithIncomeOverrides, ...planEvents];
 
   const pendingIncome = survivalEvents
     .filter(e => e.type === 'income' && e.status === 'pending' && e.actualDate.startsWith(yearMonth))
@@ -131,7 +149,6 @@ export function renderDashboard(container) {
       ? `今週の支払いが ${thisWeekEvents.length} 件あります。早めに確認しましょう。`
       : '今月も良いペースです。この調子でいきましょう。';
 
-  const settings = appStore.data.settings || {};
   const survivalInput = settings.survivalInputs?.yearMonth === yearMonth
     ? settings.survivalInputs
     : { yearMonth, startingCash: 0, extraIncome: 0, extraExpense: 0, extraRepayment: 0 };
@@ -386,6 +403,36 @@ export function renderDashboard(container) {
             <input type="text" inputmode="numeric" value="${roughExtraExpense ? formatNumber(roughExtraExpense) : ''}" placeholder="例: 50,000" oninput="handleNumericInput(this); updateSurvivalInput('extraExpense', this.value)">
           </label>
         </div>
+        ${variableIncomeEvents.length > 0 ? `
+          <div class="variable-income-box">
+            <div class="variable-income-title">
+              <span>変動収入の今月額</span>
+              <small>見込みから実入金へ更新</small>
+            </div>
+            <div class="variable-income-list">
+              ${variableIncomeEvents.map(event => {
+                const estimated = Number(event.estimatedAmount ?? event.amount) || 0;
+                const currentValue = event.incomeAdjusted ? Number(event.amount) || 0 : '';
+                return `
+                  <div class="variable-income-row ${event.incomeAdjusted ? 'done' : ''}">
+                    <div>
+                      <strong>${event.name}</strong>
+                      <span>${event.actualDate.slice(5).replace('-', '/')} 入金予定 / 見込み ${money(estimated)}</span>
+                    </div>
+                    <input type="text" inputmode="numeric"
+                      id="income-${event.id}"
+                      value="${currentValue !== '' ? formatNumber(currentValue) : ''}"
+                      placeholder="${formatNumber(estimated)}"
+                      oninput="handleNumericInput(this); saveIncomeInput('${event.id}', this.value)">
+                    <button class="btn small ${event.incomeAdjusted ? '' : 'primary'}" onclick="confirmIncomeAmount('${event.id}')">${event.incomeAdjusted ? '更新' : '反映'}</button>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        ` : `
+          <div class="variable-income-empty">時給案件などはマスターで収入/クライアントを「変動」にすると、ここで今月額を更新できます。</div>
+        `}
         <button class="btn small" onclick="location.hash='#analysis'; setTimeout(()=>{ if(window.switchAnalysisTab) window.switchAnalysisTab('planning'); }, 100)">旅行・指輪など先の予定を入れる</button>
       </div>
 
@@ -787,7 +834,7 @@ window.updateSurvivalInput = (field, value) => {
   const amount = parseNumber(value);
   const current = appStore.data.settings?.survivalInputs?.yearMonth === yearMonth
     ? appStore.data.settings.survivalInputs
-    : { yearMonth, startingCash: 0, extraIncome: 0 };
+    : { yearMonth, startingCash: 0, extraIncome: 0, extraExpense: 0, extraRepayment: 0 };
   appStore.updateSettings({
     survivalInputs: {
       ...current,
@@ -799,6 +846,71 @@ window.updateSurvivalInput = (field, value) => {
   survivalInputRenderTimer = window.setTimeout(() => {
     if (containerEl) renderDashboard(containerEl);
   }, 300);
+};
+
+window.saveIncomeInput = (eventId, value) => {
+  const yearMonth = toYearMonth(currentYear, currentMonth);
+  const amount = parseNumber(value);
+  const current = appStore.data.settings?.incomeConfirmInputs?.yearMonth === yearMonth
+    ? appStore.data.settings.incomeConfirmInputs
+    : { yearMonth, values: {} };
+  appStore.updateSettings({
+    incomeConfirmInputs: {
+      yearMonth,
+      values: {
+        ...(current.values || {}),
+        [eventId]: (Number.isFinite(amount) || value === '') ? amount : 0
+      }
+    }
+  });
+  window.clearTimeout(survivalInputRenderTimer);
+  survivalInputRenderTimer = window.setTimeout(() => {
+    if (containerEl) renderDashboard(containerEl);
+  }, 300);
+};
+
+window.confirmIncomeAmount = (eventId) => {
+  const yearMonth = toYearMonth(currentYear, currentMonth);
+  const inputEl = document.getElementById(`income-${eventId}`);
+  const amount = inputEl ? parseNumber(inputEl.value) : 0;
+  if (!Number.isFinite(amount) || amount < 0) {
+    window.showToast('今月の入金額を入力してください', 'warn');
+    return;
+  }
+
+  window.saveIncomeInput(eventId, amount);
+
+  const generatedMonths = appStore.data.calendar?.generatedMonths || {};
+  const sourceMonthKey = Object.keys(generatedMonths)
+    .find(key => (generatedMonths[key] || []).some(event => event.id === eventId));
+
+  if (sourceMonthKey) {
+    appStore.updateEvent(sourceMonthKey, eventId, {
+      amount,
+      amountMode: 'variable',
+      estimatedAmount: (generatedMonths[sourceMonthKey] || []).find(event => event.id === eventId)?.estimatedAmount
+        ?? (generatedMonths[sourceMonthKey] || []).find(event => event.id === eventId)?.amount
+        ?? amount
+    });
+  } else {
+    const previewEvents = generateMonthEvents(
+      appStore.data.master.items || [],
+      appStore.data.master.loans || [],
+      appStore.data.master.clients || [],
+      currentYear,
+      currentMonth
+    ).map(event => event.id === eventId
+      ? { ...event, amount, amountMode: 'variable', estimatedAmount: Number(event.amount) || 0 }
+      : event);
+    appStore.addMonthEvents(yearMonth, previewEvents);
+  }
+
+  if (appStore.data.settings?.driveSyncEnabled) {
+    driveSync.push({ mode: 'auto' }).catch(err => console.error('Auto drive push failed', err));
+  }
+
+  window.showToast(`今月の入金額 ¥${amount.toLocaleString()} を反映しました`, 'success');
+  renderDashboard(containerEl);
 };
 
 window.confirmExpense = (id) => {

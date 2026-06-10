@@ -2285,6 +2285,86 @@ tr:hover td { background: var(--surface-hover) !important; }
   font-weight: 800;
 }
 
+.variable-income-box {
+  margin: 2px 0 12px;
+  padding: 12px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.05), rgba(248, 250, 252, 0.92));
+}
+
+.variable-income-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.variable-income-title span {
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.variable-income-title small {
+  color: var(--text-3);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.variable-income-list {
+  display: grid;
+  gap: 8px;
+}
+
+.variable-income-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(100px, 140px) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.variable-income-row.done {
+  border-color: rgba(4, 120, 87, 0.22);
+  background: var(--success-bg);
+}
+
+.variable-income-row strong {
+  display: block;
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.variable-income-row span {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: 0.72rem;
+}
+
+.variable-income-row input {
+  min-width: 0;
+  width: 100%;
+  text-align: right;
+  font-weight: 800;
+}
+
+.variable-income-empty {
+  margin: 2px 0 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--card-border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-3);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
 .loan-summary-mini {
   display: grid;
   gap: 8px;
@@ -2350,6 +2430,10 @@ tr:hover td { background: var(--surface-hover) !important; }
   }
 
   .card-billing-row {
+    grid-template-columns: 1fr;
+  }
+
+  .variable-income-row {
     grid-template-columns: 1fr;
   }
 
