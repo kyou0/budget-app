@@ -1,4 +1,4 @@
-const CACHE_NAME = 'budget-app-v31-dated-cashflow';
+const CACHE_NAME = 'budget-app-v32-master-source';
 const ASSETS = [
   './',
   './index.html',

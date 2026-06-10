@@ -105,7 +105,7 @@ export function getLogoUrl(name) {
   
   for (const brand of CARD_BRANDS) {
     if (n.includes(brand.key)) {
-      return `https://www.google.com/s2/favicons?domain=${brand.domain}&sz=64`;
+      return brand.logoUrl || `https://www.google.com/s2/favicons?domain=${brand.domain}&sz=64`;
     }
   }
   return null;
@@ -115,7 +115,7 @@ export function getLogoUrl(name) {
  * クレジットカードブランドのリスト
  */
 export const CARD_BRANDS = [
-  { name: 'JCB', key: 'jcb', domain: 'jcb.co.jp' },
+  { name: 'JCB', key: 'jcb', domain: 'global.jcb', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/4/40/JCB_logo.svg' },
   { name: 'Visa', key: 'visa', domain: 'visa.co.jp' },
   { name: 'Mastercard', key: 'master', domain: 'mastercard.co.jp' },
   { name: 'Amex', key: 'amex', domain: 'americanexpress.com' },
