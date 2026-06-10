@@ -2,6 +2,7 @@ const CACHE_NAME = 'budget-app-v30-auth-startup-fix';
 const ASSETS = [
   './',
   './index.html',
+  './reset.html',
   './styles.css',
   './app.js',
   './manifest.json',

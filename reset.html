@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Budget App Reset</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f7fb;
+      color: #0f172a;
+    }
+    main {
+      width: min(520px, calc(100vw - 32px));
+      padding: 28px;
+      background: #fff;
+      border: 1px solid #dbe3ef;
+      border-radius: 20px;
+      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.12);
+    }
+    h1 { margin: 0 0 10px; font-size: 1.4rem; }
+    p { color: #475569; line-height: 1.7; }
+    .status { margin-top: 16px; padding: 12px; border-radius: 12px; background: #eff6ff; color: #1d4ed8; font-weight: 700; }
+    a, button {
+      display: inline-flex;
+      margin-top: 16px;
+      padding: 10px 16px;
+      border: 0;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 800;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Budget App のキャッシュをリセットしています</h1>
+    <p>古いService Workerとキャッシュを削除して、Google認証エラー画面へ飛ばない最新版を読み込み直します。</p>
+    <div id="status" class="status">処理中...</div>
+    <button id="go" hidden>アプリを開く</button>
+  </main>
+  <script>
+    async function resetAppCache() {
+      const status = document.getElementById('status');
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(reg => reg.unregister()));
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(key => caches.delete(key)));
+        }
+        localStorage.removeItem('budget_app_gtoken');
+        status.textContent = 'リセット完了。最新版を開きます。';
+      } catch (err) {
+        console.error(err);
+        status.textContent = '一部リセットに失敗しましたが、最新版を開けます。';
+      }
+      const go = document.getElementById('go');
+      go.hidden = false;
+      go.onclick = () => {
+        location.replace('./?v=auth-startup-fix-2#dashboard');
+      };
+      setTimeout(() => go.click(), 700);
+    }
+    resetAppCache();
+  </script>
+</body>
+</html>
