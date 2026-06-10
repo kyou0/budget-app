@@ -2365,6 +2365,22 @@ tr:hover td { background: var(--surface-hover) !important; }
   line-height: 1.55;
 }
 
+.form-guide {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 10px;
+  background: rgba(37, 99, 235, 0.05);
+  color: var(--text-2);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.form-guide strong {
+  color: var(--text);
+  font-weight: 900;
+}
+
 .loan-summary-mini {
   display: grid;
   gap: 8px;
