@@ -1,5 +1,5 @@
 import { store as appStore } from '../store.js';
-import { getIcon, getLogoUrl, CARD_BRANDS, formatNumber, parseNumber } from '../utils.js';
+import { getIcon, getLogoUrl, getLogoFallbackLabel, CARD_BRANDS, formatNumber, parseNumber } from '../utils.js';
 import { driveSync } from '../sync/driveSync.js';
 import { generateClientEvents } from '../generate.js';
 
@@ -16,21 +16,41 @@ export function renderMaster(container) {
   const loanTypeOptionsHtml = loanTypeOptions
     .map(option => `<option value="${option}">${option}</option>`)
     .join('');
-  const visibleItems = items.filter(i => i.type !== 'bank' && i.type === currentItemType);
+  const incomeItemNames = new Set(
+    items
+      .filter(item => item.type === 'income')
+      .map(item => (item.name || '').trim())
+      .filter(Boolean)
+  );
+  const incomeClientItems = clients.filter(client => !incomeItemNames.has((client.name || '').trim())).map(client => ({
+    ...client,
+    id: `client-${client.id}`,
+    clientId: client.id,
+    type: 'income',
+    tag: client.tag || 'business',
+    name: client.name,
+    scheduleRule: client.scheduleRule || { type: 'monthly', day: client.paymentDay || 15 },
+    __source: 'client'
+  }));
+  const visibleItems = currentItemType === 'income'
+    ? [...items.filter(i => i.type !== 'bank' && i.type === 'income'), ...incomeClientItems]
+    : items.filter(i => i.type !== 'bank' && i.type === 'expense');
 
   // 月次サマリー計算（収支項目タブ用）
-  const activeIncomeItems = items.filter(i => i.type === 'income' && i.active);
+  const activeIncomeItems = [
+    ...items.filter(i => i.type === 'income' && i.active),
+    ...clients.filter(c => c.active && !incomeItemNames.has((c.name || '').trim()))
+  ];
   const activeExpenseItems = items.filter(i => i.type === 'expense' && i.active);
   const monthlyIncome = activeIncomeItems.reduce((s, i) => s + (i.amount || 0), 0);
   const monthlyExpense = activeExpenseItems.reduce((s, i) => s + (i.amount || 0), 0);
   const monthlyBalance = monthlyIncome - monthlyExpense;
 
   const tabMeta = {
-    items:   { icon: '📝', label: '収支項目',        desc: '毎月カレンダーに自動展開される固定費・収入を登録します。ここに登録した金額が予定として表示されます。' },
-    banks:   { icon: '🏦', label: '銀行口座',        desc: '銀行口座と現在の残高を登録。月末予想残高の計算に使われます。' },
-    cards:   { icon: '💳', label: 'クレカ',          desc: 'カードの引落日・銀行を登録。毎月の請求額は📅カレンダー画面で入力します。' },
+    items:   { icon: '📝', label: '固定収支',        desc: '毎月だいたい決まっている収入・固定支出を登録します。時給案件など月ごとに変わる収入は、ここでは見込み額だけ登録して今月額はダッシュボードで更新します。' },
+    banks:   { icon: '🏦', label: '銀行口座',        desc: '口座は入出金の紐付け先です。残高管理を厳密にするより、今月使える手元資金はダッシュボードでざっくり入力します。' },
+    cards:   { icon: '💳', label: 'クレカ',          desc: 'カード名・限度額・引落日・銀行だけを登録します。今月のカード支払い額はダッシュボードで毎月確定します。' },
     loans:   { icon: '💸', label: '借入先',          desc: 'ローン・借金の残高・返済額・金利を登録。返済シミュレーションに使われます。' },
-    clients: { icon: '🤝', label: 'クライアント',    desc: '収入クライアントの単価・支払いサイトを登録します。' },
   };
 
   container.innerHTML = `
@@ -38,9 +58,9 @@ export function renderMaster(container) {
     <div style="padding: 16px 16px 0; display: flex; justify-content: space-between; align-items: center;">
       <div>
         <h1 style="font-size: 1.15rem; font-weight: 800; margin: 0; color: var(--text);">マスター設定</h1>
-        <p style="font-size: 0.75rem; color: var(--text-3); margin: 2px 0 0;">一度登録 → カレンダーへ自動反映</p>
+        <p style="font-size: 0.75rem; color: var(--text-3); margin: 2px 0 0;">毎月変わらない前提だけを登録</p>
       </div>
-      <button onclick="location.hash='#dashboard'" class="btn small" style="display:flex;align-items:center;gap:4px;">📅 カレンダーへ</button>
+      <button onclick="location.hash='#dashboard'" class="btn small" style="display:flex;align-items:center;gap:4px;">🛟 ダッシュボードへ</button>
     </div>
 
     <!-- タブナビ -->
@@ -126,14 +146,14 @@ export function renderMaster(container) {
           ${currentTab === 'items' ? `
             <div class="form-row">
               <div class="form-group">
-                <label>種類</label>
+                <label>登録するもの</label>
                 <select id="master-type" onchange="toggleMasterFormFields()">
                   <option value="expense">支出</option>
                   <option value="income">収入</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>タグ (分類)</label>
+                <label>分類</label>
                 <select id="master-tag">
                   <option value="">(なし)</option>
                   <option value="fixed">固定費</option>
@@ -147,23 +167,25 @@ export function renderMaster(container) {
                 </select>
               </div>
             </div>
+            <div id="master-form-guide" class="form-guide"></div>
             <div id="field-amount" class="form-group">
               <div class="form-row">
                 <div>
-                  <label>金額モード</label>
+                  <label id="master-amount-mode-label">支払額の決まり方</label>
                   <select id="master-amount-mode">
-                    <option value="fixed">固定</option>
-                    <option value="variable">変動</option>
+                    <option value="fixed">毎月ほぼ同じ</option>
+                    <option value="variable">月ごとに変わる</option>
                   </select>
+                  <div id="master-amount-mode-hint" class="hint-text">変わる場合は、今月額をダッシュボードで更新します。</div>
                 </div>
                 <div>
-                  <label>金額 (ベース)</label>
-                  <input type="text" inputmode="numeric" id="master-amount" required oninput="handleNumericInput(this)">
+                  <label id="master-amount-label">毎月の支払額</label>
+                  <input type="text" inputmode="numeric" id="master-amount" required placeholder="例: 80,000" oninput="handleNumericInput(this)">
                 </div>
               </div>
             </div>
             <div id="field-rule" class="form-group">
-              <label>日付ルール</label>
+              <label id="master-rule-label">支払予定日</label>
               <select id="master-rule-type" onchange="toggleRuleFields()">
                 <option value="monthly">毎月◯日</option>
                 <option value="monthEnd">月末</option>
@@ -187,7 +209,7 @@ export function renderMaster(container) {
             </div>
             <div class="form-row">
               <div id="field-bank-select" class="form-group">
-                <label>入出金先銀行</label>
+                <label id="master-bank-label">支払元銀行</label>
                 <select id="master-bank-id">
                   <option value="">(未選択)</option>
                   ${items.filter(i => i.type === 'bank').map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
@@ -211,27 +233,26 @@ export function renderMaster(container) {
             </div>
           ` : currentTab === 'banks' ? `
             <input type="hidden" id="master-type" value="bank">
-            <div id="field-balance" class="form-group">
-              <label>現在残高</label>
-              <input type="text" inputmode="numeric" id="master-balance" required oninput="handleNumericInput(this)">
+            <div class="form-guide">
+              <strong>銀行で登録するもの:</strong> 口座名だけです。カード引落や収支の入出金先として紐付けます。口座残高は毎回調べる前提にしません。
             </div>
           ` : currentTab === 'clients' ? `
-            <div class="form-group">
-              <label>クライアント名</label>
-              <input type="text" id="client-name" required placeholder="例: 株式会社〇〇">
+              <div class="form-group">
+                <label>クライアント名</label>
+                <input type="text" id="client-name" required placeholder="例: 株式会社〇〇">
               <div class="hint-text">請求書の宛先と同じ名前がおすすめです。</div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>金額モード</label>
+                <label>報酬の決まり方</label>
                 <select id="client-amount-mode">
-                  <option value="fixed">固定</option>
-                  <option value="variable">変動</option>
+                  <option value="fixed">毎月固定</option>
+                  <option value="variable">時給・出来高で変動</option>
                 </select>
-                <div class="hint-text">変動の場合は実績入力で調整します。</div>
+                <div class="hint-text">変動の場合は、ダッシュボードで今月の見込み額・実入金額を更新します。</div>
               </div>
               <div class="form-group">
-                <label>金額（ベース）</label>
+                <label>月の見込み額</label>
                 <input type="text" inputmode="numeric" id="client-amount" required placeholder="例: 300,000" oninput="handleNumericInput(this)">
               </div>
             </div>
@@ -291,7 +312,7 @@ export function renderMaster(container) {
           ` : currentTab === 'cards' ? `
             <input type="hidden" id="loan-type" value="クレジットカード">
             <div style="margin-bottom: 14px; padding: 10px 12px; background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.18); border-radius: 8px; font-size: 0.78rem; color: var(--text-3);">
-              💡 毎月の請求額は <strong style="color:var(--primary);">カレンダー画面</strong> で入力します。ここではカードの基本情報のみ登録してください。
+              💡 今月のカード支払い額は <strong style="color:var(--primary);">ダッシュボード</strong> で入力します。ここではカード名・引落日・銀行などの基本情報だけ登録してください。
             </div>
             <div class="form-row">
               <div class="form-group">
@@ -333,10 +354,13 @@ export function renderMaster(container) {
               <input type="hidden" id="loan-logo">
               <div id="logo-selection" class="logo-candidate-grid">
                 ${CARD_BRANDS.map(brand => {
-                  const url = `https://www.google.com/s2/favicons?domain=${brand.domain}&sz=64`;
+                  const url = brand.textLogo ? '' : (brand.logoUrl || `https://www.google.com/s2/favicons?domain=${brand.domain}&sz=64`);
+                  const fallback = brand.shortName || brand.name;
+                  const onClick = url ? `selectCardLogo('${url}', this)` : `selectCardLogo('', this)`;
                   return `
-                    <div class="logo-candidate" onclick="selectCardLogo('${url}', this)">
-                      <img src="${url}" alt="${brand.name}">
+                    <div class="logo-candidate ${brand.textLogo ? 'logo-fallback' : ''}" onclick="${onClick}">
+                      ${url ? `<img src="${url}" alt="${brand.name}" onerror="this.hidden=true; this.parentElement.classList.add('logo-fallback');">` : ''}
+                      <b>${fallback}</b>
                       <span>${brand.name}</span>
                     </div>
                   `;
@@ -608,6 +632,15 @@ export function renderMaster(container) {
     showModal(client);
   };
 
+  window.editClientFromIncome = (id) => {
+    currentTab = 'clients';
+    renderMaster(container);
+    setTimeout(() => {
+      const client = appStore.data.master.clients.find(c => c.id === id);
+      if (client) showModal(client);
+    }, 0);
+  };
+
   window.handleNumericInput = (el) => {
     const cursor = el.selectionStart;
     const oldVal = el.value;
@@ -715,15 +748,48 @@ export function renderMaster(container) {
     const typeEl = document.getElementById('master-type');
     if (!typeEl) return;
     const type = typeEl.value;
+    const isIncome = type === 'income';
     const amountField = document.getElementById('field-amount');
     const ruleField = document.getElementById('field-rule');
     const balanceField = document.getElementById('field-balance');
     const bankSelectField = document.getElementById('field-bank-select');
+    const guide = document.getElementById('master-form-guide');
+    const amountModeLabel = document.getElementById('master-amount-mode-label');
+    const amountModeHint = document.getElementById('master-amount-mode-hint');
+    const amountLabel = document.getElementById('master-amount-label');
+    const amountInput = document.getElementById('master-amount');
+    const ruleLabel = document.getElementById('master-rule-label');
+    const bankLabel = document.getElementById('master-bank-label');
+    const tagSelect = document.getElementById('master-tag');
 
     if (amountField) amountField.classList.toggle('hidden', type === 'bank');
     if (ruleField) ruleField.classList.toggle('hidden', type === 'bank');
     if (balanceField) balanceField.classList.toggle('hidden', type !== 'bank');
     if (bankSelectField) bankSelectField.classList.toggle('hidden', type === 'bank');
+
+    if (guide) {
+      guide.innerHTML = isIncome
+        ? '<strong>収入で登録するもの:</strong> 収入名、月の見込み額、入金予定日、入金先銀行。時給・出来高の案件は「月ごとに変わる」にして、今月額はダッシュボードで更新します。'
+        : '<strong>支出で登録するもの:</strong> 固定費名、毎月の支払額、支払予定日、支払元銀行。カード利用額はここではなく、クレカ登録後にダッシュボードで今月請求額を入力します。';
+    }
+    if (amountModeLabel) amountModeLabel.textContent = isIncome ? '収入額の決まり方' : '支払額の決まり方';
+    if (amountModeHint) {
+      amountModeHint.textContent = isIncome
+        ? '時給・出来高などは、今月の見込み額や実入金額をダッシュボードで更新します。'
+        : '毎月変わる支出は、ここでは目安額を入れて必要に応じて今月だけ調整します。';
+    }
+    if (amountLabel) amountLabel.textContent = isIncome ? '月の見込み額' : '毎月の支払額';
+    if (amountInput) amountInput.placeholder = isIncome ? '例: 300,000' : '例: 80,000';
+    if (ruleLabel) ruleLabel.textContent = isIncome ? '入金予定日' : '支払予定日';
+    if (bankLabel) bankLabel.textContent = isIncome ? '入金先銀行' : '支払元銀行';
+    if (tagSelect) {
+      const labels = isIncome
+        ? { fixed: '固定収入', variable: '変動収入', card: 'カード以外', loan: '借入ではない', tax: '税金還付/保険', service: '継続収入', vehicle: '車両関連', business: '事業売上' }
+        : { fixed: '固定費', variable: '変動費', card: 'カード払', loan: '借入返済', tax: '税金/保険', service: 'サブスク', vehicle: '車両', business: '事業' };
+      Array.from(tagSelect.options).forEach(option => {
+        if (labels[option.value]) option.textContent = labels[option.value];
+      });
+    }
     
     if (type !== 'bank') {
       window.toggleRuleFields();
@@ -775,9 +841,10 @@ export function renderMaster(container) {
 
 function renderItemsList(items) {
   const bankMap = Object.fromEntries(appStore.data.master.items.filter(i => i.type === 'bank').map(b => [b.id, b.name]));
+  const isIncome = (items[0]?.type || currentItemType) === 'income';
   const tagLabels = {
-    fixed: '固定費',
-    variable: '変動費',
+    fixed: isIncome ? '固定収入' : '固定費',
+    variable: isIncome ? '変動収入' : '変動費',
     card: 'カード',
     loan: '借入返済',
     tax: '税金/保険',
@@ -790,8 +857,8 @@ function renderItemsList(items) {
   const tagGroups = [
     { key: 'card', label: 'カード' },
     { key: 'business', label: '事業' },
-    { key: 'fixed', label: '固定費' },
-    { key: 'variable', label: '変動費' },
+    { key: 'fixed', label: isIncome ? '固定収入' : '固定費' },
+    { key: 'variable', label: isIncome ? '変動収入' : '変動費' },
     { key: 'tax', label: '税金/保険' },
     { key: 'service', label: 'サブスク' },
     { key: 'loan', label: '借入返済' },
@@ -816,7 +883,6 @@ function renderItemsList(items) {
   if (items.length === 0) {
     return `<div style="font-size: 0.85rem; color: var(--text-3); padding: 20px 0; text-align: center;">項目がありません。「＋ 追加」から登録してください。</div>`;
   }
-  const isIncome = items[0]?.type === 'income';
   const accentColor = isIncome ? 'var(--success)' : 'var(--danger)';
   const accentBg   = isIncome ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.05)';
   const accentBorder = isIncome ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.15)';
@@ -835,39 +901,46 @@ function renderItemsList(items) {
         </div>
         <!-- アイテムリスト -->
         <div style="display: flex; flex-direction: column; gap: 8px;">
-          ${grouped[group.key].map(item => `
-            <div onclick="editMasterItem('${item.id}')"
+          ${grouped[group.key].map(item => {
+            const isClientItem = item.__source === 'client';
+            const editAction = isClientItem ? `editClientFromIncome('${item.clientId}')` : `editMasterItem('${item.id}')`;
+            const toggleAction = isClientItem ? `toggleClient('${item.clientId}')` : `toggleMasterItem('${item.id}')`;
+            const deleteAction = isClientItem ? `deleteClient('${item.clientId}')` : `deleteMasterItem('${item.id}')`;
+            return `
+            <div onclick="${editAction}"
               style="background: ${item.active ? accentBg : 'var(--surface)'}; border: 1px solid ${item.active ? accentBorder : 'var(--card-border)'}; border-radius: 12px; padding: 12px 14px; cursor: pointer; opacity: ${item.active ? '1' : '0.55'}; transition: opacity 0.2s;">
               <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
                 <!-- 左: 名前・日付 -->
                 <div style="flex: 1; min-width: 0;">
                   <div style="font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                    ${getIcon(item.name, item.type)} ${item.name}
+                    ${isClientItem ? '🤝' : getIcon(item.name, item.type)} ${item.name}
                   </div>
                   <div style="font-size: 0.75rem; color: var(--text-3); display: flex; gap: 8px; flex-wrap: wrap;">
                     <span>📅 毎月 ${formatRule(item.scheduleRule || {type:'monthly', day:item.day})}</span>
                     <span>🏦 ${bankMap[item.bankId] || '未設定'}</span>
+                    ${isClientItem ? `<span style="color:var(--primary);font-weight:600;">クライアント</span>` : ''}
                     ${!item.active ? `<span style="color:var(--warn);font-weight:600;">● 無効</span>` : ''}
                   </div>
                 </div>
                 <!-- 右: 金額（大きく） -->
                 <div style="text-align: right; flex-shrink: 0;">
-                  ${item.amountMode === 'variable' ? `<div style="font-size: 0.65rem; color: var(--warn); font-weight: 600; margin-bottom: 1px;">変動</div>` : ''}
+                  ${item.amountMode === 'variable' ? `<div style="font-size: 0.65rem; color: var(--warn); font-weight: 700; margin-bottom: 1px;">今月額を更新</div>` : ''}
                   <div style="font-size: 1.25rem; font-weight: 800; color: ${accentColor}; letter-spacing: -0.5px;">
                     ${sign}¥${(item.amount || 0).toLocaleString()}
                   </div>
-                  <div style="font-size: 0.65rem; color: var(--text-3);">/ 月</div>
+                  <div style="font-size: 0.65rem; color: var(--text-3);">${item.amountMode === 'variable' ? '見込み / 月' : '/ 月'}</div>
                 </div>
               </div>
               <!-- アクションボタン -->
               <div style="display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end;">
-                <button onclick="event.stopPropagation(); toggleMasterItem('${item.id}')" class="btn small ${item.active ? 'warn' : 'success'}" style="font-size: 0.72rem; padding: 3px 10px;">
+                <button onclick="event.stopPropagation(); ${toggleAction}" class="btn small ${item.active ? 'warn' : 'success'}" style="font-size: 0.72rem; padding: 3px 10px;">
                   ${item.active ? '無効化' : '有効化'}
                 </button>
-                <button onclick="event.stopPropagation(); deleteMasterItem('${item.id}')" class="btn small danger" style="font-size: 0.72rem; padding: 3px 10px;">削除</button>
+                <button onclick="event.stopPropagation(); ${deleteAction}" class="btn small danger" style="font-size: 0.72rem; padding: 3px 10px;">削除</button>
               </div>
             </div>
-          `).join('')}
+          `;
+          }).join('')}
         </div>
       </div>
     `;
@@ -888,13 +961,11 @@ function formatRule(rule) {
 
 function renderBanksList(banks) {
   if (banks.length === 0) {
-    return `<div style="font-size: 0.85rem; color: var(--text-3); padding: 20px 0; text-align: center;">銀行口座がありません。</div>`;
+    return `<div style="font-size: 0.85rem; color: var(--text-3); padding: 20px 0; text-align: center;">銀行口座がありません。カードや収支の入出金先として使う口座名だけ登録してください。</div>`;
   }
-  const totalBalance = banks.filter(b => b.active).reduce((s, b) => s + (b.currentBalance || 0), 0);
   return `
-    <div style="margin-bottom: 8px; padding: 10px 14px; background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.18); border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-      <span style="font-size: 0.8rem; color: var(--text-2); font-weight: 600;">合計残高</span>
-      <span style="font-size: 1.1rem; font-weight: 800; color: var(--primary);">¥${totalBalance.toLocaleString()}</span>
+    <div style="margin-bottom: 8px; padding: 10px 14px; background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.18); border-radius: 10px; color: var(--text-2); font-size: 0.8rem; line-height: 1.55;">
+      銀行は金額管理ではなく、カード引落・入金・支払いの紐付け先として使います。残高は今月画面の「手元資金」でざっくり入力してください。
     </div>
     <div style="display: flex; flex-direction: column; gap: 8px;">
       ${banks.map(bank => `
@@ -904,10 +975,7 @@ function renderBanksList(banks) {
             <div style="font-size: 0.95rem; font-weight: 700; color: var(--text);">
               🏦 ${bank.name}
             </div>
-            <div style="text-align: right;">
-              <div style="font-size: 1.25rem; font-weight: 800; color: var(--primary);">¥${(bank.currentBalance || 0).toLocaleString()}</div>
-              <div style="font-size: 0.65rem; color: var(--text-3);">現在残高</div>
-            </div>
+            <div style="font-size: 0.75rem; color: var(--text-3);">紐付け先</div>
           </div>
           <div style="display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end;">
             <button onclick="event.stopPropagation(); toggleMasterItem('${bank.id}')" class="btn small ${bank.active ? 'warn' : 'success'}" style="font-size: 0.72rem; padding: 3px 10px;">
@@ -982,9 +1050,6 @@ function renderLoansList(loans) {
 
 function renderCardsList(cards) {
   const bankMap = Object.fromEntries(appStore.data.master.items.filter(i => i.type === 'bank').map(b => [b.id, b.name]));
-  const now = new Date();
-  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const monthEvents = appStore.data.calendar.generatedMonths[ym] || [];
 
   if (cards.length === 0) {
     return `<div style="font-size: 0.85rem; color: #6b7280; padding: 10px 0;">クレジットカードが登録されていません。</div>`;
@@ -992,21 +1057,24 @@ function renderCardsList(cards) {
 
   return `
     <div style="font-size: 0.75rem; color: var(--text-3); margin-bottom: 10px; padding: 8px 12px; background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.15); border-radius: 8px;">
-      💡 毎月の請求額は <strong style="color:var(--primary);">📅 カレンダー</strong> 画面の「STEP 2」で入力します。ここではカード情報のみ登録。
+      💡 今月のカード支払い額は <strong style="color:var(--primary);">🛟 ダッシュボード</strong> の「カード請求額を確定する」で入力します。ここではカードの基本情報だけ登録。
     </div>
     <div style="display: flex; flex-direction: column; gap: 10px;">
       ${cards.map(card => {
         const logoUrl = card.logo || getLogoUrl(card.name);
-        const billingEvent = monthEvents.find(e => e.id === `card-billing-${card.id}-${ym}`);
-        const billingAmount = billingEvent ? billingEvent.amount : null;
-        const isDone = billingAmount !== null && billingAmount > 0;
+        const logoFallback = getLogoFallbackLabel(card.name);
         return `
           <div onclick="editLoan('${card.id}')"
             style="background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 14px 16px; cursor: pointer; opacity: ${card.active ? '1' : '0.55'};">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
               <div style="flex: 1; min-width: 0;">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                  ${logoUrl ? `<img src="${logoUrl}" alt="" style="height: 20px; max-width: 50px; object-fit: contain; background: white; border-radius: 3px; padding: 2px;">` : `<span style="font-size:1.2rem;">💳</span>`}
+                  ${logoUrl ? `
+                    <span class="card-logo-badge">
+                      <img src="${logoUrl}" alt="${logoFallback}" onerror="this.hidden=true; this.nextElementSibling.hidden=false;">
+                      <b hidden>${logoFallback}</b>
+                    </span>
+                  ` : `<span class="card-logo-badge"><b>${logoFallback}</b></span>`}
                   <span style="font-size: 0.95rem; font-weight: 700; color: var(--text);">${card.name}</span>
                 </div>
                 <div style="font-size: 0.75rem; color: var(--text-3); display: flex; gap: 10px; flex-wrap: wrap;">
@@ -1016,11 +1084,9 @@ function renderCardsList(cards) {
                 </div>
               </div>
               <div style="text-align: right; flex-shrink: 0;">
-                <div style="font-size: 0.65rem; color: var(--text-3);">今月請求額</div>
-                <div style="font-size: 1.15rem; font-weight: 800; color: ${isDone ? 'var(--danger)' : 'var(--text-3)'};">
-                  ${isDone ? `-¥${billingAmount.toLocaleString()}` : '未入力'}
-                </div>
-                ${isDone ? `<div style="font-size: 0.65rem; color: var(--success);">✓ 確定済み</div>` : `<div style="font-size: 0.65rem; color: var(--warn);">← カレンダーで入力</div>`}
+                <div style="font-size: 0.65rem; color: var(--text-3);">引落先</div>
+                <div style="font-size: 0.92rem; font-weight: 800; color: var(--text);">${bankMap[card.bankId] || '未設定'}</div>
+                <div style="font-size: 0.65rem; color: var(--text-3);">請求額は今月で入力</div>
               </div>
             </div>
             ${card.notes ? `<div style="font-size: 0.7rem; color: var(--text-3); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--card-border); font-style: italic;">📝 ${card.notes}</div>` : ''}
@@ -1058,13 +1124,13 @@ function renderClientsList(clients) {
               <div style="font-size: 0.75rem; color: var(--text-3); display: flex; gap: 8px; flex-wrap: wrap;">
                 <span>📅 ${formatRule(client.scheduleRule || { type: 'monthly', day: client.paymentDay || 15 })}</span>
                 <span>🏦 ${bankMap[client.bankId] || '未設定'}</span>
-                ${client.amountMode === 'variable' ? `<span style="color:var(--warn);font-weight:600;">変動</span>` : ''}
+                ${client.amountMode === 'variable' ? `<span style="color:var(--warn);font-weight:600;">今月額を更新</span>` : ''}
               </div>
               ${client.notes ? `<div style="font-size: 0.7rem; color: var(--text-3); margin-top: 3px; font-style: italic;">📝 ${client.notes}</div>` : ''}
             </div>
             <div style="text-align: right; flex-shrink: 0;">
               <div style="font-size: 1.2rem; font-weight: 800; color: var(--success);">+¥${(client.amount || 0).toLocaleString()}</div>
-              <div style="font-size: 0.65rem; color: var(--text-3);">/ 月</div>
+              <div style="font-size: 0.65rem; color: var(--text-3);">${client.amountMode === 'variable' ? '見込み / 月' : '/ 月'}</div>
             </div>
           </div>
           <div style="display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end;">
@@ -1170,6 +1236,17 @@ function showModal(data = null) {
     title.textContent = '新規追加';
     form.reset();
     form['edit-id'].value = '';
+    if (currentTab === 'items') {
+      if (form['master-type']) form['master-type'].value = currentItemType;
+      if (form['master-tag']) form['master-tag'].value = currentItemType === 'income' ? 'business' : 'fixed';
+      if (form['master-amount-mode']) form['master-amount-mode'].value = 'fixed';
+      if (form['master-rule-type']) form['master-rule-type'].value = 'monthly';
+      if (form['master-day']) form['master-day'].value = currentItemType === 'income' ? 25 : 27;
+      window.toggleMasterFormFields();
+    }
+    if (currentTab === 'banks') {
+      if (form['master-name']) form['master-name'].placeholder = '例: 楽天銀行、三菱UFJ銀行';
+    }
     if (currentTab === 'clients') {
       if (form['client-amount-mode']) form['client-amount-mode'].value = 'fixed';
       if (form['client-rule-type']) form['client-rule-type'].value = 'monthly';
@@ -1188,6 +1265,11 @@ function showModal(data = null) {
 
 window.hideModal = () => {
   document.getElementById('master-modal').classList.add('hidden');
+  if (currentTab === 'clients') {
+    currentTab = 'items';
+    currentItemType = 'income';
+    renderMaster(document.getElementById('app-container'));
+  }
 }
 
 function clearValidation(form) {
@@ -1236,7 +1318,7 @@ function saveData() {
 
     requireField(requireText, form['master-name']);
     if (type === 'bank') {
-      requireField(requireNumber, form['master-balance']);
+      // 銀行は紐付け先マスターとして扱い、残高入力は求めない。
     } else {
       requireField(requireNumber, form['master-amount']);
     }
@@ -1269,7 +1351,9 @@ function saveData() {
         start: form['master-eff-start']?.value || null,
         end: form['master-eff-end']?.value || null
       },
-      currentBalance: (type === 'bank' && form['master-balance']) ? parseNumber(form['master-balance'].value) : 0
+      currentBalance: type === 'bank'
+        ? (id ? (appStore.data.master.items.find(i => i.id === id)?.currentBalance || 0) : 0)
+        : 0
     };
 
     // 重複チェック: 借入返済タグで、かつ借入先に同名がある場合
@@ -1389,6 +1473,10 @@ function saveData() {
     driveSync.push().catch(err => console.error('Auto drive push failed', err));
   }
   
+  if (currentTab === 'clients') {
+    currentTab = 'items';
+    currentItemType = 'income';
+  }
   hideModal();
   renderMaster(document.getElementById('app-container'));
 }

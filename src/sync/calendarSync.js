@@ -1,6 +1,16 @@
 import { store as appStore } from '../store.js';
 import { googleAuth } from '../auth/googleAuth.js';
 
+const getEventSyncHash = (event) => JSON.stringify({
+  name: event.name,
+  type: event.type,
+  amount: Number(event.amount) || 0,
+  status: event.status || 'pending',
+  actualDate: event.actualDate || event.originalDate,
+  originalDate: event.originalDate,
+  calendarId: event.gcalCalendarId || ''
+});
+
 export const calendarSync = {
   async listCalendars() {
     try {
@@ -31,25 +41,46 @@ export const calendarSync = {
       if (!events) return;
 
       for (const event of events) {
-        const calendarId = event.type === 'income' 
-          ? (appStore.data.settings?.incomeCalendarId || 'primary')
-          : (appStore.data.settings?.expenseCalendarId || 'primary');
-
-        if (!event.gcalEventId) {
-          const gcalEvent = await this.createEvent(token, event, calendarId);
-          appStore.updateEvent(yearMonth, event.id, { 
-            gcalEventId: gcalEvent.id,
-            gcalCalendarId: calendarId 
-          });
-        } else {
-          await this.updateEvent(token, event, event.gcalCalendarId || calendarId);
-        }
+        await this.syncEvent(yearMonth, event.id, token);
       }
       console.log(`Calendar sync completed for ${yearMonth}`);
     } catch (err) {
       console.error('Calendar sync error:', err);
       throw err;
     }
+  },
+
+  async syncEvent(yearMonth, eventId, existingToken = null) {
+    const token = existingToken || await googleAuth.getAccessToken([googleAuth.getScopes().CALENDAR]);
+    const events = appStore.data.calendar.generatedMonths[yearMonth] || [];
+    const event = events.find(e => e.id === eventId);
+    if (!event) return null;
+
+    const calendarId = event.type === 'income'
+      ? (appStore.data.settings?.incomeCalendarId || 'primary')
+      : (appStore.data.settings?.expenseCalendarId || 'primary');
+    const syncHash = getEventSyncHash({ ...event, gcalCalendarId: event.gcalCalendarId || calendarId });
+
+    if (event.gcalEventId && event.gcalSyncHash === syncHash) {
+      return { skipped: true };
+    }
+
+    if (!event.gcalEventId) {
+      const gcalEvent = await this.createEvent(token, event, calendarId);
+      appStore.updateEvent(yearMonth, event.id, {
+        gcalEventId: gcalEvent.id,
+        gcalCalendarId: calendarId,
+        gcalSyncHash: syncHash
+      });
+      return gcalEvent;
+    }
+
+    await this.updateEvent(token, event, event.gcalCalendarId || calendarId);
+    appStore.updateEvent(yearMonth, event.id, {
+      gcalCalendarId: event.gcalCalendarId || calendarId,
+      gcalSyncHash: syncHash
+    });
+    return { updated: true };
   },
 
   async createEvent(token, event, calendarId = 'primary') {

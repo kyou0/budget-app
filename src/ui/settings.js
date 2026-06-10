@@ -232,10 +232,11 @@ window.syncAllCalendars = async (btn) => {
   }
   
   if (await window.showConfirm(`${months.length} ヶ月分のデータを同期しますか？`)) {
-    window.toggleLoadingOverlay(true, 'Googleカレンダーと一括同期中...');
     try {
       const token = await googleAuth.getAccessToken([googleAuth.getScopes().CALENDAR]);
-      for (const ym of months) {
+      for (let i = 0; i < months.length; i++) {
+        const ym = months[i];
+        window.showSyncProgress('cal', 10 + Math.round((i / months.length) * 85));
         await calendarSync.syncMonthEvents(ym, token);
       }
       appStore.addSyncLog({
@@ -255,7 +256,7 @@ window.syncAllCalendars = async (btn) => {
       });
       window.showToast('同期中にエラーが発生しました', 'danger');
     } finally {
-      window.toggleLoadingOverlay(false);
+      window.hideSyncProgress();
     }
   }
 };

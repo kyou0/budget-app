@@ -1,4 +1,4 @@
-const CACHE_NAME = 'budget-app-v30-auth-startup-fix';
+const CACHE_NAME = 'budget-app-v36-logo-action';
 const ASSETS = [
   './',
   './index.html',

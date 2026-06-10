@@ -105,36 +105,46 @@ export function getLogoUrl(name) {
   
   for (const brand of CARD_BRANDS) {
     if (n.includes(brand.key)) {
-      return `https://www.google.com/s2/favicons?domain=${brand.domain}&sz=64`;
+      if (brand.textLogo) return null;
+      return brand.logoUrl || `https://www.google.com/s2/favicons?domain=${brand.domain}&sz=64`;
     }
   }
   return null;
+}
+
+export function getLogoFallbackLabel(name) {
+  if (!name) return 'CARD';
+  const n = name.toLowerCase();
+  const brand = CARD_BRANDS.find(b => n.includes(b.key));
+  return (brand?.shortName || brand?.name || name).slice(0, 8);
 }
 
 /**
  * クレジットカードブランドのリスト
  */
 export const CARD_BRANDS = [
-  { name: 'JCB', key: 'jcb', domain: 'jcb.co.jp' },
-  { name: 'Visa', key: 'visa', domain: 'visa.co.jp' },
-  { name: 'Mastercard', key: 'master', domain: 'mastercard.co.jp' },
-  { name: 'Amex', key: 'amex', domain: 'americanexpress.com' },
-  { name: 'Diners', key: 'diners', domain: 'diners.co.jp' },
-  { name: '楽天カード', key: '楽天', domain: 'rakuten-card.co.jp' },
-  { name: 'PayPayカード', key: 'paypay', domain: 'paypay-card.co.jp' },
-  { name: '三井住友カード', key: '三井住友', domain: 'smbc-card.com' },
-  { name: '三菱UFJカード', key: '三菱ufj', domain: 'cr.mufg.jp' },
-  { name: 'エポスカード', key: 'エポス', domain: 'eposcard.co.jp' },
-  { name: 'イオンカード', key: 'イオン', domain: 'aeon.co.jp' },
-  { name: 'セゾンカード', key: 'セゾン', domain: 'saisoncard.co.jp' },
-  { name: 'dカード', key: 'dカード', domain: 'd-card.jp' },
-  { name: 'au PAY カード', key: 'au pay', domain: 'kddi-fs.com' },
-  { name: 'リクルートカード', key: 'リクルート', domain: 'recruit-card.jp' },
-  { name: 'Amazonカード', key: 'amazon', domain: 'amazon.co.jp' },
-  { name: 'メルカード', key: 'メル', domain: 'mercari.com' },
-  { name: 'VIEWカード', key: 'view', domain: 'jreast.co.jp' },
-  { name: 'ライフカード', key: 'ライフ', domain: 'lifecard.co.jp' },
-  { name: 'オリコカード', key: 'オリコ', domain: 'orico.co.jp' }
+  { name: 'JCB', shortName: 'JCB', key: 'jcb', domain: 'global.jcb', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/4/40/JCB_logo.svg' },
+  { name: 'Visa', shortName: 'VISA', key: 'visa', domain: 'visa.co.jp', logoUrl: 'https://cdn.simpleicons.org/visa' },
+  { name: 'Mastercard', shortName: 'MC', key: 'master', domain: 'mastercard.co.jp', logoUrl: 'https://cdn.simpleicons.org/mastercard' },
+  { name: 'Amex', shortName: 'AMEX', key: 'amex', domain: 'americanexpress.com', logoUrl: 'https://cdn.simpleicons.org/americanexpress' },
+  { name: 'Diners', shortName: 'Diners', key: 'diners', domain: 'diners.co.jp', logoUrl: 'https://cdn.simpleicons.org/dinersclub' },
+  { name: '楽天カード', shortName: '楽天', key: '楽天', domain: 'rakuten-card.co.jp', logoUrl: 'https://cdn.simpleicons.org/rakuten' },
+  { name: 'PayPayカード', shortName: 'PayPay', key: 'paypay', domain: 'www.paypay-card.co.jp' },
+  { name: '三井住友カード', shortName: 'SMBC', key: '三井住友', domain: 'www.smbc-card.com' },
+  { name: 'SMBCカード', shortName: 'SMBC', key: 'smbc', domain: 'www.smbc-card.com' },
+  { name: '三菱UFJカード', shortName: 'MUFG', key: '三菱ufj', domain: 'cr.mufg.jp' },
+  { name: 'エポスカード', shortName: 'EPOS', key: 'エポス', domain: 'eposcard.co.jp' },
+  { name: 'イオンカード', shortName: 'AEON', key: 'イオン', domain: 'aeon.co.jp' },
+  { name: 'セゾンカード', shortName: 'SAISON', key: 'セゾン', domain: 'saisoncard.co.jp' },
+  { name: 'dカード', shortName: 'd', key: 'dカード', domain: 'd-card.jp' },
+  { name: 'au PAY カード', shortName: 'au PAY', key: 'au pay', domain: 'kddi-fs.com' },
+  { name: 'リクルートカード', shortName: 'Recruit', key: 'リクルート', domain: 'recruit-card.jp' },
+  { name: 'Amazonカード', shortName: 'Amazon', key: 'amazon', domain: 'amazon.co.jp' },
+  { name: 'メルカード', shortName: 'Mercari', key: 'メル', domain: 'mercari.com' },
+  { name: 'VIEWカード', shortName: 'VIEW', key: 'view', domain: 'viewsnet.jp', textLogo: true },
+  { name: 'ビューカード', shortName: 'VIEW', key: 'ビュー', domain: 'viewsnet.jp', textLogo: true },
+  { name: 'ライフカード', shortName: 'LIFE', key: 'ライフ', domain: 'lifecard.co.jp' },
+  { name: 'オリコカード', shortName: 'Orico', key: 'オリコ', domain: 'orico.co.jp', logoUrl: 'https://www.orico.co.jp/favicon.ico' }
 ];
 
 /**
