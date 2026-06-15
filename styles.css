@@ -2513,10 +2513,24 @@ tr:hover td { background: var(--surface-hover) !important; }
 
 .dated-cashflow-form {
   display: grid;
-  grid-template-columns: minmax(132px, 0.8fr) minmax(86px, 0.55fr) minmax(150px, 1fr) minmax(110px, 0.75fr) auto;
+  grid-template-columns: minmax(0, 1fr) 86px;
   gap: 8px;
   align-items: center;
   margin-bottom: 12px;
+}
+
+.dated-cashflow-form #dated-plan-name {
+  grid-column: 1 / -1;
+}
+
+.dated-cashflow-form #dated-plan-amount {
+  grid-column: 1 / 2;
+}
+
+.dated-cashflow-form #dated-plan-add {
+  grid-column: 2 / 3;
+  width: 100%;
+  min-height: 36px;
 }
 
 .dated-cashflow-form input,
