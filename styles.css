@@ -907,12 +907,16 @@ input[inputmode="numeric"] {
 }
 
 .modal-actions {
+  position: sticky;
+  bottom: -24px;
   display: flex;
   gap: 10px;
   justify-content: flex-end;
-  padding-top: 8px;
-  margin-top: 4px;
+  padding: 12px 0 0;
+  margin: 8px 0 -12px;
   border-top: 1px solid var(--card-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), var(--card) 38%);
+  z-index: 2;
 }
 
 .modal-actions .btn { min-width: 90px; justify-content: center; display: flex; }
@@ -2436,7 +2440,7 @@ tr:hover td { background: var(--surface-hover) !important; }
 
 .variable-income-row {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(100px, 140px) auto;
+  grid-template-columns: minmax(140px, 1fr) minmax(120px, 180px) minmax(100px, 140px) auto;
   gap: 8px;
   align-items: center;
   padding: 10px;
@@ -2450,6 +2454,10 @@ tr:hover td { background: var(--surface-hover) !important; }
   background: var(--success-bg);
 }
 
+.variable-income-row:not(:has(.income-hourly-inputs)) {
+  grid-template-columns: minmax(120px, 1fr) minmax(100px, 140px) auto;
+}
+
 .variable-income-row strong {
   display: block;
   color: var(--text);
@@ -2461,6 +2469,24 @@ tr:hover td { background: var(--surface-hover) !important; }
   margin-top: 2px;
   color: var(--text-3);
   font-size: 0.72rem;
+}
+
+.income-hourly-inputs {
+  display: grid;
+  grid-template-columns: 1fr 0.7fr;
+  gap: 6px;
+}
+
+.income-hourly-inputs label {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+}
+
+.income-hourly-inputs label span {
+  color: var(--text-3);
+  font-size: 0.66rem;
+  font-weight: 800;
 }
 
 .variable-income-row input {

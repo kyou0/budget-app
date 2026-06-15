@@ -128,6 +128,12 @@ class Store {
     if (!data.settings.incomeConfirmInputs || typeof data.settings.incomeConfirmInputs !== 'object') {
       data.settings.incomeConfirmInputs = { yearMonth: '', values: {} };
     }
+    if (!data.settings.incomeConfirmInputs.values || typeof data.settings.incomeConfirmInputs.values !== 'object') {
+      data.settings.incomeConfirmInputs.values = {};
+    }
+    if (!data.settings.incomeConfirmInputs.details || typeof data.settings.incomeConfirmInputs.details !== 'object') {
+      data.settings.incomeConfirmInputs.details = {};
+    }
     if (!data.settings.survivalInputs || typeof data.settings.survivalInputs !== 'object') {
       data.settings.survivalInputs = { yearMonth: '', startingCash: 0, extraIncome: 0, extraExpense: 0, extraRepayment: 0 };
     }

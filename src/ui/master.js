@@ -6,6 +6,51 @@ import { generateClientEvents } from '../generate.js';
 let currentTab = 'items'; // 'items' | 'banks' | 'loans' | 'clients' | 'cards'
 let currentItemType = 'income'; // 'income' | 'expense'
 
+const TAX_PRESETS = {
+  national_health: {
+    name: '国民健康保険',
+    rule: { type: 'monthlyRange', startMonth: 6, endMonth: 3, day: 31 },
+    adjustment: 'next_weekday',
+    note: '多くの自治体で6月から翌3月までの10期。通知書の期別金額を入れてください。'
+  },
+  resident: {
+    name: '住民税（普通徴収）',
+    rule: { type: 'specificDates', dates: [{ month: 6, day: 30 }, { month: 8, day: 31 }, { month: 10, day: 31 }, { month: 1, day: 31 }] },
+    adjustment: 'next_weekday',
+    note: '普通徴収は年4回が基本。自治体通知の金額を入れてください。'
+  },
+  business_tax: {
+    name: '個人事業税',
+    rule: { type: 'specificDates', dates: [{ month: 8, day: 31 }, { month: 11, day: 30 }] },
+    adjustment: 'next_weekday',
+    note: '対象業種・所得により発生。納税通知書が届いたら金額を入れてください。'
+  },
+  income_tax: {
+    name: '所得税・復興特別所得税',
+    rule: { type: 'specificDates', dates: [{ month: 3, day: 15 }] },
+    adjustment: 'next_weekday',
+    note: '確定申告で確定した納付額を入れてください。振替納税の場合は実際の振替日に調整してください。'
+  },
+  estimated_income_tax: {
+    name: '所得税予定納税',
+    rule: { type: 'specificDates', dates: [{ month: 7, day: 31 }, { month: 11, day: 30 }] },
+    adjustment: 'next_weekday',
+    note: '予定納税通知が来る人向け。通知額を入力してください。'
+  },
+  consumption_tax: {
+    name: '消費税・地方消費税',
+    rule: { type: 'specificDates', dates: [{ month: 3, day: 31 }] },
+    adjustment: 'next_weekday',
+    note: '課税事業者のみ。確定申告で確定した納付額を入れてください。'
+  },
+  national_pension: {
+    name: '国民年金',
+    rule: { type: 'monthEnd' },
+    adjustment: 'next_weekday',
+    note: '毎月納付する場合。前納している場合は今月の日付つき収支で一括登録してください。'
+  }
+};
+
 export function renderMaster(container) {
   const items = appStore.data.master.items;
   const loans = appStore.data.master.loans || [];
@@ -154,7 +199,7 @@ export function renderMaster(container) {
               </div>
               <div class="form-group">
                 <label>分類</label>
-                <select id="master-tag">
+                <select id="master-tag" onchange="toggleMasterFormFields()">
                   <option value="">(なし)</option>
                   <option value="fixed">固定費</option>
                   <option value="variable">変動費</option>
@@ -168,11 +213,25 @@ export function renderMaster(container) {
               </div>
             </div>
             <div id="master-form-guide" class="form-guide"></div>
+            <div id="field-tax-preset" class="form-group hidden">
+              <label>税金・保険テンプレート</label>
+              <select id="tax-preset" onchange="applyTaxPreset(this.value)">
+                <option value="">納付書に合わせて選択</option>
+                <option value="national_health">国民健康保険（6月〜翌3月・毎月）</option>
+                <option value="resident">住民税 普通徴収（6月/8月/10月/翌1月）</option>
+                <option value="business_tax">個人事業税（8月/11月）</option>
+                <option value="income_tax">所得税・復興特別所得税（3月）</option>
+                <option value="estimated_income_tax">所得税予定納税（7月/11月）</option>
+                <option value="consumption_tax">消費税・地方消費税（3月）</option>
+                <option value="national_pension">国民年金（毎月）</option>
+              </select>
+              <div id="tax-preset-hint" class="hint-text">届いた納付書の金額を「毎月の支払額」に入れてください。期ごとに金額が違う場合は、今月画面の「日付つき収支」で個別入力もできます。</div>
+            </div>
             <div id="field-amount" class="form-group">
               <div class="form-row">
                 <div>
                   <label id="master-amount-mode-label">支払額の決まり方</label>
-                  <select id="master-amount-mode">
+                  <select id="master-amount-mode" onchange="toggleMasterFormFields()">
                     <option value="fixed">毎月ほぼ同じ</option>
                     <option value="variable">月ごとに変わる</option>
                   </select>
@@ -184,6 +243,20 @@ export function renderMaster(container) {
                 </div>
               </div>
             </div>
+            <div id="field-hourly-estimate" class="form-group hidden">
+              <label>時給案件の見込み</label>
+              <div class="form-row">
+                <div>
+                  <label>時給</label>
+                  <input type="text" inputmode="numeric" id="master-hourly-rate" placeholder="例: 3,000" oninput="handleNumericInput(this); updateHourlyEstimate('master')">
+                </div>
+                <div>
+                  <label>月の想定稼働時間</label>
+                  <input type="number" id="master-expected-hours" min="0" step="0.5" placeholder="例: 80" oninput="updateHourlyEstimate('master')">
+                </div>
+              </div>
+              <div class="hint-text">両方入れると「月の見込み額」を自動計算します。月ごとに違う実績は今月画面で上書きします。</div>
+            </div>
             <div id="field-rule" class="form-group">
               <label id="master-rule-label">支払予定日</label>
               <select id="master-rule-type" onchange="toggleRuleFields()">
@@ -192,6 +265,8 @@ export function renderMaster(container) {
                 <option value="weekly">毎週◯曜</option>
                 <option value="nextMonthDay">翌月◯日</option>
                 <option value="monthlyBusinessDay">第◯営業日</option>
+                <option value="monthlyRange">毎月（開始月〜終了月）</option>
+                <option value="specificDates">指定月に支払う</option>
               </select>
               <div id="rule-detail" style="margin-top:10px;">
                 <input type="number" id="master-day" min="1" max="31" placeholder="日">
@@ -205,6 +280,11 @@ export function renderMaster(container) {
                   <option value="6">土曜日</option>
                 </select>
                 <input type="number" id="master-nth" min="1" max="20" placeholder="第n営業日" class="hidden">
+                <div id="master-month-range" class="form-row hidden">
+                  <input type="number" id="master-start-month" min="1" max="12" placeholder="開始月">
+                  <input type="number" id="master-end-month" min="1" max="12" placeholder="終了月">
+                </div>
+                <input type="text" id="master-specific-dates" class="hidden" placeholder="例: 6/30, 8/31, 10/31, 1/31">
               </div>
             </div>
             <div class="form-row">
@@ -245,7 +325,7 @@ export function renderMaster(container) {
             <div class="form-row">
               <div class="form-group">
                 <label>報酬の決まり方</label>
-                <select id="client-amount-mode">
+                <select id="client-amount-mode" onchange="toggleClientAmountFields()">
                   <option value="fixed">毎月固定</option>
                   <option value="variable">時給・出来高で変動</option>
                 </select>
@@ -255,6 +335,20 @@ export function renderMaster(container) {
                 <label>月の見込み額</label>
                 <input type="text" inputmode="numeric" id="client-amount" required placeholder="例: 300,000" oninput="handleNumericInput(this)">
               </div>
+            </div>
+            <div id="client-hourly-estimate" class="form-group hidden">
+              <label>時給案件の見込み</label>
+              <div class="form-row">
+                <div>
+                  <label>時給</label>
+                  <input type="text" inputmode="numeric" id="client-hourly-rate" placeholder="例: 3,000" oninput="handleNumericInput(this); updateHourlyEstimate('client')">
+                </div>
+                <div>
+                  <label>月の想定稼働時間</label>
+                  <input type="number" id="client-expected-hours" min="0" step="0.5" placeholder="例: 80" oninput="updateHourlyEstimate('client')">
+                </div>
+              </div>
+              <div class="hint-text">時給×想定稼働時間で月の見込み額を作ります。今月の実績はダッシュボードで調整します。</div>
             </div>
             <div class="form-group">
               <label>支払ルール</label>
@@ -749,7 +843,9 @@ export function renderMaster(container) {
     if (!typeEl) return;
     const type = typeEl.value;
     const isIncome = type === 'income';
+    const amountMode = document.getElementById('master-amount-mode')?.value || 'fixed';
     const amountField = document.getElementById('field-amount');
+    const hourlyField = document.getElementById('field-hourly-estimate');
     const ruleField = document.getElementById('field-rule');
     const balanceField = document.getElementById('field-balance');
     const bankSelectField = document.getElementById('field-bank-select');
@@ -758,11 +854,14 @@ export function renderMaster(container) {
     const amountModeHint = document.getElementById('master-amount-mode-hint');
     const amountLabel = document.getElementById('master-amount-label');
     const amountInput = document.getElementById('master-amount');
+    const taxPresetField = document.getElementById('field-tax-preset');
     const ruleLabel = document.getElementById('master-rule-label');
     const bankLabel = document.getElementById('master-bank-label');
     const tagSelect = document.getElementById('master-tag');
 
     if (amountField) amountField.classList.toggle('hidden', type === 'bank');
+    if (hourlyField) hourlyField.classList.toggle('hidden', !(isIncome && amountMode === 'variable'));
+    if (taxPresetField) taxPresetField.classList.toggle('hidden', !(type === 'expense' && tagSelect?.value === 'tax'));
     if (ruleField) ruleField.classList.toggle('hidden', type === 'bank');
     if (balanceField) balanceField.classList.toggle('hidden', type !== 'bank');
     if (bankSelectField) bankSelectField.classList.toggle('hidden', type === 'bank');
@@ -796,6 +895,44 @@ export function renderMaster(container) {
     }
   };
 
+  window.toggleClientAmountFields = () => {
+    const mode = document.getElementById('client-amount-mode')?.value || 'fixed';
+    const hourlyField = document.getElementById('client-hourly-estimate');
+    if (hourlyField) hourlyField.classList.toggle('hidden', mode !== 'variable');
+  };
+
+  window.updateHourlyEstimate = (scope) => {
+    const prefix = scope === 'client' ? 'client' : 'master';
+    const rate = parseNumber(document.getElementById(`${prefix}-hourly-rate`)?.value || '');
+    const hours = Number(document.getElementById(`${prefix}-expected-hours`)?.value || 0);
+    const amountEl = document.getElementById(scope === 'client' ? 'client-amount' : 'master-amount');
+    if (!amountEl || !rate || !hours) return;
+    amountEl.value = formatNumber(Math.round(rate * hours));
+  };
+
+  window.applyTaxPreset = (key) => {
+    const preset = TAX_PRESETS[key];
+    if (!preset) return;
+    const form = document.getElementById('master-form');
+    if (form['master-name']) form['master-name'].value = preset.name;
+    if (form['master-type']) form['master-type'].value = 'expense';
+    if (form['master-tag']) form['master-tag'].value = 'tax';
+    if (form['master-amount-mode']) form['master-amount-mode'].value = 'fixed';
+    if (form['master-rule-type']) form['master-rule-type'].value = preset.rule.type;
+    if (form['master-day']) form['master-day'].value = preset.rule.day || '';
+    if (form['master-start-month']) form['master-start-month'].value = preset.rule.startMonth || '';
+    if (form['master-end-month']) form['master-end-month'].value = preset.rule.endMonth || '';
+    if (form['master-specific-dates']) {
+      form['master-specific-dates'].value = (preset.rule.dates || [])
+        .map(date => `${date.month}/${date.day}`)
+        .join(', ');
+    }
+    if (form['master-adjustment']) form['master-adjustment'].value = preset.adjustment || 'next_weekday';
+    const hint = document.getElementById('tax-preset-hint');
+    if (hint) hint.textContent = preset.note;
+    window.toggleMasterFormFields();
+  };
+
   window.toggleLoanFields = () => {
     const typeEl = document.getElementById('loan-type');
     if (!typeEl) return;
@@ -819,12 +956,16 @@ export function renderMaster(container) {
     const dayInput = document.getElementById('master-day');
     const weekdaySelect = document.getElementById('master-weekday');
     const nthInput = document.getElementById('master-nth');
+    const monthRange = document.getElementById('master-month-range');
+    const specificDates = document.getElementById('master-specific-dates');
 
     if (!dayInput) return;
 
-    dayInput.classList.toggle('hidden', !['monthly', 'nextMonthDay'].includes(ruleType));
+    dayInput.classList.toggle('hidden', !['monthly', 'nextMonthDay', 'monthlyRange'].includes(ruleType));
     weekdaySelect.classList.toggle('hidden', ruleType !== 'weekly');
     nthInput.classList.toggle('hidden', ruleType !== 'monthlyBusinessDay');
+    if (monthRange) monthRange.classList.toggle('hidden', ruleType !== 'monthlyRange');
+    if (specificDates) specificDates.classList.toggle('hidden', ruleType !== 'specificDates');
   };
 
   window.toggleClientRuleFields = () => {
@@ -919,6 +1060,7 @@ function renderItemsList(items) {
                     <span>📅 毎月 ${formatRule(item.scheduleRule || {type:'monthly', day:item.day})}</span>
                     <span>🏦 ${bankMap[item.bankId] || '未設定'}</span>
                     ${isClientItem ? `<span style="color:var(--primary);font-weight:600;">クライアント</span>` : ''}
+                    ${item.estimateType === 'hourly' ? `<span style="color:var(--success);font-weight:600;">時給 ¥${(item.hourlyRate || 0).toLocaleString()} × ${item.expectedHours || 0}h</span>` : ''}
                     ${!item.active ? `<span style="color:var(--warn);font-weight:600;">● 無効</span>` : ''}
                   </div>
                 </div>
@@ -955,6 +1097,8 @@ function formatRule(rule) {
     case 'weekly': return `毎週${['日','月','火','水','木','金','土'][rule.weekday]}`;
     case 'nextMonthDay': return `翌月${rule.day}日`;
     case 'monthlyBusinessDay': return `第${rule.nth}営業日`;
+    case 'monthlyRange': return `${rule.startMonth || 1}月〜${rule.endMonth || 12}月 毎月${rule.day || '末'}日`;
+    case 'specificDates': return (rule.dates || []).map(date => `${date.month}/${date.day}`).join(', ');
     default: return '不明';
   }
 }
@@ -1125,6 +1269,7 @@ function renderClientsList(clients) {
                 <span>📅 ${formatRule(client.scheduleRule || { type: 'monthly', day: client.paymentDay || 15 })}</span>
                 <span>🏦 ${bankMap[client.bankId] || '未設定'}</span>
                 ${client.amountMode === 'variable' ? `<span style="color:var(--warn);font-weight:600;">今月額を更新</span>` : ''}
+                ${client.estimateType === 'hourly' ? `<span style="color:var(--success);font-weight:600;">時給 ¥${(client.hourlyRate || 0).toLocaleString()} × ${client.expectedHours || 0}h</span>` : ''}
               </div>
               ${client.notes ? `<div style="font-size: 0.7rem; color: var(--text-3); margin-top: 3px; font-style: italic;">📝 ${client.notes}</div>` : ''}
             </div>
@@ -1158,6 +1303,8 @@ function showModal(data = null) {
       if (form['master-tag']) form['master-tag'].value = data.tag || '';
       if (form['master-amount']) form['master-amount'].value = formatNumber(data.amount || 0);
       if (form['master-amount-mode']) form['master-amount-mode'].value = data.amountMode || 'fixed';
+      if (form['master-hourly-rate']) form['master-hourly-rate'].value = data.hourlyRate ? formatNumber(data.hourlyRate) : '';
+      if (form['master-expected-hours']) form['master-expected-hours'].value = data.expectedHours || '';
       
       if (form['master-rule-type']) {
         const rule = data.scheduleRule || { type: 'monthly', day: data.day || 1 };
@@ -1165,6 +1312,13 @@ function showModal(data = null) {
         if (form['master-day']) form['master-day'].value = rule.day || 1;
         if (form['master-weekday']) form['master-weekday'].value = rule.weekday || 0;
         if (form['master-nth']) form['master-nth'].value = rule.nth || 1;
+        if (form['master-start-month']) form['master-start-month'].value = rule.startMonth || '';
+        if (form['master-end-month']) form['master-end-month'].value = rule.endMonth || '';
+        if (form['master-specific-dates']) {
+          form['master-specific-dates'].value = (rule.dates || [])
+            .map(date => `${date.month}/${date.day}`)
+            .join(', ');
+        }
       }
 
       if (form['master-balance']) form['master-balance'].value = formatNumber(data.currentBalance || 0);
@@ -1231,6 +1385,9 @@ function showModal(data = null) {
       if (form['client-eff-end']) form['client-eff-end'].value = data.effective?.end || '';
       if (form['client-notes']) form['client-notes'].value = data.notes || '';
       window.toggleClientRuleFields();
+      if (form['client-hourly-rate']) form['client-hourly-rate'].value = data.hourlyRate ? formatNumber(data.hourlyRate) : '';
+      if (form['client-expected-hours']) form['client-expected-hours'].value = data.expectedHours || '';
+      window.toggleClientAmountFields();
     }
   } else {
     title.textContent = '新規追加';
@@ -1252,6 +1409,7 @@ function showModal(data = null) {
       if (form['client-rule-type']) form['client-rule-type'].value = 'monthly';
       if (form['client-day']) form['client-day'].value = 15;
       window.toggleClientRuleFields();
+      window.toggleClientAmountFields();
     }
     if (currentTab === 'loans') {
       if (form['loan-type']) {
@@ -1300,6 +1458,18 @@ function requireNumber(el) {
   return true;
 }
 
+function parseSpecificDates(value) {
+  return String(value || '')
+    .split(',')
+    .map(part => part.trim())
+    .filter(Boolean)
+    .map(part => {
+      const [month, day] = part.split('/').map(Number);
+      return { month, day };
+    })
+    .filter(date => date.month >= 1 && date.month <= 12 && date.day >= 1 && date.day <= 31);
+}
+
 function saveData() {
   const form = document.getElementById('master-form');
   const id = form['edit-id'].value;
@@ -1334,7 +1504,10 @@ function saveData() {
       type: ruleType,
       day: ruleDay,
       weekday: Number(form['master-weekday']?.value || 0),
-      nth: Number(form['master-nth']?.value || 1)
+      nth: Number(form['master-nth']?.value || 1),
+      startMonth: Number(form['master-start-month']?.value || 0) || null,
+      endMonth: Number(form['master-end-month']?.value || 0) || null,
+      dates: parseSpecificDates(form['master-specific-dates']?.value || '')
     };
 
     const data = {
@@ -1343,6 +1516,11 @@ function saveData() {
       tag: form['master-tag'] ? form['master-tag'].value : '',
       amount: (type === 'bank' || !form['master-amount']) ? 0 : parseNumber(form['master-amount'].value),
       amountMode: form['master-amount-mode'] ? form['master-amount-mode'].value : 'fixed',
+      estimateType: type === 'income' && form['master-amount-mode']?.value === 'variable' && (parseNumber(form['master-hourly-rate']?.value || '') || Number(form['master-expected-hours']?.value || 0))
+        ? 'hourly'
+        : 'amount',
+      hourlyRate: type === 'income' ? parseNumber(form['master-hourly-rate']?.value || '') : 0,
+      expectedHours: type === 'income' ? Number(form['master-expected-hours']?.value || 0) : 0,
       scheduleRule: type === 'bank' ? null : scheduleRule,
       day: ruleType === 'monthEnd' ? 31 : ruleDay, // v1 fallback
       bankId: (type === 'bank' || !form['master-bank-id']) ? '' : form['master-bank-id'].value,
@@ -1455,6 +1633,11 @@ function saveData() {
       name: form['client-name'] ? form['client-name'].value : '',
       amount: parseNumber(form['client-amount']?.value || 0),
       amountMode: form['client-amount-mode'] ? form['client-amount-mode'].value : 'fixed',
+      estimateType: form['client-amount-mode']?.value === 'variable' && (parseNumber(form['client-hourly-rate']?.value || '') || Number(form['client-expected-hours']?.value || 0))
+        ? 'hourly'
+        : 'amount',
+      hourlyRate: parseNumber(form['client-hourly-rate']?.value || ''),
+      expectedHours: Number(form['client-expected-hours']?.value || 0),
       scheduleRule,
       paymentDay: scheduleRule.day,
       bankId: form['client-bank-id'] ? form['client-bank-id'].value : '',

@@ -114,6 +114,7 @@ export function renderDashboard(container) {
   const monthBaseEvents = events.length > 0 ? events : generatedPreviewEvents;
   const incomeInputs = settings.incomeConfirmInputs || { yearMonth: '', values: {} };
   const incomeInputValues = incomeInputs.yearMonth === yearMonth ? (incomeInputs.values || {}) : {};
+  const incomeInputDetails = incomeInputs.yearMonth === yearMonth ? (incomeInputs.details || {}) : {};
   const applyVariableIncomeOverrides = (eventList) => eventList.map(event => {
     if (event.type !== 'income' || event.amountMode !== 'variable' || !event.actualDate?.startsWith(yearMonth)) {
       return event;
@@ -454,16 +455,32 @@ export function renderDashboard(container) {
               ${variableIncomeEvents.map(event => {
                 const estimated = Number(event.estimatedAmount ?? event.amount) || 0;
                 const currentValue = event.incomeAdjusted ? Number(event.amount) || 0 : '';
+                const detail = incomeInputDetails[event.id] || {};
+                const hourlyRate = Number(detail.hourlyRate ?? event.hourlyRate) || 0;
+                const hours = Number(detail.hours ?? event.expectedHours) || 0;
+                const isHourly = event.estimateType === 'hourly' || hourlyRate > 0 || hours > 0;
                 return `
                   <div class="variable-income-row ${event.incomeAdjusted ? 'done' : ''}">
                     <div>
                       <strong>${event.name}</strong>
-                      <span>${event.actualDate.slice(5).replace('-', '/')} 入金予定 / 見込み ${money(estimated)}</span>
+                      <span>${event.actualDate.slice(5).replace('-', '/')} 入金予定 / 見込み ${money(estimated)}${isHourly ? ` / ${hourlyRate ? `時給 ${money(hourlyRate)}` : '時給未設定'} × ${hours || 0}h` : ''}</span>
                     </div>
+                    ${isHourly ? `
+                      <div class="income-hourly-inputs">
+                        <label>
+                          <span>時給</span>
+                          <input type="text" inputmode="numeric" id="income-rate-${event.id}" value="${hourlyRate ? formatNumber(hourlyRate) : ''}" placeholder="3,000" oninput="handleNumericInput(this); updateIncomeHourlyInput('${event.id}')">
+                        </label>
+                        <label>
+                          <span>時間</span>
+                          <input type="number" id="income-hours-${event.id}" min="0" step="0.5" value="${hours || ''}" placeholder="80" oninput="updateIncomeHourlyInput('${event.id}')">
+                        </label>
+                      </div>
+                    ` : ''}
                     <input type="text" inputmode="numeric"
                       id="income-${event.id}"
                       value="${currentValue !== '' ? formatNumber(currentValue) : ''}"
-                      placeholder="${formatNumber(estimated)}"
+                      placeholder="${isHourly && hourlyRate && hours ? formatNumber(Math.round(hourlyRate * hours)) : formatNumber(estimated)}"
                       oninput="handleNumericInput(this); saveIncomeInput('${event.id}', this.value)">
                     <button class="btn small ${event.incomeAdjusted ? '' : 'primary'}" onclick="confirmIncomeAmount('${event.id}')">${event.incomeAdjusted ? '更新' : '反映'}</button>
                   </div>
@@ -961,6 +978,36 @@ window.saveIncomeInput = (eventId, value) => {
       values: {
         ...(current.values || {}),
         [eventId]: (Number.isFinite(amount) || value === '') ? amount : 0
+      },
+      details: current.details || {}
+    }
+  });
+  window.clearTimeout(survivalInputRenderTimer);
+  survivalInputRenderTimer = window.setTimeout(() => {
+    if (containerEl) renderDashboard(containerEl);
+  }, 300);
+};
+
+window.updateIncomeHourlyInput = (eventId) => {
+  const yearMonth = toYearMonth(currentYear, currentMonth);
+  const rate = parseNumber(document.getElementById(`income-rate-${eventId}`)?.value || '');
+  const hours = Number(document.getElementById(`income-hours-${eventId}`)?.value || 0);
+  const amount = rate && hours ? Math.round(rate * hours) : 0;
+  const amountEl = document.getElementById(`income-${eventId}`);
+  if (amountEl && amount) amountEl.value = formatNumber(amount);
+  const current = appStore.data.settings?.incomeConfirmInputs?.yearMonth === yearMonth
+    ? appStore.data.settings.incomeConfirmInputs
+    : { yearMonth, values: {}, details: {} };
+  appStore.updateSettings({
+    incomeConfirmInputs: {
+      yearMonth,
+      values: {
+        ...(current.values || {}),
+        ...(amount ? { [eventId]: amount } : {})
+      },
+      details: {
+        ...(current.details || {}),
+        [eventId]: { hourlyRate: rate || 0, hours: hours || 0 }
       }
     }
   });
