@@ -55,6 +55,24 @@ const resolveDatesFromRule = (rule, adjustment, year, month, lastDay) => {
         }
       }
       break;
+    case 'monthlyRange': {
+      const startMonth = Number(rule.startMonth) || 1;
+      const endMonth = Number(rule.endMonth) || 12;
+      const inRange = startMonth <= endMonth
+        ? month >= startMonth && month <= endMonth
+        : month >= startMonth || month <= endMonth;
+      if (inRange) {
+        addDate(new Date(year, month - 1, Math.min(rule.day || lastDay, lastDay)));
+      }
+      break;
+    }
+    case 'specificDates':
+      (rule.dates || [])
+        .filter(date => Number(date.month) === month)
+        .forEach(date => {
+          addDate(new Date(year, month - 1, Math.min(Number(date.day) || lastDay, lastDay)));
+        });
+      break;
     default:
       break;
   }
@@ -118,6 +136,9 @@ export function generateMonthEvents(masterItems, loans, clients, year, month) {
           type: item.type,
           amount: item.amount,
           amountMode: item.amountMode || 'fixed',
+          estimateType: item.estimateType || 'amount',
+          hourlyRate: Number(item.hourlyRate) || 0,
+          expectedHours: Number(item.expectedHours) || 0,
           bankId: item.bankId || '',
           originalDate: datePair.original,
           actualDate: datePair.actual,
@@ -165,6 +186,9 @@ export function generateMonthEvents(masterItems, loans, clients, year, month) {
           type: 'income',
           amount: client.amount,
           amountMode: client.amountMode || 'fixed',
+          estimateType: client.estimateType || 'amount',
+          hourlyRate: Number(client.hourlyRate) || 0,
+          expectedHours: Number(client.expectedHours) || 0,
           bankId: client.bankId || '',
           originalDate: datePair.original,
           actualDate: datePair.actual,

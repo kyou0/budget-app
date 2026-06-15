@@ -1,9 +1,12 @@
 /**
  * @typedef {Object} ScheduleRule
- * @property {'monthly'|'monthEnd'|'weekly'|'monthlyBusinessDay'|'nextMonthDay'} type
+ * @property {'monthly'|'monthEnd'|'weekly'|'monthlyBusinessDay'|'nextMonthDay'|'monthlyRange'|'specificDates'} type
  * @property {number} [day] - monthly, nextMonthDay 用 (1-31)
  * @property {number} [weekday] - weekly 用 (0:日, 1:月...)
  * @property {number} [nth] - monthlyBusinessDay 用 (第n営業日)
+ * @property {number} [startMonth] - monthlyRange 用
+ * @property {number} [endMonth] - monthlyRange 用
+ * @property {{month:number,day:number}[]} [dates] - specificDates 用
  */
 
 /**
@@ -13,6 +16,9 @@
  * @property {'income'|'expense'|'bank'} type
  * @property {number} amount
  * @property {'fixed'|'variable'} [amountMode] - 金額モード
+ * @property {'amount'|'hourly'} [estimateType] - 見込み額の入力方式
+ * @property {number} [hourlyRate] - 時給見込み
+ * @property {number} [expectedHours] - 月の想定稼働時間
  * @property {Object} [estimate] - 変動時の見積もり
  * @property {number} [estimate.min]
  * @property {number} [estimate.base]
@@ -75,6 +81,9 @@
  * @property {string} name
  * @property {number} amount
  * @property {'fixed'|'variable'} [amountMode]
+ * @property {'amount'|'hourly'} [estimateType]
+ * @property {number} [hourlyRate]
+ * @property {number} [expectedHours]
  * @property {ScheduleRule} [scheduleRule]
  * @property {number} [paymentDay]
  * @property {'none'|'prev_weekday'|'next_weekday'} [adjustment]
@@ -138,7 +147,8 @@ export const INITIAL_DATA = {
     },
     incomeConfirmInputs: {
       yearMonth: '',
-      values: {}
+      values: {},
+      details: {}
     },
     loanTypeOptions: [
       '消費者金融',
