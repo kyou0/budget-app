@@ -43,6 +43,15 @@ SwiftUI で進めるネイティブ版の初期プロジェクトです。
 open ios/BudgetFlow/BudgetFlow.xcodeproj
 ```
 
-まずは Xcode 上部の実行先で iPhone Simulator を選んで Run してください。現時点のプロジェクトはシミュレータ専用にしており、署名なしで動くようにしています。
+まずは Xcode 上部の実行先で iPhone Simulator を選んで Run してください。シミュレータでは署名なしで動くようにしています。
 
-実機で動かす段階になったら、`SUPPORTED_PLATFORMS` を `iphoneos iphonesimulator` に戻し、Xcode の Signing & Capabilities で Team を設定してください。リポジトリには特定ユーザーの Team ID や Provisioning Profile を固定しません。
+実機で動かす場合は Xcode に Apple ID / Team が登録されている必要があります。
+
+1. Xcode > Settings > Accounts を開く
+2. `onuma.kyosuke@gmail.com` の Apple ID を追加、または再ログインする
+3. BudgetFlow target > Signing & Capabilities を開く
+4. Team に `onuma.kyosuke@gmail.com` の Personal Team / Team を選ぶ
+5. Automatically manage signing を有効にする
+6. 実行先に接続中の iPhone を選んで Run する
+
+リポジトリには Provisioning Profile のUUIDを固定しません。Xcodeがローカル環境で自動生成したものを使う前提です。
