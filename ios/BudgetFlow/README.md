@@ -43,4 +43,6 @@ SwiftUI で進めるネイティブ版の初期プロジェクトです。
 open ios/BudgetFlow/BudgetFlow.xcodeproj
 ```
 
-最初の段階なので、署名チームは未設定です。実機で動かす場合は Xcode の Signing & Capabilities で Team を設定してください。
+まずは Xcode 上部の実行先で iPhone Simulator を選んで Run してください。シミュレータでは署名なしで動くようにしています。
+
+実機で動かす場合は Xcode の Signing & Capabilities で Team を設定してください。リポジトリには特定ユーザーの Team ID や Provisioning Profile を固定しません。
