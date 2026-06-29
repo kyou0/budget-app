@@ -1,0 +1,7 @@
+.DS_Store
+DerivedData/
+*.xcuserstate
+*.xcscmblueprint
+*.moved-aside
+xcuserdata/
+project.xcworkspace/
