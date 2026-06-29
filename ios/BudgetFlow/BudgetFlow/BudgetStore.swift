@@ -1,4 +1,5 @@
 import Foundation
+import UserNotifications
 
 @MainActor
 final class BudgetStore: ObservableObject {
@@ -40,6 +41,16 @@ final class BudgetStore: ObservableObject {
                 warning: projection.warning
             )
         }
+    }
+
+    var upcomingExpenses: [MonthlyAdjustment] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        guard let limit = calendar.date(byAdding: .day, value: 7, to: today) else { return [] }
+        return monthlyAdjustments
+            .filter { $0.kind == .expense }
+            .filter { calendar.startOfDay(for: $0.date) <= limit }
+            .sorted { $0.date < $1.date }
     }
 
     func updateStartingCash(_ amount: Int) {
@@ -148,6 +159,23 @@ final class BudgetStore: ObservableObject {
         save()
     }
 
+    func schedulePaymentReminders() async throws -> Int {
+        let center = UNUserNotificationCenter.current()
+        let granted = try await center.requestAuthorization(options: [.alert, .badge, .sound])
+        guard granted else { return 0 }
+
+        let identifiers = await center.pendingNotificationRequests()
+            .map(\.identifier)
+            .filter { $0.hasPrefix("budgetFlow.payment.") }
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+
+        let requests = reminderRequests()
+        for request in requests {
+            try await center.add(request)
+        }
+        return requests.count
+    }
+
     func refreshCurrentMonth() {
         let now = Date()
         let calendar = Calendar.current
@@ -220,6 +248,34 @@ final class BudgetStore: ObservableObject {
     private func encode<T: Encodable>(_ value: T, key: String) {
         guard let data = try? JSONEncoder().encode(value) else { return }
         UserDefaults.standard.set(data, forKey: key)
+    }
+
+    private func reminderRequests() -> [UNNotificationRequest] {
+        let calendar = Calendar.current
+        let now = Date()
+        return monthlyAdjustments
+            .filter { $0.kind == .expense && $0.amount > 0 }
+            .compactMap { adjustment in
+                let dueDate = calendar.startOfDay(for: adjustment.date)
+                let reminderDate = calendar.date(byAdding: .day, value: -1, to: dueDate) ?? dueDate
+                var components = calendar.dateComponents([.year, .month, .day], from: max(reminderDate, calendar.startOfDay(for: now)))
+                components.hour = 9
+                components.minute = 0
+
+                guard let fireDate = calendar.date(from: components), fireDate > now else { return nil }
+
+                let content = UNMutableNotificationContent()
+                content.title = "明日以降の支払い確認"
+                content.body = "\(adjustment.name) \(adjustment.amount)円の支払い予定があります"
+                content.sound = .default
+
+                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+                return UNNotificationRequest(
+                    identifier: "budgetFlow.payment.\(adjustment.id.uuidString)",
+                    content: content,
+                    trigger: trigger
+                )
+            }
     }
 
     private func materializeDebtPayments(year: Int, month: Int) -> [MonthlyAdjustment] {

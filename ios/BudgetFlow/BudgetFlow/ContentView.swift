@@ -20,6 +20,7 @@ struct ContentView: View {
 struct MonthView: View {
     @EnvironmentObject private var store: BudgetStore
     @State private var startingCashText = ""
+    @State private var reminderStatus = ""
     private let yen = FloatingPointFormatStyle<Double>.Currency(code: "JPY").precision(.fractionLength(0))
 
     var body: some View {
@@ -45,9 +46,30 @@ struct MonthView: View {
                             }
                             .buttonStyle(.bordered)
                         }
+                        Button {
+                            Task {
+                                do {
+                                    let count = try await store.schedulePaymentReminders()
+                                    reminderStatus = count > 0 ? "\(count)件の支払い通知を設定しました" : "通知対象の支払いはありません"
+                                } catch {
+                                    reminderStatus = "通知を設定できませんでした"
+                                }
+                            }
+                        } label: {
+                            Label("支払い通知を設定", systemImage: "bell.badge")
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        if !reminderStatus.isEmpty {
+                            Text(reminderStatus)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     .padding(.vertical, 8)
                 }
+
+                PaymentRiskSection()
 
                 QuickEntrySection()
 
@@ -68,6 +90,71 @@ struct MonthView: View {
 
     private var statusTitle: String {
         store.summary.balance >= 0 ? "今月は耐えられそう" : "このままだと不足"
+    }
+}
+
+struct PaymentRiskSection: View {
+    @EnvironmentObject private var store: BudgetStore
+
+    var body: some View {
+        Section("支払い期限チェック") {
+            if store.upcomingExpenses.isEmpty {
+                Text("直近7日以内の支払いはありません。")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(store.upcomingExpenses) { adjustment in
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: riskIcon(for: adjustment))
+                            .foregroundStyle(riskColor(for: adjustment))
+                            .frame(width: 24)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(adjustment.name)
+                                .font(.headline)
+                            Text(dueLabel(for: adjustment.date))
+                                .font(.caption)
+                                .foregroundStyle(riskColor(for: adjustment))
+                        }
+                        Spacer()
+                        Text("\(adjustment.amount)円")
+                            .font(.headline)
+                    }
+                }
+            }
+        }
+    }
+
+    private func dueLabel(for date: Date) -> String {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let dueDate = calendar.startOfDay(for: date)
+        let days = calendar.dateComponents([.day], from: today, to: dueDate).day ?? 0
+        if days < 0 { return "\(-days)日超過" }
+        if days == 0 { return "今日支払い" }
+        if days == 1 { return "明日支払い" }
+        return "あと\(days)日"
+    }
+
+    private func riskColor(for adjustment: MonthlyAdjustment) -> Color {
+        let days = daysUntil(adjustment.date)
+        if days < 0 { return .red }
+        if days <= 1 { return .orange }
+        return .blue
+    }
+
+    private func riskIcon(for adjustment: MonthlyAdjustment) -> String {
+        let days = daysUntil(adjustment.date)
+        if days < 0 { return "exclamationmark.triangle.fill" }
+        if days <= 1 { return "clock.badge.exclamationmark" }
+        return "calendar.badge.clock"
+    }
+
+    private func daysUntil(_ date: Date) -> Int {
+        let calendar = Calendar.current
+        return calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: Date()),
+            to: calendar.startOfDay(for: date)
+        ).day ?? 0
     }
 }
 
@@ -237,9 +324,9 @@ struct AdjustmentRow: View {
                 VStack(alignment: .leading) {
                     Text(adjustment.name)
                         .font(.headline)
-                    Text(adjustment.date, style: .date)
+                    Text("\(adjustment.date.formatted(date: .abbreviated, time: .omitted)) / \(dueLabel)")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(dueColor)
                 }
                 Spacer()
                 Text(Double(adjustment.amount), format: yen)
@@ -282,6 +369,32 @@ struct AdjustmentRow: View {
             hourlyRateText = adjustment.hourlyRate > 0 ? "\(adjustment.hourlyRate)" : ""
             hoursText = adjustment.hours > 0 ? "\(adjustment.hours)" : ""
         }
+    }
+
+    private var dueLabel: String {
+        guard adjustment.kind == .expense else { return adjustment.isConfirmed ? "確定" : "見込み" }
+        let days = daysUntil(adjustment.date)
+        if days < 0 { return "\(-days)日超過" }
+        if days == 0 { return "今日" }
+        if days == 1 { return "明日" }
+        return "あと\(days)日"
+    }
+
+    private var dueColor: Color {
+        guard adjustment.kind == .expense else { return .secondary }
+        let days = daysUntil(adjustment.date)
+        if days < 0 { return .red }
+        if days <= 1 { return .orange }
+        return .secondary
+    }
+
+    private func daysUntil(_ date: Date) -> Int {
+        let calendar = Calendar.current
+        return calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: Date()),
+            to: calendar.startOfDay(for: date)
+        ).day ?? 0
     }
 }
 
