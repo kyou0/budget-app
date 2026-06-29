@@ -50,7 +50,7 @@ enum ScheduleEngine {
         calendar.date(from: DateComponents(year: year, month: month, day: day)) ?? Date()
     }
 
-    private static func lastDayOfMonth(year: Int, month: Int, calendar: Calendar) -> Int {
+    static func lastDayOfMonth(year: Int, month: Int, calendar: Calendar = .current) -> Int {
         let start = date(year: year, month: month, day: 1, calendar: calendar)
         return calendar.range(of: .day, in: .month, for: start)?.count ?? 28
     }

@@ -19,6 +19,7 @@ struct ContentView: View {
 
 struct MonthView: View {
     @EnvironmentObject private var store: BudgetStore
+    @State private var startingCashText = ""
     private let yen = FloatingPointFormatStyle<Double>.Currency(code: "JPY").precision(.fractionLength(0))
 
     var body: some View {
@@ -35,9 +36,22 @@ struct MonthView: View {
                             Stat(label: "入金", value: store.summary.income, color: .green)
                             Stat(label: "支払い", value: store.summary.expense, color: .red)
                         }
+                        HStack {
+                            TextField("今の手元資金", text: $startingCashText)
+                                .keyboardType(.numberPad)
+                                .textFieldStyle(.roundedBorder)
+                            Button("反映") {
+                                store.updateStartingCash(parseInt(startingCashText))
+                            }
+                            .buttonStyle(.bordered)
+                        }
                     }
                     .padding(.vertical, 8)
                 }
+
+                QuickEntrySection()
+
+                DebtOverviewSection()
 
                 Section("今月の確定・見込み") {
                     ForEach(store.monthlyAdjustments) { adjustment in
@@ -46,11 +60,146 @@ struct MonthView: View {
                 }
             }
             .navigationTitle("今月生きていけるか")
+            .onAppear {
+                startingCashText = "\(store.startingCash)"
+            }
         }
     }
 
     private var statusTitle: String {
         store.summary.balance >= 0 ? "今月は耐えられそう" : "このままだと不足"
+    }
+}
+
+struct QuickEntrySection: View {
+    @EnvironmentObject private var store: BudgetStore
+    @State private var cardName = "クレジットカード"
+    @State private var cardAmount = ""
+    @State private var withdrawalDay = "27"
+    @State private var itemName = ""
+    @State private var itemAmount = ""
+    @State private var itemDate = Date()
+    @State private var itemKind: CashflowKind = .expense
+
+    var body: some View {
+        Section("今月だけ入力") {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("カード確定額")
+                    .font(.headline)
+                TextField("カード名", text: $cardName)
+                    .textFieldStyle(.roundedBorder)
+                HStack {
+                    TextField("確定額", text: $cardAmount)
+                        .keyboardType(.numberPad)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("引落日", text: $withdrawalDay)
+                        .keyboardType(.numberPad)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 88)
+                }
+                Button("カード引落を今月に追加") {
+                    store.addCreditCardPayment(
+                        cardName: cardName.isEmpty ? "カード" : cardName,
+                        amount: parseInt(cardAmount),
+                        withdrawalDay: parseInt(withdrawalDay)
+                    )
+                    cardAmount = ""
+                }
+                .buttonStyle(.borderedProminent)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("日付が決まっている収支")
+                    .font(.headline)
+                Picker("区分", selection: $itemKind) {
+                    ForEach(CashflowKind.allCases) { kind in
+                        Text(kind.label).tag(kind)
+                    }
+                }
+                .pickerStyle(.segmented)
+                DatePicker("日付", selection: $itemDate, displayedComponents: .date)
+                TextField("内容", text: $itemName)
+                    .textFieldStyle(.roundedBorder)
+                TextField("金額", text: $itemAmount)
+                    .keyboardType(.numberPad)
+                    .textFieldStyle(.roundedBorder)
+                Button("今月の予定に追加") {
+                    store.addOneTimeAdjustment(
+                        name: itemName.isEmpty ? "日付確定の収支" : itemName,
+                        kind: itemKind,
+                        date: itemDate,
+                        amount: parseInt(itemAmount)
+                    )
+                    itemName = ""
+                    itemAmount = ""
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+}
+
+struct DebtOverviewSection: View {
+    @EnvironmentObject private var store: BudgetStore
+
+    var body: some View {
+        Section("借金・返済見通し") {
+            if store.debtProjections.isEmpty {
+                Text("借入をマスターに追加すると、今月の返済額と完済見込みをここで見られます。")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(store.debtProjections, id: \.self) { projection in
+                    DebtProjectionRow(projection: projection)
+                }
+            }
+        }
+    }
+}
+
+struct DebtProjectionRow: View {
+    @EnvironmentObject private var store: BudgetStore
+    @State private var extraPaymentText = ""
+    var projection: DebtProjection
+    private let yen = FloatingPointFormatStyle<Double>.Currency(code: "JPY").precision(.fractionLength(0))
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text(projection.account.name)
+                        .font(.headline)
+                    Text("残高 \(Double(projection.account.balance), format: yen)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text("月 \(Double(projection.account.monthlyPayment), format: yen)")
+                    .font(.subheadline.bold())
+            }
+
+            if let warning = projection.warning {
+                Text(warning)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            } else if let months = projection.monthsRemaining, let payoffDate = projection.payoffDate {
+                Text("このペースなら約\(months)か月、\(payoffDate, style: .date)ごろ完済")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack {
+                TextField("今月の繰上げ返済", text: $extraPaymentText)
+                    .keyboardType(.numberPad)
+                    .textFieldStyle(.roundedBorder)
+                Button("反映") {
+                    store.updateDebtExtraPayment(projection.account, amount: parseInt(extraPaymentText))
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .onAppear {
+            extraPaymentText = projection.account.extraPaymentThisMonth > 0 ? "\(projection.account.extraPaymentThisMonth)" : ""
+        }
     }
 }
 
@@ -143,6 +292,11 @@ struct MasterView: View {
     @State private var incomeName = "新規時給案件"
     @State private var hourlyRate = "3000"
     @State private var expectedHours = "80"
+    @State private var debtName = "カードローン"
+    @State private var debtBalance = ""
+    @State private var debtMonthlyPayment = ""
+    @State private var debtAnnualRate = "15.0"
+    @State private var debtPaymentDay = "27"
 
     var body: some View {
         NavigationStack {
@@ -180,6 +334,29 @@ struct MasterView: View {
                     }
                 }
 
+                Section("借入を追加") {
+                    TextField("借入名", text: $debtName)
+                    TextField("残高", text: $debtBalance)
+                        .keyboardType(.numberPad)
+                    TextField("毎月返済額", text: $debtMonthlyPayment)
+                        .keyboardType(.numberPad)
+                    TextField("年率", text: $debtAnnualRate)
+                        .keyboardType(.decimalPad)
+                    TextField("返済日", text: $debtPaymentDay)
+                        .keyboardType(.numberPad)
+                    Button("借入を追加") {
+                        store.addDebtAccount(
+                            name: debtName.isEmpty ? "借入" : debtName,
+                            balance: parseInt(debtBalance),
+                            monthlyPayment: parseInt(debtMonthlyPayment),
+                            annualRate: Double(debtAnnualRate) ?? 0,
+                            paymentDay: parseInt(debtPaymentDay)
+                        )
+                        debtBalance = ""
+                        debtMonthlyPayment = ""
+                    }
+                }
+
                 Section("登録済み") {
                     ForEach(store.masterEntries) { entry in
                         VStack(alignment: .leading) {
@@ -190,11 +367,24 @@ struct MasterView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    ForEach(store.debtAccounts) { account in
+                        VStack(alignment: .leading) {
+                            Text(account.name)
+                                .font(.headline)
+                            Text("借入残高 \(account.balance)円 / 毎月 \(account.monthlyPayment)円")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
             }
             .navigationTitle("マスター")
         }
     }
+}
+
+private func parseInt(_ text: String) -> Int {
+    Int(text.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
 }
 
 #Preview {

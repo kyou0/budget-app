@@ -91,6 +91,17 @@ struct MonthlyAdjustment: Identifiable, Codable, Hashable {
     var isConfirmed: Bool
 }
 
+struct DebtAccount: Identifiable, Codable, Hashable {
+    var id = UUID()
+    var name: String
+    var balance: Int
+    var monthlyPayment: Int
+    var annualRate: Double
+    var extraPaymentThisMonth: Int
+    var paymentDay: Int
+    var note: String
+}
+
 struct TaxPreset: Identifiable, Hashable {
     var id: String
     var name: String
@@ -155,4 +166,11 @@ struct MonthSummary {
     var startingCash: Int
 
     var balance: Int { startingCash + income - expense }
+}
+
+struct DebtProjection: Hashable {
+    var account: DebtAccount
+    var monthsRemaining: Int?
+    var payoffDate: Date?
+    var warning: String?
 }
